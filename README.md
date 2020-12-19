@@ -8,15 +8,17 @@ Other motivations include
 - Tunnel all the traffic over OpenVPN because the only wireless network they offer is not protected.
 
 Requirements
-- You start with a Raspberry Pi 3B+ or later (for now)
+- You start with a Raspberry Pi 3B+ or later (for now, or older with 2 usb wifi adapters)
 - You add a USB wifi adapter as the client (extension cables work a treat for those difficult locations!)
 - The Onboard wifi adapter becomes the AP, as you are most likely close by
 
 Software Features planned, in more or less my order
 - OpenVPN Client for tunneling traffic over untrusted open Wifi networks
+- Add a webserver for configuration
+- Add service and logging to syslog
+Nice to have?
 - Perform Multi-Wan Failover
 - Integrate pi-hole into dnsmasq
-- Add a webserver for configuration
 
 Where it is now
 - Has a 5Ghz AP Nomad-Hotspot with passphrase OnTheRoadAgain
@@ -32,5 +34,10 @@ git clone https://github.com/databeestje/nomad-hotspot.git
 - In case you want to uninstall you can run the uninstall.sh script which should restore the previous configuration.
 
 Changing the configuration manually
-The agent monitors the eth0 and wlan1 connections, as well as all configuration files in the conf directory.
+The agent monitors the eth0 and wlan1 connections, and the configuration files under the conf directory.
 As you change the configuration files it will compare them and replace as needed and then reload services as needed.
+
+Startup
+cd ~/nomad-hotspot
+php agent.php
+
