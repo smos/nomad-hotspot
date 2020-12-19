@@ -19,6 +19,9 @@ if [ ! -f "hostapd.conf" ]; then
 fi
 cd ~/nomad-hotspot
 
+echo "Changing Hostname"
+sudo hostnamectl set-hostname nomad-hotspot
+
 echo "Enable system services required for Wifi AP and DHCP Server"
 
 sudo systemctl unmask hostapd
