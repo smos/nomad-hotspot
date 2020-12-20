@@ -1,14 +1,100 @@
 <?php
 
-// Config files we know about
-$cfgmap = array(
-			"dnsmasq.conf" => "/etc/dnsmasq.conf",
-			"dhcpcd.conf" => "/etc/dhcpcd.conf",
-			"hostapd.conf" => "/etc/hostapd/hostapd.conf",
-			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
-			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
-			);
-$cfgdir = "conf";
+// Shared memory for exchanging between proc and webserver
+$shm_size = 32768;
+$shm_id = create_shm($shm_size);
+// You can list and delete these with ipcs and ipcrm -m 0
+
+// Start PHP builtin webserver for the local interface on port 8000
+function start_webserver($address, $port, $dir){
+	// Start in a detached screen session
+	echo "Starting webserver on adress {$address} and port {$port} in dir {$dir}\n";
+	$cmd = "screen -d -m -S nomad-webserver php -S $address:$port -t $dir";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		echo "Failed to start webserver process in screen\n";
+
+}
+
+// Create 32kb shared memory block with system id of 0xff3
+function create_shm($shm_size) {
+	$shm_id = shmop_open(0xff3, "c", 0644, $shm_size);
+	if (!$shm_id) {
+		echo "Couldn't create shared memory segment\n";
+	}
+	return $shm_id;
+}
+
+// Lets write a test string into shared memory
+function write_shm($shm_id, $state) {
+	$shm_bytes_written = shmop_write($shm_id, serialize($state), 0);
+	if ($shm_bytes_written != strlen(serialize($state))) {
+		echo "Couldn't write the entire length of data to shm\n";
+		return false;
+	}
+	return true;
+}
+
+function read_shm($shm_id, $shm_size) {
+	// Now lets read the string back
+	$state = unserialize(shmop_read($shm_id, 0, $shm_size));
+	if (!is_array($state)) {
+		echo "Couldn't read serialized array from shared memory block\n";
+		return false;
+	}
+	return $state;
+}
+// Working DNS check
+function working_dns($dnsok) {
+	$gdns = check_gdns_rec();
+	if(($gdns === true) && ($dnsok === false)){
+		echo "Looks like we have working DNS\n";
+		return true;
+	}
+	if(($gdns === false) && ($dnsok === true)) {
+		echo "Looks like we can not resolve Public DNS yet, reload DNSmasq\n";
+		service_restart("dnsmasq.conf");
+		return false;
+	}
+}	
+
+
+function check_procs($procmap) {
+	$proccount = array();
+	foreach ($procmap as $file => $procname) {
+		switch($file) {
+			case "wpa_supplicant.conf":
+			case "dnsmasq.conf":
+			case "hostapd.conf":
+			case "dhcpcd.conf":
+				$proccount[$procname] = check_proc($file);
+				if($proccount[$procname] == 0)
+					echo "We are missing a process called {$procname}\n";
+				break;
+			default:
+				echo "What is this mythical process for file '{$file}' of which you speak?\n";
+				break;
+		}
+	}
+	return $proccount;
+	
+}
+
+// Check process name
+function check_proc($file) {
+	global $procmap;
+	
+	if (!isset($procmap[$file]))
+		return false;
+	
+	$cmd = "ps auxww| awk '/{$procmap[$file]}/ {print $1}'";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		echo "Failed to check process for {$file} to {$procmap[$file]}\n";
+
+	return count($out);
+	
+}
 
 // Get all our interface information, index by ifname
 function interface_status() {
@@ -34,6 +120,75 @@ function if_state($iflist, $name){
 		return false;
 
 	return $iflist[$name]['operstate'];
+}
+
+// Return interface addresses
+function if_address($iflist, $ifname) {
+	// Does this interface even exist?
+	if(!isset($iflist[$ifname]))
+		return false;
+
+	$add = array();
+	
+	//print_r($iflist[$ifname]);
+	foreach($iflist[$ifname]['addr_info'] as $index => $address) {
+		if($address['scope'] != "global")
+			continue;
+		
+		$add[] = $address['local'];
+		
+	}
+	return $add;
+}
+
+
+// Return interface prefixlen
+function if_prefix($iflist, $ifname) {
+	// Does this interface even exist?
+	if(!isset($iflist[$ifname]))
+		return false;
+
+	$add = array();
+	
+	//print_r($iflist[$ifname]);
+	foreach($iflist[$ifname]['addr_info'] as $index => $address) {
+		if($address['scope'] != "global")
+			continue;
+		
+		$add[] = $address['local'] ."/". $address['prefixlen'];
+		
+	}
+	return $add;
+}
+
+// Check if the Google DNS is reachable
+function check_gdns_rec(){
+	// What should be returned for dns.google
+	/*
+	dns.google has address 8.8.4.4
+	dns.google has address 8.8.8.8
+	dns.google has IPv6 address 2001:4860:4860::8888
+	dns.google has IPv6 address 2001:4860:4860::8844
+	*/
+	$list = array(
+		"8.8.8.8" => true,
+		"8.8.4.4" => true,
+		"2001:4860:4860::8888" => true,
+		"2001:4860:4860::8844" => true,
+		);
+	$f = 0;
+	
+	$cmd = "host -W 1 dns.google";
+	exec($cmd, $out, $ret);
+	foreach($out as $line){
+		$dns = explode(" ", $line);
+		$add = end($dns);
+		if(isset($list[$add]))
+			$f++;
+	}
+	if(count($list) == $f)
+		return true;
+	return false;
 }
 
 // Let's retrieve our list of configuration files and return an array with mtimes
@@ -79,11 +234,13 @@ function process_cfg_changes($chglist) {
 				break;
 			default:
 				echo "What is this mythical config file '{$file}' of which you speak?\n";
+				break;
 		}
 	}
 }
 
 function restart_service($file) {
+	echo "Restart service for config file '{$file}'\n";
 	switch($file) {
 			case "dnsmasq.conf":
 				$cmd = "sudo service dnsmasq reload";
@@ -119,6 +276,7 @@ function copy_config($file) {
 	global $cfgmap;
 	global $cfgdir;
 
+	echo "Copy config file '{$file}' to '{$cfgmap[$file]}'\n";
 	$cmd = "sudo cp -a {$cfgdir}/{$file} {$cfgmap[$file]}";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
