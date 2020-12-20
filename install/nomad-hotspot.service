@@ -1,0 +1,14 @@
+[Unit]
+Description=Nomad-Hotspot
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/screen -D -m -S nomad-hotspot /usr/bin/php agent.php 
+WorkingDirectory=/home/pi/nomad-hotspot
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

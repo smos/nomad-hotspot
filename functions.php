@@ -66,6 +66,7 @@ function check_procs($procmap) {
 			case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
 			case "hostapd.conf":
+			case "webserver":
 			case "dhcpcd.conf":
 				$proccount[$procname] = check_proc($file);
 				if($proccount[$procname] == 0)
