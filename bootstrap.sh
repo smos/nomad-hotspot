@@ -3,7 +3,7 @@
 # Hi, let's get some requirements out of the way
 
 echo "Installing some software requirements"
-sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn
+sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen
 
 echo "Save original configuration files"
 cd ~/nomad-hotspot/orig
