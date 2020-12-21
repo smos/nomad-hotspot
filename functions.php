@@ -48,7 +48,7 @@ function read_shm($shm_id, $shm_size) {
 function working_dns($dnsok) {
 	$gdns = check_gdns_rec();
 	if(($gdns === true) && ($dnsok === false)){
-		echo "Looks like we have working DNS\n";
+		echo "Looks like we have a sane DNS for dns.google\n";
 		return true;
 	}
 	if(($gdns === false) && ($dnsok === true)) {
@@ -58,6 +58,52 @@ function working_dns($dnsok) {
 	}
 }	
 
+// Working DNS check
+function working_msftconnect($captive) {
+	$msftconnect = check_msft_connect();
+	//print_r($msftconnect);
+	if(($msftconnect == "OK") && ($captive != "OK")){
+		echo "Captive Portal check succeeded, looks like we have working Internet\n";
+	}
+	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
+		echo "Looks like DNS doesn't work properly yet\n";
+	}
+	if(($msftconnect == "PORTAL") && ($captive != "PORTAL")) {
+		echo "Looks like we we are stuck behind a portal, someone needs to log in\n";
+	}
+	return $msftconnect;
+}
+
+function check_msft_connect() {
+	// Catch timeouts?
+	// Create a stream
+	$opts = array(
+	  'http'=>array(
+		'method'=>"GET",
+		'timeout'=>2,
+		'header'=>"Accept-language: en\r\n" .
+				  "Cookie: foo=bar\r\n"
+	  )
+	);
+	$context = stream_context_create($opts);
+
+	$url = "http://www.msftconnecttest.com/connecttest.txt";
+	$string = "Microsoft Connect Test";
+	// check DNS
+	$cmd = "host -W 1 www.msftconnecttest.com";
+	exec($cmd, $out, $ret);
+	if ($ret > 0)
+		return "DNSERR";
+	
+	$test = file_get_contents($url, false, $context, 0, 64);
+	
+	if($test == trim($string))
+		return "OK";
+
+	if($test != trim($string))
+		return "PORTAL";
+	
+}
 
 function check_procs($procmap) {
 	$proccount = array();

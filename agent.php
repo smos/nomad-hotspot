@@ -11,7 +11,10 @@ $state['config'] = array();
 $state['config']['port'] = 8000;
 $state['if'] = array();
 $state['proc'] = array();
-$state['dnsok'] = false;
+// Assume we start with no working internet
+$state['internet']['dnsok'] = null;
+$state['internet']['captive'] = null;
+$state['internet']['ping'] = false;
 // Config files we know about
 $cfgmap = array(
 			"dnsmasq.conf" => "/etc/dnsmasq.conf",
@@ -73,9 +76,11 @@ while (true) {
 			$state['if'][$ifname] = $iflist[$ifname];
 		}
 	}
-	// Check if we have a Sane DNS configuration
-	$state['dnsok'] = working_dns($state['dnsok']);
+	// Check if we can reach msft ncsi
+	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
 
+	// Check if we have a Sane DNS configuration
+	$state['internet']['dnsok'] = working_dns($state['internet']['dnsok']);
 
 	write_shm($shm_id, $state);	
 	sleep ($looptimer);

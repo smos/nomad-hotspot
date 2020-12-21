@@ -27,7 +27,7 @@ function html_config($state){
 function html_status($state){
 	echo "<table><tr><td>Interface</td><td>State</td><td>Adresses</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {	
-		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_address($state['if'], $ifname)) ."</td></tr>\n";
+		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "\n";		
