@@ -25,9 +25,14 @@ function html_config($state){
 }
 
 function html_status($state){
-	echo "<table><tr><td>Interface</td><td>State</td><td>Adresses</td></tr>\n";
+	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {	
 		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
+	}
+	echo "</table>";	
+	echo "<table border=1><tr><td>Connectivity</td><td>Result</td></tr>\n";
+	foreach ($state['internet'] as $check => $result) {	
+		echo "<tr><td>{$check}</td><td>{$result}</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "\n";		
@@ -39,7 +44,7 @@ function html_openvpn($state){
 }
 
 function html_processes($state){
-	echo "<table><tr><td>Process name</td><td>Number</td></tr>\n";
+	echo "<table border=1><tr><td>Process name</td><td>Number</td></tr>\n";
 	foreach ($state['proc'] as $procname => $number) {
 		echo "<tr><td>{$procname}</td><td>{$number}</td></tr>\n";
 	}
@@ -49,6 +54,8 @@ function html_processes($state){
 
 
 function send_json($state){
+	header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
+	header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 	header("Content-Type: application/json");
 	echo json_encode($state, JSON_PRETTY_PRINT);
 	

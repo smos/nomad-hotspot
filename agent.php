@@ -12,7 +12,7 @@ $state['config']['port'] = 8000;
 $state['if'] = array();
 $state['proc'] = array();
 // Assume we start with no working internet
-$state['internet']['dnsok'] = null;
+$state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
 // Config files we know about
@@ -80,7 +80,7 @@ while (true) {
 	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
 
 	// Check if we have a Sane DNS configuration
-	$state['internet']['dnsok'] = working_dns($state['internet']['dnsok']);
+	$state['internet']['dns'] = working_dns($state['internet']['dns']);
 
 	write_shm($shm_id, $state);	
 	sleep ($looptimer);

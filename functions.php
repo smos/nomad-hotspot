@@ -45,16 +45,16 @@ function read_shm($shm_id, $shm_size) {
 	return $state;
 }
 // Working DNS check
-function working_dns($dnsok) {
+function working_dns($dns) {
 	$gdns = check_gdns_rec();
-	if(($gdns === true) && ($dnsok === false)){
+	if(($gdns === true) && ($dnsok != "OK")){
 		echo "Looks like we have a sane DNS for dns.google\n";
-		return true;
+		return "OK";
 	}
-	if(($gdns === false) && ($dnsok === true)) {
+	if(($gdns === false) && ($dnsok != "NOK")) {
 		echo "Looks like we can not resolve Public DNS yet, reload DNSmasq\n";
 		service_restart("dnsmasq.conf");
-		return false;
+		return "NOK";
 	}
 }	
 

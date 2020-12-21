@@ -21,6 +21,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_foot();	
 			break;
 		case "/json":
+		case "/json?":
 			echo send_json($state);	
 			break;
 		case "/openvpn":
