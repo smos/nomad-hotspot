@@ -10,10 +10,20 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 	switch($_SERVER["REQUEST_URI"]) {
 		case "/":
 		case "/status":
-			html_head();
+			echo html_head();
+			echo html_jquery();
 			echo html_status($state);
-			echo html_processes($state);
+			echo html_jquery_reload();
 			echo html_foot();	
+			break;
+		case "/interfaces":
+			echo html_interfaces($state);
+			break;
+		case "/connectivity":
+			echo html_connectivity($state);
+			break;
+		case "/processes":
+			echo html_processes($state);
 			break;
 		case "/config":
 			echo html_head();
