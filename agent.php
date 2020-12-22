@@ -11,6 +11,7 @@ $state['config'] = array();
 $state['config']['port'] = 8000;
 $state['if'] = array();
 $state['proc'] = array();
+$state['time'] = time();
 // Assume we start with no working internet
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
@@ -54,24 +55,8 @@ while (true) {
 			continue;
 
 		$iflist = interface_status();
-		// $changes[$ifname] = false;
-		if(!isset($state['if'][$ifname])) {
-			// New interface!
-			echo "Found interface {$ifname}, status {$iface['operstate']}, addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
-			$state['if'][$ifname] = $iflist[$ifname];
-		} else {
-			// We already have this interface, check if it changed
-			if((if_state($state['if'], $ifname) != if_state($iflist, $ifname))) {
-				echo "{$ifname} moved from '". if_state($state['if'], $ifname) ."' to '". if_state($iflist, $ifname) ."' with addresses '". implode(',', if_address($iflist, $ifname)) .".'\n";
-				$changes[$ifname] = true;
-			} else {
-				$changes[$ifname] = false;
-			}
-
-
-			// save current interface state to the state array. 
-			$state['if'][$ifname] = $iflist[$ifname];
-		}
+		$state['if'][$ifname] = process_if_changes($state['if'], $iflist, $ifname);
+		
 	}
 	// Check if the local configuration files match the system, update where neccesary, and restart services where needed.
 	$chglist = compare_cfg_files($cfgdir);
@@ -80,12 +65,13 @@ while (true) {
 	// Check if we have all processes
 	$state['proc'] = check_procs($procmap);
 
-	// Check if we can reach msft ncsi
-	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
-
 	// Check if we have a Sane DNS configuration
 	$state['internet']['dns'] = working_dns($state['internet']['dns']);
 
+	// Check if we can reach msft ncsi
+	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
+
+	$state['time'] = time();
 	write_shm($shm_id, $state);	
 	sleep ($looptimer);
 }

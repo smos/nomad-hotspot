@@ -16,6 +16,30 @@ function start_webserver($address, $port, $dir){
 
 }
 
+function process_if_changes($ifstate, $iflist, $ifname) {
+	if(!isset($ifstate[$ifname])) {
+		// New interface!
+	echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
+	}
+	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
+		// Interface went away!
+		echo "Interface {$ifname}, went away! Used to have, addresses ". implode(',', if_prefix($ifstate, $ifname)) ."\n";
+	}
+	if(isset($ifstate[$ifname]) && isset($iflist[$ifname])) {
+		// We already have this interface, check if it changed
+		if((if_state($ifstate, $ifname) != if_state($iflist, $ifname))) {
+			echo "{$ifname} moved from '". if_state($ifstate, $ifname) ."' to '". if_state($iflist, $ifname) ."'\n";
+		}
+		if((if_address($ifstate, $ifname) != if_address($iflist, $ifname))) {
+			echo "Interface {$ifname} changed addresses from '". implode(',', if_address($ifstate, $ifname)) ."' to '". implode(',', if_address($iflist, $ifname)) ."'\n";
+		}
+
+	}
+	
+	// save current interface state to the state array. 
+	return $iflist[$ifname];
+}
+
 // Create 32kb shared memory block with system id of 0xff3
 function create_shm($shm_size) {
 	$shm_id = shmop_open(0xff3, "c", 0644, $shm_size);
@@ -307,6 +331,10 @@ function compare_cfg_files ($dir) {
 function process_cfg_changes($chglist) {
 	foreach($chglist as $file => $mtime) {
 		switch($file) {
+			case "client.ovpn.login":
+				move_config($file);
+				restart_service($file);
+				break;
 			case "sysctl-routed-ap.conf":
 				copy_config($file);
 				break;
@@ -329,6 +357,7 @@ function restart_service($file) {
 	echo "Restart service for config file '{$file}'\n";
 	switch($file) {
 			case "client.ovpn":
+			case "client.ovpn.login":
 				$cmd = "sudo service openvpn reload";
 				break;
 			case "dnsmasq.conf":
@@ -366,4 +395,16 @@ function copy_config($file) {
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		echo "Failed to copy config {$file} to {$cfgmap[$file]}\n";
+}
+
+
+function move_config($file) {
+	global $cfgmap;
+	global $cfgdir;
+
+	echo "Move config file '{$file}' to '{$cfgmap[$file]}'\n";
+	$cmd = "sudo mv -f {$cfgdir}/{$file} {$cfgmap[$file]}";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		echo "Failed to move config {$file} to {$cfgmap[$file]}\n";
 }
