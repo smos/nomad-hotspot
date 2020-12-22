@@ -1,13 +1,14 @@
 [Unit]
 Description=Nomad-Hotspot
-After=network.target
+After=hostapd.service
 
 [Service]
-ExecStart=/usr/bin/screen -D -m -S nomad-hotspot /usr/bin/php agent.php 
+ExecStart=/usr/bin/screen -D -m -S nomad-hotspot /usr/bin/php /home/pi/nomad-hotspot/agent.php 
 WorkingDirectory=/home/pi/nomad-hotspot
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
+RestartSec=3
 User=pi
 
 [Install]
