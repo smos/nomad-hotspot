@@ -21,7 +21,7 @@ cd ~/nomad-hotspot
 
 echo "Changing Hostname"
 sudo hostnamectl set-hostname nomad-hotspot
-
+sudo sed -i 's/raspberrypi/nomad-hotspot/g' /etc/hosts
 echo "Enable system services required for Wifi AP and DHCP Server"
 
 sudo systemctl unmask hostapd
