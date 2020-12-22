@@ -56,7 +56,44 @@ function working_dns($dns) {
 		service_restart("dnsmasq.conf");
 		return "NOK";
 	}
-}	
+	return $dns;
+}
+
+function config_read_dhcpcd($iflist, $ifname) {
+	$conf = "../conf/dhcpcd.conf";
+	if(is_readable($conf))
+		preg_match_all("/#{$ifname}start(.*?)#{$ifname}end/si", file_get_contents($conf), $matches);
+	
+	echo "<pre>";
+	print_r($matches[1]);
+	
+}
+
+function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
+	if(!isset($iflist[$ifname]))
+		return false;
+	
+	$string[0] = "interface {$ifname}";
+	foreach(settings as $key => $value) {
+		switch($key) {
+			case "dhcp":
+				$string[0] .= "dhcp";
+				break;
+			case "static":
+				$string[2] .= "static ip_address= {$settings['address']}/{$settings['prefixlen']}";
+				break;
+			case "lan":
+				$string[3] .= "\tnohook wpa_supplicant"; 
+				break;
+		}
+	}
+	// Make sure that wlan0 is always the AP if for now.
+	if($ifname == "wlan0")
+		$string[3] .= "\tnohook wpa_supplicant"; 
+			
+	$conf = implode("\n", $string);
+	return $conf;
+}
 
 // Working DNS check
 function working_msftconnect($captive) {
@@ -113,6 +150,7 @@ function check_procs($procmap) {
 			case "dnsmasq.conf":
 			case "hostapd.conf":
 			case "webserver":
+			case "client.ovpn":
 			case "dhcpcd.conf":
 				$proccount[$procname] = check_proc($file);
 				if($proccount[$procname] == 0)
@@ -275,6 +313,7 @@ function process_cfg_changes($chglist) {
 			case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
 			case "hostapd.conf":
+			case "client.ovpn":
 			case "dhcpcd.conf":
 				copy_config($file);
 				restart_service($file);
@@ -289,33 +328,32 @@ function process_cfg_changes($chglist) {
 function restart_service($file) {
 	echo "Restart service for config file '{$file}'\n";
 	switch($file) {
+			case "client.ovpn":
+				$cmd = "sudo service openvpn reload";
+				break;
 			case "dnsmasq.conf":
 				$cmd = "sudo service dnsmasq reload";
-				exec($cmd, $out, $ret);
-				if($ret > 0)
-					echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
 				break;
 			case "hostapd.conf":
 				$cmd = "sudo service hostapd reload";
-				exec($cmd, $out, $ret);
-				if($ret > 0)
-					echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
 				break;
 			case "dhcpcd.conf":
 				$cmd = "sudo service dhcpcd reload";
-				exec($cmd, $out, $ret);
-				if($ret > 0)
-					echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
 				break;
 			case "wpa_supplicant.conf":
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
-				exec($cmd, $out, $ret);
-				if($ret > 0)
-					echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
 				break;
 			default:
 				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				return false;
 				break;
+	}
+	if($cmd !=""){
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
+			return false;
+		}
 	}
 }
 
