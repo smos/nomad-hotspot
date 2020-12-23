@@ -19,6 +19,9 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/interfaces":
 			echo html_interfaces($state);
 			break;
+		case "/clients":
+			echo html_clients($state);
+			break;
 		case "/connectivity":
 			echo html_connectivity($state);
 			break;

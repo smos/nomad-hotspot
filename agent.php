@@ -16,25 +16,6 @@ $state['time'] = time();
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
-// Config files we know about
-$cfgmap = array(
-			"dnsmasq.conf" => "/etc/dnsmasq.conf",
-			"dhcpcd.conf" => "/etc/dhcpcd.conf",
-			"hostapd.conf" => "/etc/hostapd/hostapd.conf",
-			"client.ovpn" => "/etc/openvpn/client.conf",
-			"client.ovpn.login" => "/etc/openvpn/client.ovpn.login",
-			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
-			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
-			);
-// Processes we know about
-$procmap = array(
-			"dnsmasq.conf" => "dnsmasq",
-			"dhcpcd.conf" => "dhcpcd",
-			"hostapd.conf" => "hostapd",
-			"client.ovpn" => "openvpn",			
-			"wpa_supplicant.conf" => "wpa_supplicant",
-			"webserver" => "php",
-			);
 // Where the configs live
 $cfgdir = "conf";
 // Where the web files live

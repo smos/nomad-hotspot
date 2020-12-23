@@ -4,6 +4,25 @@
 $shm_size = 32768;
 $shm_id = create_shm($shm_size);
 // You can list and delete these with ipcs and ipcrm -m 0
+// Config files we know about
+$cfgmap = array(
+			"dnsmasq.conf" => "/etc/dnsmasq.conf",
+			"dhcpcd.conf" => "/etc/dhcpcd.conf",
+			"hostapd.conf" => "/etc/hostapd/hostapd.conf",
+			"client.ovpn" => "/etc/openvpn/client.conf",
+			"client.ovpn.login" => "/etc/openvpn/client.ovpn.login",
+			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
+			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
+			);
+// Processes we know about
+$procmap = array(
+			"dnsmasq.conf" => "dnsmasq",
+			"dhcpcd.conf" => "dhcpcd",
+			"hostapd.conf" => "hostapd",
+			"client.ovpn" => "openvpn",			
+			"wpa_supplicant.conf" => "wpa_supplicant",
+			"webserver" => "php",
+			);
 
 // Start PHP builtin webserver for the local interface on port 8000
 function start_webserver($address, $port, $dir){
@@ -16,10 +35,66 @@ function start_webserver($address, $port, $dir){
 
 }
 
+function iw_info($ifstate, $ifname) {
+	if(!isset($ifstate[$ifname]))
+		return false;
+	// Don't scan on our eth0 interface ;)
+	if(($ifname == "eth0") || ($ifname == "tun0"))
+		return null;
+
+	// List wireless interface statistics
+	// iw wlan0 info
+	$cmd = "iw {$ifname} info";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		echo "Failed to fetch wireless info {$cmd}\n";
+
+	$iw_state = array();
+	foreach($out as $line) {
+		$line = trim($line);
+		$el = explode(" ", $line);
+		$key = $el[0];
+		array_shift($el);
+		$iw_state[$key] = implode(" ", $el);
+	}
+	//print_r($el);
+	return $iw_state;
+}
+
+function list_iw_networks($ifstate, $ifname) {
+	if(!isset($ifstate[$ifname]))
+		return false;
+	// Don't scan on our AP interface ;)
+	if($ifname == "wlan0")
+		return true;
+	// Show which network we are connected to
+	// sudo iw wlan1 scan
+	$cmd = "iw {$ifname} scan";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		echo "Failed to list wireless networks\n";
+	
+	$iw_networks = array();
+	foreach($out as $line) {
+		
+		
+		
+	}
+	return $iw_networks;
+}
+
+// Show which clients are connected
+// iw dev wlan0 station dump
+// Fetch arp table arp -i wlan0 -n 
+// Find IP address on wlan0 interface address by matching mac address
+// perform DNS query against local resolver for hostname
+
+
 function process_if_changes($ifstate, $iflist, $ifname) {
 	if(!isset($ifstate[$ifname])) {
 		// New interface!
-	echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
+		echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
+		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 	}
 	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
 		// Interface went away!
@@ -33,7 +108,7 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		if((if_address($ifstate, $ifname) != if_address($iflist, $ifname))) {
 			echo "Interface {$ifname} changed addresses from '". implode(',', if_address($ifstate, $ifname)) ."' to '". implode(',', if_address($iflist, $ifname)) ."'\n";
 		}
-
+		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 	}
 	
 	// save current interface state to the state array. 
@@ -81,6 +156,46 @@ function working_dns($dns) {
 		return "NOK";
 	}
 	return $dns;
+}
+
+function config_supplicant($state, $file) {
+	config_read_supplicant($state, $file);
+}
+
+function config_read_supplicant($state, $file) {
+	$conf = "../conf/wpa_supplicant.conf";
+	$settings = array();
+	if(is_readable($conf)) {
+		$i = 0;
+		foreach(file($conf) as $line) {
+			$matches = array();
+			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z]+)/", $line, $matches);
+			// echo print_r($matches, true);
+			switch($matches[1][0]) {
+				case "country":
+					$settings[$matches[1][0]] = $matches[2][0];
+					break;
+				case "network":
+					if(!empty($temp)) {
+						$settings['network'][$i] = $temp;
+						unset($temp);
+					}
+					$i++;
+					break;
+				case "ssid":
+				case "key_mgmt":
+				case "psk":
+					$temp[$matches[1][0]] = $matches[2][0];
+					break;
+			}
+		}
+		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?(key_mgmt)=([A_Z]+)/si", file_get_contents($conf), $matches);
+		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?/si", file_get_contents($conf), $matches);
+	}
+
+	echo "<pre>";
+	echo print_r($settings, true);
+	return $settings;
 }
 
 function config_read_dhcpcd($iflist, $ifname) {
