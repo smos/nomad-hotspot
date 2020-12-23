@@ -76,7 +76,12 @@ function list_iw_networks($ifstate, $ifname) {
 	
 	$iw_networks = array();
 	foreach($out as $line) {
-		
+		$line = trim($line);
+		$el = explode(" ", $line);
+		$key = $el[0];
+		array_shift($el);
+		$iw_networks[$key] = implode(" ", $el);
+
 		
 		
 	}
@@ -158,11 +163,7 @@ function working_dns($dns) {
 	return $dns;
 }
 
-function config_supplicant($state, $file) {
-	config_read_supplicant($state, $file);
-}
-
-function config_read_supplicant($state, $file) {
+function config_read_supplicant($state) {
 	$conf = "../conf/wpa_supplicant.conf";
 	$settings = array();
 	if(is_readable($conf)) {
@@ -170,6 +171,8 @@ function config_read_supplicant($state, $file) {
 		foreach(file($conf) as $line) {
 			$matches = array();
 			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z]+)/", $line, $matches);
+			if(empty($matches[1]))
+				continue;
 			// echo print_r($matches, true);
 			switch($matches[1][0]) {
 				case "country":
@@ -182,10 +185,12 @@ function config_read_supplicant($state, $file) {
 					}
 					$i++;
 					break;
-				case "ssid":
 				case "key_mgmt":
-				case "psk":
 					$temp[$matches[1][0]] = $matches[2][0];
+					break;				
+				case "ssid":
+				case "psk":
+					$temp[$matches[1][0]] = substr($matches[2][0], 1, -1);
 					break;
 			}
 		}
@@ -193,19 +198,68 @@ function config_read_supplicant($state, $file) {
 		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?/si", file_get_contents($conf), $matches);
 	}
 
-	echo "<pre>";
-	echo print_r($settings, true);
+	//echo print_r($settings, true);
 	return $settings;
 }
 
-function config_read_dhcpcd($iflist, $ifname) {
+function config_read_hostapd($state) {
+	$conf = "../conf/hostapd.conf";
+	$settings = array();
+	if(is_readable($conf)) {
+		$i = 0;
+		foreach(file($conf) as $line) {
+			$line = trim($line);
+			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z]+)/", $line, $matches);
+			//echo print_r($matches, true);
+			$settings[$matches[1][0]] = $matches[2][0];
+		}
+		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?(key_mgmt)=([A_Z]+)/si", file_get_contents($conf), $matches);
+		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?/si", file_get_contents($conf), $matches);
+	}
+
+	//echo print_r($settings, true);
+	return $settings;
+}
+
+function config_read_dhcpcd($state) {
 	$conf = "../conf/dhcpcd.conf";
-	if(is_readable($conf))
-		preg_match_all("/#{$ifname}start(.*?)#{$ifname}end/si", file_get_contents($conf), $matches);
-	
-	echo "<pre>";
-	print_r($matches[1]);
-	
+	if(is_readable($conf)) {
+		foreach($state['if'] as $ifname => $iface) {
+			preg_match_all("/#{$ifname}start(.*?)#{$ifname}end/si", file_get_contents($conf), $matches);
+			//print_r($matches);
+			// Process sections
+			if(empty($matches[1]))
+				continue;
+			$lines = explode("\n", $matches[1][0]);
+			if(count($matches[1]) > 0)
+				$settings[$ifname]['if'] = $ifname;
+			foreach($lines as $line) {
+				$line = trim($line);
+				$el = explode(" ", $line);
+					switch($el[0]) {
+						case "denyinterface":
+							$settings[$ifname]['deny'] = true;
+							break;
+						case "dhcp":
+							$settings[$ifname]['mode'] = $el[0];
+							break;
+						case "nohook":
+							$settings[$ifname]['nohook'] = $el[1];
+							break;
+						case "static":
+							$settings[$ifname]['mode'] = $el[0];
+							$a_str = explode("=", $el[1]);
+							$add_a = explode("/", $a_str[1]);
+							$settings[$ifname]['ip4'] = $add_a[0];
+							$settings[$ifname]['prefix4'] = $add_a[1];
+							break;
+					}
+			}
+		
+		}
+		
+	}
+	return($settings);
 }
 
 function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
