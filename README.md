@@ -13,9 +13,10 @@ Requirements
 - The Onboard wifi adapter becomes the AP, as you are most likely close by
 
 Software Features planned, in more or less my order
-- OpenVPN Client for tunneling traffic over untrusted open Wifi networks
-- Add a webserver for configuration
-- Add service and logging to syslog
+- OpenVPN Client for tunneling traffic over untrusted open Wifi networks (works)
+- Add a webserver for configuration (partly done)
+- Add service and logging to syslog (not yet)
+
 Nice to have?
 - Perform Multi-Wan Failover
 - Integrate pi-hole into dnsmasq
@@ -23,8 +24,11 @@ Nice to have?
 Where it is now
 - Has a 5Ghz AP Nomad-Hotspot with passphrase OnTheRoadAgain
 - Performs DHCP on eth0 and wlan1
-- IP forwarding with outbound NAT on eth0 and wlan1
+- IP forwarding with outbound NAT on eth0, wlan1 and tun0
 - DHCP Server on wlan0 (onboard)
+- Webserver configuration works for Wireless Client network list.
+- Webserver does show OpenVPN config, but no save button yet. Should be more-or-less ExpressVPN compatible.
+- Has absolutely no UI interface makeup to speak of.
 
 To get things going.
 
@@ -37,7 +41,5 @@ Changing the configuration manually
 The agent monitors the eth0 and wlan1 connections, and the configuration files under the conf directory.
 As you change the configuration files it will compare them and replace as needed and then reload services as needed.
 
-Startup
-cd ~/nomad-hotspot
-php agent.php
-
+Startup script included and installs systemd service file
+You can have a look at the agent and webserver process by attaching their screen session nomad-hotspot or nomad-webserver. You can detach screen with crtl-a-d
