@@ -16,6 +16,7 @@ $state['time'] = time();
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
+$state['clients'] = array();
 // Where the configs live
 $cfgdir = "conf";
 // Where the web files live

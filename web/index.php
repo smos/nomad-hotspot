@@ -10,6 +10,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 	switch($_SERVER["REQUEST_URI"]) {
 		case "/":
 		case "/status":
+			// html containing refreshing status divs
 			echo html_head();
 			echo html_jquery();
 			echo html_status($state);
@@ -17,30 +18,31 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_foot();	
 			break;
 		case "/interfaces":
+			// interface status div
 			echo html_interfaces($state);
 			break;
 		case "/clients":
+			// clients status div 
 			echo html_clients($state);
 			break;
 		case "/connectivity":
 			echo html_connectivity($state);
 			break;
 		case "/processes":
+			// processes status div 
 			echo html_processes($state);
 			break;
-		case "/config":
+		case "/cfgif":
+		case "/cfgwiap":
+		case "/cfgwiclient":
+		case "/cfgovpn":
 			echo html_head();
-			echo html_config($state);
+			echo html_config($state, $_SERVER["REQUEST_URI"]);
 			echo html_foot();	
 			break;
 		case "/json":
 		case "/json?":
 			echo send_json($state);	
-			break;
-		case "/openvpn":
-			echo html_head();
-			echo html_openvpn($state);
-			echo html_foot();	
 			break;
 	}
 	//print_r($_SERVER["REQUEST_URI"]);

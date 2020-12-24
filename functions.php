@@ -163,43 +163,113 @@ function working_dns($dns) {
 	return $dns;
 }
 
+function config_read_ovpn($state){
+	$conf = "../conf/client.ovpn";
+	$settings = array();
+
+	if(is_readable($conf)) {
+		$settings['conf'] = file_get_contents($conf);
+	}
+	// We can't actually read the login file, as it is moved into place and doesn't exists here anymore
+	// $settings['login'] = config_read_ovpn_login($state);
+	return $settings;
+		
+}
+
+function config_read_ovpn_login($state){
+	$conf = "../conf/client.ovpn.login";
+	$settings = array();
+
+	if(is_readable($conf)) {
+		$settings['login'] = file_get_contents($conf);
+	}
+	return $settings;
+}
+
 function config_read_supplicant($state) {
 	$conf = "../conf/wpa_supplicant.conf";
 	$settings = array();
 	if(is_readable($conf)) {
 		$i = 0;
 		foreach(file($conf) as $line) {
+			$line = trim($line);
 			$matches = array();
 			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z]+)/", $line, $matches);
 			if(empty($matches[1]))
 				continue;
-			// echo print_r($matches, true);
+			// echo "<pre>". print_r($matches, true);
 			switch($matches[1][0]) {
 				case "country":
 					$settings[$matches[1][0]] = $matches[2][0];
 					break;
 				case "network":
-					if(!empty($temp)) {
-						$settings['network'][$i] = $temp;
-						unset($temp);
-					}
 					$i++;
 					break;
+				case "priority":
 				case "key_mgmt":
-					$temp[$matches[1][0]] = $matches[2][0];
+					$settings['network'][$i][$matches[1][0]] = $matches[2][0];
 					break;				
 				case "ssid":
 				case "psk":
-					$temp[$matches[1][0]] = substr($matches[2][0], 1, -1);
+					$settings['network'][$i][$matches[1][0]] = substr($matches[2][0], 1, -1);
 					break;
 			}
 		}
-		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?(key_mgmt)=([A_Z]+)/si", file_get_contents($conf), $matches);
-		//preg_match_all("/(network)=.*?(ssid)=\"([a-zA-Z0-9-., ]+)\".*?(psk)=\"(.*?)\".*?/si", file_get_contents($conf), $matches);
 	}
+	//echo "yo. ". print_r($temp, true);
 
 	//echo print_r($settings, true);
 	return $settings;
+}
+function config_write_supplicant($settings) {
+	$conf = "../conf/wpa_supplicant.conf";
+	$conf_a = array();
+	$conf_a[] = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev";
+	$conf_a[] = "update_config=1";
+	$conf_a[] = "";
+	if(is_writeable($conf)) {
+		$i = 0;
+		foreach($settings as $varname => $setting) {
+			switch($varname) {
+				case "country":
+					$conf_a[] = "{$varname}={$setting}";
+					break;
+				case "network":
+					foreach($setting as $index => $values){
+						$conf_a[] = "network={";
+						// Skip empty entries
+						if(($setting['ssid'] == "") && ($setting['psk'] == "") &&($setting['priority'] == "-1"))
+							continue;
+						foreach($values as $name => $value) {
+							$var = "{$index}{$name}";
+							switch($name) {
+								case "ssid":
+								case "psk":
+									// Don't leave empty PSK fields, that is illegal config.
+									if($settings['network'][$index][$name] != "")
+										$conf_a[] = "    {$name}=\"{$settings['network'][$index][$name]}\"";
+									break;
+								case "priority":
+								case "key_mgmt":
+									$conf_a[] = "    {$name}={$settings['network'][$index][$name]}";
+									break;
+							}
+									
+						}
+						$conf_a[] = "}";
+						$conf_a[] = "";
+						$i++;
+					}
+					$conf_a[] = "";
+			}
+
+		}
+	} else {
+		return false;
+	}
+	file_put_contents($conf, implode("\n", $conf_a));
+	//echo "<pre>". print_r($conf_a, true);
+	return true;
 }
 
 function config_read_hostapd($state) {
@@ -546,10 +616,11 @@ function restart_service($file) {
 				return false;
 				break;
 	}
-	if($cmd !=""){
+	if($cmd != ""){
+		echo "Running command '{$cmd}'\n";
 		exec($cmd, $out, $ret);
 		if($ret > 0) {
-			echo "Failed to restart service for {$file} to {$cfgmap[$file]}\n";
+			echo "Failed to restart service for {$file}\n";
 			return false;
 		}
 	}

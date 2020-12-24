@@ -9,8 +9,10 @@ function html_head(){
 	// Menu Header
 	echo "<table><tr>";
 	echo "<td><a href='/status'>Status</a></td>";
-	echo "<td><a href='/config'>Config</a></td>";
-	// echo "<td><a href='/openvpn'>OpenVPN</a></td>";
+	echo "<td><a href='/cfgif'>Interfaces</a></td>";
+	echo "<td><a href='/cfgwiap'>Wifi AP</a></td>";
+	echo "<td><a href='/cfgwiclient'>Wifi Client</a></td>";
+	echo "<td><a href='/cfgovpn'>OpenVPN</a></td>";
 	echo "<td><a href='/json'>JSON</a></td>";
 	echo "<tr></table>\n";
 	
@@ -19,27 +21,54 @@ function html_foot(){
 	echo "</body></html>\n";		
 }
 
-function html_config($state){
+function html_button_save() {
+	echo "<input type='submit' value='Save'>";
+}
+
+function html_form_open() {
+	echo "<form method='post' action='{$_SERVER["REQUEST_URI"]}'>";	
+}
+
+function html_form_close() {
+	echo "<form method='post' action='{$_SERVER["REQUEST_URI"]}'>";	
+}
+
+function html_config($state, $uri){
 	global $cfgmap;
-	
-	echo "Config items<br>";
-	echo "<pre>";
-	foreach($cfgmap as $file => $item){
-		switch($file) {
-			case "dhcpcd.conf":
-				config_dhcpcd($state);
-				break;
-			case "hostapd.conf":
-				config_hostapd($state);
-				break;
-			case "wpa_supplicant.conf":
-				config_supplicant($state, $file);
-				break;
-			
-		}
-	
-	}
+	html_form_open();
+	html_button_save();
+	switch($uri) {
+		case "/cfgif":
+			config_dhcpcd($state);
+			break;
+		case "/cfgwiap":
+			config_hostapd($state);
+			break;
+		case "/cfgwiclient":
+			config_supplicant($state);
+			break;
+		case "/cfgovpn":
+			config_openvpn($state);
+			break;
 		
+	}
+	html_form_close();		
+}
+
+function config_openvpn($state) {
+	echo "<br>Config OpenVPN<br>";
+	$settings = config_read_ovpn($state);
+
+	echo "OpenVPN client username and password on seperate lines. Existing not shown.<br>";
+	html_textarea("login", $settings['login'], 3, 20);
+	echo "<br>";
+	echo "OpenVPN client configuration below<br>";
+	html_textarea("conf", $settings['conf'], 120, 80);
+	echo "<br>";
+
+
+	//echo print_r($settings, true);
+
 }
 
 function config_dhcpcd($state) {
@@ -119,16 +148,68 @@ function config_hostapd($state) {
 	//echo print_r($settings, true);
 }
 
-function config_supplicant($state, $file) {
+function validate_select($array, $item){
+	if(in_array($item, $array))
+		return true;
+	else
+		return false;
+}
+
+function config_supplicant($state) {
 	echo "<br>Config wireless client networks<br>";
+	// Process POST request
 	$settings = config_read_supplicant($state);
+	// Empty item at the end for adding new entry
+	//$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
+	//echo "<pre>". print_r($settings, true);
+	$countries = array("NL" => "NL", "US" => "US", "JP" => "JP");
+	$key_mgmt = array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE");
+	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
+	// Compare 
+	if(!empty($_POST)) {
+		//print_r($_POST);
+		$i = 0;
+		foreach($settings as $varname => $setting) {
+			switch($varname) {
+				case "country":
+					if(validate_select($countries, $_POST[$varname]))
+						$settings[$varname] = $setting;
+					break;
+				case "network":
+					foreach($setting as $index => $values){
+						foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
+							$var = "{$index}{$name}";
+								switch($name) {
+									case "ssid":
+									case "psk":
+										$settings['network'][$index][$name] = $_POST[$var];
+										break;
+									case "priority":
+										if(validate_select($priorities, $_POST[$var]))
+											$settings['network'][$index][$name] = $_POST[$var];
+										break;
+									case "key_mgmt":
+										if(validate_select($key_mgmt, $_POST[$var]))
+											$settings['network'][$index][$name] = $_POST[$var];
+										break;
+								}
+							}
+						$i++;
+					}
+			}
+
+		}
+		// echo "<pre>".  print_r($settings, true);
+		config_write_supplicant($settings);
+		$settings = config_read_supplicant($state);
+	}
 	// Empty item at the end for adding new entry
 	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
 			case "country":
 				echo "Country setting for Wireless adapter: ";
-				html_select($varname, array("NL" => "NL", "US" => "US", "JP" => "JP"), $setting);			
+				html_select($varname, $countries, $setting);			
 				echo "<br>\n";
 				break;
 			case "network":
@@ -140,18 +221,22 @@ function config_supplicant($state, $file) {
 					echo "Pre Shared Key: ";
 					html_input("{$index}psk", $values['psk']) ."<br>";
 					echo "Type: ";
-					html_select("{$index}key_mgmt", array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE"), $values['key_mgmt']) ."<br>";
+					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>";
 					echo "Priority: ";
-					html_select("{$index}priority", array("-1" => "-1", "0" => "0", "1" => "1","2" => "2", "3" => "3"), $values['priority']) ."<br>";
+					html_select("{$index}priority", $priorities, $values['priority']) ."<br>";
 					echo "<br>";
 				}			
 		}		
 	}
-	//echo print_r($settings, true);
+	//echo "<pre>". print_r($settings, true);
 }
 
 function html_hidden($varname, $value){
 	echo "<input type=hidden name='{$varname}' value='{$value}' >";
+}
+
+function html_textarea($varname, $value, $rows, $cols){
+echo "<textarea name='{$varname}' rows='{$rows}' cols='{$cols}'>{$value}</textarea>";
 }
 
 // Generate a drop down
