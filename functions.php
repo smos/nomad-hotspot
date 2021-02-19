@@ -394,15 +394,15 @@ function check_msft_connect() {
 	exec($cmd, $out, $ret);
 	if ($ret > 0)
 		return "DNSERR";
-	
-	$test = file_get_contents($url, false, $context, 0, 64);
-	
+
+	$test = @file_get_contents($url, false, $context, 0, 64);
+
 	if($test == trim($string))
 		return "OK";
 
 	if($test != trim($string))
 		return "PORTAL";
-	
+
 }
 
 function check_procs($procmap) {
@@ -544,6 +544,9 @@ function cfg_list($dir) {
 	$files = array_diff(scandir($dir), array('..', '.'));
 	//print_r($files);
 	foreach($files as $file) {
+		// Skip nano swap files
+		if(stristr(".swp", $file))
+			continue;
 		$mtimes[$file] = filemtime("{$dir}/{$file}");
 	}
 	return $mtimes;
