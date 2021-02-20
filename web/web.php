@@ -57,6 +57,35 @@ function html_config($state, $uri){
 
 function config_openvpn($state) {
 	echo "<br>Config OpenVPN<br>";
+
+	if(!empty($_POST)) {
+		//print_r($_POST);
+		$i = 0;
+		foreach($_POST as $varname => $setting) {
+			switch($varname) {
+				case "login":
+					if(!empty($_POST[$varname])) {
+						echo "Found new Login data <br>";
+						$credentials = explode("\n", $_POST[$varname]);
+						if(count ($credentials) < 2) {
+							echo "Not enough data, put username and password on seperate lines <br>";
+							$loginerror = true;
+						} else {
+							config_write_ovpn_login($_POST);
+						}						
+					}
+					break;
+				case "conf":
+					if(!empty($_POST[$varname])) {
+						echo "Found new conf data <br>";
+							config_write_ovpn($_POST);
+					}
+					break;
+			}
+		}
+		restart_service("client.ovpn");
+	}
+
 	$settings = config_read_ovpn($state);
 
 	echo "OpenVPN client username and password on seperate lines. Existing not shown.<br>";
@@ -67,7 +96,7 @@ function config_openvpn($state) {
 	echo "<br>";
 
 
-	//echo print_r($settings, true);
+	//echo "<pre>". print_r($settings, true);
 
 }
 
