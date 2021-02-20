@@ -126,12 +126,38 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		}
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 	}
+	
+	$iflist[$ifname]['time'] = time();
+	// If we are here, we can collect some statistics.
+	if(isset($ifstate[$ifname]))
+		$iflist[$ifname]['traffic'] = calculate_speed($ifstate[$ifname], $iflist[$ifname]);
+
 	// save current interface state to the state array. 
 	if(isset($iflist[$ifname]))
 		return $iflist[$ifname];
 	else
 		return false;
 }
+
+function calculate_speed($ifstate, $iflist) {
+	$timediff = $iflist['time'] - $ifstate['time'];
+	// echo "newtime = {$iflist['time']} - {$ifstate['time']}\n";
+	if($timediff < 0)
+		return false;
+	
+	// echo "yo";
+
+	$rx = $iflist['stats64']['rx']['bytes'] - $ifstate['stats64']['rx']['bytes'];
+	$tx = $iflist['stats64']['tx']['bytes'] - $ifstate['stats64']['tx']['bytes'];
+	
+	// echo "rx {$rx}, tx {$tx}, timediff {$timediff}\n";
+	// Bytes per second
+	$traffic['rx'] = ($rx/$timediff);
+	$traffic['tx'] = ($tx/$timediff);
+	
+	return $traffic;
+}
+
 
 // Create 32kb shared memory block with system id of 0xff3
 function create_shm($shm_size) {
@@ -467,11 +493,13 @@ function parse_portal_page($url){
 }
 
 function build_form_request($forms_a, $inputs_a) {
+	// Spaghetti code alert
+	
 	$request = array();
 	// Transform form into associative array, 1st item only
 	//print_r($forms_a);
 	$form_a = transform_form_to_array($forms_a[0][0]);
-	print_r($form_a);
+	//print_r($form_a);
 	foreach($form_a[1] as $key => $value) {
 		//print_r($value);
 		if($value == "")
@@ -503,9 +531,14 @@ function build_form_request($forms_a, $inputs_a) {
 			switch($value) {
 				case "type":
 					// Might need to flip a variable
-					if(stristr($input_a[$i][2][$key], "checkbox"))
+					if(stristr($input_a[$i][2][$key], "checkbox")) {
 						echo "It has a checkbox ";
-					$proc = true;
+						$proc = true;
+					}
+					if(stristr($input_a[$i][2][$key], "submit")) {
+						echo "It has a submit button ";
+						$proc = true;
+					}
 					break;
 				case "hidden":
 					$proc = true;
@@ -647,16 +680,23 @@ function check_proc($file) {
 
 // Get all our interface information, index by ifname
 function interface_status() {
+	$iflist = array();
+
 	$cmd = "ip -j address show ";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		return false;
-
-	$iflist = array();
 	$ifjson = json_decode($out[0], true);
+
+	$cmdlink = "ip -j -s link ";
+	exec($cmdlink, $outlink, $retlink);
+	if($retlink > 0)
+		return false;
+	$iflinkjson = json_decode($outlink[0], true);
 
 	foreach($ifjson as $key => $if){
 		$iflist[$if['ifname']] = $if;
+		$iflist[$if['ifname']]['stats64'] = $iflinkjson[$key]['stats64'];
 	}
 
 	return $iflist;

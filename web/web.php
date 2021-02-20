@@ -349,13 +349,13 @@ function html_status($state){
 }
 function html_interfaces($state){
 	echo " <div id='interfaces'>";
-	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Info</td></tr>\n";
+	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Info</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {	
 		$wireless = "&nbsp;";
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wireless = "SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
+		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td><td>". html_traffic($state['if'], $ifname) ."</td><td>{$wireless}</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "</div>\n";		
@@ -395,7 +395,10 @@ function html_openvpn($state){
 		
 }
 
-
+function html_traffic($iflist, $ifname) {
+	// Auto scale?
+	return "rx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['rx']) ."Bps, tx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['tx']) ."Bps";	
+}
 
 function send_json($state){
 	header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
@@ -403,4 +406,27 @@ function send_json($state){
 	header("Content-Type: application/json");
 	echo json_encode($state, JSON_PRETTY_PRINT);
 	
+}
+
+/* Below is Copyright RafaSashi on StackOverflow
+https://stackoverflow.com/questions/4116499/php-count-round-thousand-to-a-k-style-count-like-facebook-share-twitter-bu
+*/
+function thousandsCurrencyFormat($num) {
+
+  if($num>1024) {
+
+        $x = round($num);
+        $x_number_format = number_format($x);
+        $x_array = explode(',', $x_number_format);
+        $x_parts = array('K', 'M', 'T', 'P');
+        $x_count_parts = count($x_array) - 1;
+        $x_display = $x;
+        $x_display = $x_array[0] . ((int) $x_array[1][0] !== 0 ? '.' . $x_array[1][0] : '');
+        $x_display .= $x_parts[$x_count_parts - 1];
+
+        return $x_display;
+
+  }
+
+  return $num;
 }
