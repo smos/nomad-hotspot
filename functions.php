@@ -100,6 +100,17 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		// New interface!
 		echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
+
+		if(if_state($iflist, $ifname) == "UP") {
+			$lease[$ifname] = dump_dhcp_lease($iflist, $ifname);
+			//print_r($lease);
+			if(isset($lease[$ifname]['domain_name_servers'])) {
+				foreach(explode(" ", $lease[$ifname]['domain_name_servers']) as $dns_server) {
+					echo "Adding route to DNS Server {$dns_server} via default GW of {$ifname}\n";
+					route_add($dns_server, "");
+				}
+			}
+		}
 	}
 	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
 		// Interface went away!
@@ -115,9 +126,11 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		}
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 	}
-	
 	// save current interface state to the state array. 
-	return $iflist[$ifname];
+	if(isset($iflist[$ifname]))
+		return $iflist[$ifname];
+	else
+		return false;
 }
 
 // Create 32kb shared memory block with system id of 0xff3
@@ -156,8 +169,9 @@ function working_dns($dns) {
 		return "OK";
 	}
 	if(($gdns === false) && ($dns != "NOK")) {
-		echo "Looks like we can not resolve Public DNS yet, reload DNSmasq\n";
-		service_restart("dnsmasq.conf");
+		echo "Looks like we can not resolve Public DNS, stop OpenVPN, reload DNSmasq\n";
+		stop_service("client.ovpn");
+		restart_service("dnsmasq.conf");
 		return "NOK";
 	}
 	return $dns;
@@ -221,6 +235,7 @@ function config_read_supplicant($state) {
 	//echo print_r($settings, true);
 	return $settings;
 }
+
 function config_write_supplicant($settings) {
 	$conf = "../conf/wpa_supplicant.conf";
 	$conf_a = array();
@@ -270,6 +285,23 @@ function config_write_supplicant($settings) {
 	file_put_contents($conf, implode("\n", $conf_a));
 	//echo "<pre>". print_r($conf_a, true);
 	return true;
+}
+function config_write_ovpn($settings) {
+	$conf = "../conf/client.ovpn";
+	if(is_writeable($conf)) {
+		//echo "<pre>". print_r($settings['conf'], true) ."</pre>";
+		file_put_contents($conf, $settings['conf']);
+		return true;
+	}
+}
+function config_write_ovpn_login($settings) {
+	$conf = "../conf/client.ovpn.login";
+
+	if(is_writeable($conf)) {
+		//echo "<pre>". print_r($settings['login'], true) ."</pre>";
+		file_put_contents($conf, $settings['login']);
+		return true;
+	}
 }
 
 function config_read_hostapd($state) {
@@ -364,12 +396,19 @@ function working_msftconnect($captive) {
 	//print_r($msftconnect);
 	if(($msftconnect == "OK") && ($captive != "OK")){
 		echo "Captive Portal check succeeded, looks like we have working Internet\n";
+		// Hook in OpenVPN start here
+		start_service("client.ovpn");
+
 	}
 	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
 		echo "Looks like DNS doesn't work properly yet\n";
+		// Hook in OpenVPN start here
+		stop_service("client.ovpn");
 	}
 	if(($msftconnect == "PORTAL") && ($captive != "PORTAL")) {
 		echo "Looks like we we are stuck behind a portal, someone needs to log in\n";
+		// Hook in OpenVPN start here
+		stop_service("client.ovpn");
 	}
 	return $msftconnect;
 }
@@ -403,6 +442,168 @@ function check_msft_connect() {
 	if($test != trim($string))
 		return "PORTAL";
 
+}
+
+function parse_portal_page($url){
+	$opts = array(
+	  'http'=>array(
+		'method'=>"GET",
+		'timeout'=>2,
+		'header'=>"Accept-language: en\r\n" .
+				  "Cookie: foo=bar\r\n"
+	  )
+	);
+	$context = stream_context_create($opts);
+	if($url == "")
+		$url = "http://www.msftconnecttest.com/connecttest.txt";
+	$test = @file_get_contents($url, false, $context);
+		
+	// Collect forms and inputs from page
+	preg_match_all("/<form.*?>/", $test, $forms_a);
+	preg_match_all("/<input.*?>/", $test, $inputs_a);
+	
+	$request = build_form_request($forms_a, $inputs_a);
+	print_r($request);
+}
+
+function build_form_request($forms_a, $inputs_a) {
+	$request = array();
+	// Transform form into associative array, 1st item only
+	//print_r($forms_a);
+	$form_a = transform_form_to_array($forms_a[0][0]);
+	print_r($form_a);
+	foreach($form_a[1] as $key => $value) {
+		//print_r($value);
+		if($value == "")
+			continue;
+		switch($value) {
+			case "method":
+			case "action":
+			case "name":
+				$request['form'][$value] = $form_a[2][$key];
+				break;
+		}
+	}
+	//print_r($request);
+	// We need atleast 3 elements for a succesful form submission.
+	if(count($request['form']) < 3)
+		return false;
+	
+	// We might want to add the captive portal IP address to the routing table, we should be able to reach it regardless of Openvpn
+	route_add(url_to_ip($request['form']['action']), "");	
+	
+	// Transform inputs into associative arrays
+	// print_r($inputs_a);
+	$i = 0;
+	foreach($inputs_a[0] as $input) {
+		$input_a[$i] = transform_form_to_array($input);
+		$proc = false;
+		$req = array();
+		foreach($input_a[$i][1] as $key => $value) {
+			switch($value) {
+				case "type":
+					// Might need to flip a variable
+					if(stristr($input_a[$i][2][$key], "checkbox"))
+						echo "It has a checkbox ";
+					$proc = true;
+					break;
+				case "hidden":
+					$proc = true;
+					break;
+				case "name":
+					$req['name'] = $input_a[$i][2][$key];
+					break;
+				case "value":
+					$req['value'] = $input_a[$i][2][$key];
+					break;
+			}
+			
+		}
+		if($proc == true) {
+			if(!isset($req['value']))
+				$req['value'] = "";
+			$request['vars'][$req['name']] = $req['value'];
+		}
+		$i++;
+	}
+	/*
+	$url = '{$request['form']['action']';
+	$data = $request['vars'];
+
+	// use key 'http' even if you send the request to https://...
+	$options = array(
+		'http' => array(
+			'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+			'method'  => 'POST',
+			'content' => http_build_query($data)
+		)
+	);
+	$context  = stream_context_create($options);
+	$result = file_get_contents($url, false, $context);
+	if ($result === FALSE)
+		echo "Well, that didn't work";
+	*/
+	return $request;
+}	
+	
+function url_to_ip($url){
+	$host = parse_url($url, PHP_URL_HOST);
+	$ip = gethostbyname($host);
+	return $ip;
+}
+
+function fetch_default_route_gw() {
+	// Fetch the default gateway
+	$cmd = "ip -j route show default";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		return false;
+	$defgw = json_decode($out[0], true);
+	
+	return ($defgw[0]);
+}
+
+// We only care for adding routes for now
+function route_add($ip, $gwip = ""){
+	// basic IP sanity check on address
+	preg_match("/([0-9:\.a-f]+)/", $ip, $ipmatch);
+	// basic IP sanity check on address
+	preg_match("/([0-9:\.a-f]+)/", $gwip, $gwipmatch);
+	//print_r($ipmatch);
+	
+	if($gwip == "")
+		$defgw = fetch_default_route_gw();
+	else
+		$defgw['gateway'] = $gwipmatch[1];
+	
+	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
+	//print_r($cmd);
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		return false;
+
+}
+
+function dump_dhcp_lease($iflist, $ifname){
+	if(!isset($iflist[$ifname]))
+		return false;
+
+	$cmd = "sudo dhcpcd --dumplease {$ifname} 2>/dev/null";	
+	exec($cmd, $out, $ret);
+	// Don't check return value
+
+	$lease = array();
+	foreach($out as $line){
+		preg_match("/([a-z0-9-_]+)=[\'\"](.*?)[\'\"]/i", $line, $matches);
+		$lease[$matches[1]] = $matches[2];		
+	}
+	return($lease);
+}
+
+function transform_form_to_array($string) {
+	preg_match_all("/([a-z0-9-_]+)=[\'\"](.*?)[\'\"]/i", $string, $matches);
+	
+	return $matches;	
 }
 
 function check_procs($procmap) {
@@ -466,6 +667,10 @@ function if_state($iflist, $name){
 	// Does this interface even exist?
 	if(!isset($iflist[$name]))
 		return false;
+
+	// Help out the OpenVPN status
+	if($name == "tun0")
+		$iflist[$name]['operstate'] = "UP";
 
 	return $iflist[$name]['operstate'];
 }
@@ -624,6 +829,49 @@ function restart_service($file) {
 		exec($cmd, $out, $ret);
 		if($ret > 0) {
 			echo "Failed to restart service for {$file}\n";
+			return false;
+		}
+	}
+}
+
+function stop_service($file) {
+	echo "Stop service for config file '{$file}'\n";
+	switch($file) {
+			case "client.ovpn":
+			case "client.ovpn.login":
+				$cmd = "sudo service openvpn stop";
+				break;
+			default:
+				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				return false;
+				break;
+	}
+	if($cmd != ""){
+		echo "Running command '{$cmd}'\n";
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			echo "Failed to stop service for {$file}\n";
+			return false;
+		}
+	}
+}
+function start_service($file) {
+	echo "Start service for config file '{$file}'\n";
+	switch($file) {
+			case "client.ovpn":
+			case "client.ovpn.login":
+				$cmd = "sudo service openvpn start";
+				break;
+			default:
+				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				return false;
+				break;
+	}
+	if($cmd != ""){
+		echo "Running command '{$cmd}'\n";
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			echo "Failed to start service for {$file}\n";
 			return false;
 		}
 	}
