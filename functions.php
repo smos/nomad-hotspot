@@ -453,6 +453,10 @@ function check_msft_connect() {
 	$context = stream_context_create($opts);
 
 	$url = "http://www.msftconnecttest.com/connecttest.txt";
+	// Inject route to MSFT check directly
+	// echo "Adding route to MSFT NCSI server";
+	route_add(url_to_ip($url), "");
+	
 	$string = "Microsoft Connect Test";
 	// check DNS
 	$cmd = "host -W 1 www.msftconnecttest.com";
@@ -577,8 +581,33 @@ function build_form_request($forms_a, $inputs_a) {
 		echo "Well, that didn't work";
 	*/
 	return $request;
-}	
+}
+
+function ping($address = ""){
+	if($address == "") {
+		$defgw = fetch_default_route_gw();
+		$address = $defgw['gateway'];
+	}
+	$latency = 0;
+
+	// basic IP sanity check on address
+	preg_match("/([0-9:\.a-f]+)/i", $address, $ipmatch);
+
+	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}";
+	exec($cmd, $out, $ret);
+	if($ret > 0) {
+		// Timeout
+		$latency = 999;
+		return $latency;
+	}
+	$num=count($out);
+	$line = $out[$num-1];
+	preg_match("/([0-9\.]+)\/([0-9\.]+)\/([0-9\.]+)\//i", $line, $matches);
 	
+	return round($matches[2]);
+	
+}
+
 function url_to_ip($url){
 	$host = parse_url($url, PHP_URL_HOST);
 	$ip = gethostbyname($host);
@@ -839,6 +868,24 @@ function process_cfg_changes($chglist) {
 		}
 	}
 }
+
+function parse_dnsmasq_leases() {
+	$file = "/var/lib/misc/dnsmasq.leases"; 
+	if(is_readable($file))
+		$lfile = file($file);
+
+	$leases = array();
+	foreach($lfile as $i => $line) {
+		$el = explode(" ", $line);
+		$leases[$i]['time'] = $el[0];
+		$leases[$i]['mac'] = $el[1];
+		$leases[$i]['ip4'] = $el[2];
+		$leases[$i]['hostname'] = $el[3];
+	}
+	
+	return $leases;
+}
+
 
 function restart_service($file) {
 	echo "Restart service for config file '{$file}'\n";

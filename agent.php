@@ -53,6 +53,13 @@ while (true) {
 	// Check if we can reach msft ncsi
 	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
 
+	// Store latency
+	$state['internet']['ping'] = ping();
+
+	// store leases
+	$state['leases']= parse_dnsmasq_leases();
+	
+
 	$state['time'] = time();
 	write_shm($shm_id, $state);	
 	sleep ($looptimer);

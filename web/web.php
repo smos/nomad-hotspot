@@ -327,10 +327,10 @@ var pageRefresh = 5000; //5 s
 	// Functions
 
 function refresh() {
-    \$('#interfaces').load(location.href + \" #interfaces\");
-    \$('#connectivity').load(location.href + \" #connectivity\");
-    \$('#clients').load(location.href + \" #clients\");
-    \$('#processes').load(location.href + \" #processes\");
+    \$('#interfaces').load(\"/interfaces\");
+    \$('#connectivity').load(\"/connectivity\");
+    \$('#clients').load(\"/clients\");
+    \$('#processes').load(\"/processes\");
 }
 
 ";
@@ -362,6 +362,7 @@ function html_interfaces($state){
 }
 
 function html_connectivity($state){
+	echo " <div id='connectivity'>";
 	echo "<table border=1><tr><td>Connectivity</td><td>Result</td></tr>\n";
 	foreach ($state['internet'] as $check => $result) {	
 		echo "<tr><td>{$check}</td><td>{$result}</td></tr>\n";
@@ -371,10 +372,11 @@ function html_connectivity($state){
 		
 }
 function html_clients($state){
-	echo "<table border=1><tr><td>Client</td><td>Address</td><td>Mac</td><td>Name</td></tr>\n";
+	echo " <div id='clients'>";
+	echo "<table border=1><tr><td>Client</td><td>Address</td><td>Mac</td><td>Time</td></tr>\n";
 	if(is_array($state['clients']))
-	foreach ($state['clients'] as $entry => $val) {
-		echo "<tr><td>{$val['client']}</td><td>{$val['add']}</td><td>{$val['mac']}</td><td>{$val['name']}</td></tr>\n";
+	foreach ($state['leases'] as $entry => $val) {
+		echo "<tr><td>{$val['hostname']}</td><td>{$val['ip4']}</td><td>{$val['mac']}</td><td>". date("Y-m-d H:i:s", $val['time']) ."</td></tr>\n";
 	}
 	echo "</table>";
 	echo "</div>\n";		
