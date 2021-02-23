@@ -126,11 +126,16 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		}
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 	}
+
+	if(!isset($ifstate[$ifname]['stats64start'])) {
+		$ifstate[$ifname]['stats64start'] = $iflist[$ifname]['stats64'];
+	}
+	$iflist[$ifname]['stats64start'] = $ifstate[$ifname]['stats64start'];
 	
 	$iflist[$ifname]['time'] = time();
 	// If we are here, we can collect some statistics.
 	if(isset($ifstate[$ifname]))
-		$iflist[$ifname]['traffic'] = calculate_speed($ifstate[$ifname], $iflist[$ifname]);
+		$iflist[$ifname]['traffic'] = calculate_traffic($ifstate[$ifname], $iflist[$ifname]);
 
 	// save current interface state to the state array. 
 	if(isset($iflist[$ifname]))
@@ -139,16 +144,31 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		return false;
 }
 
-function calculate_speed($ifstate, $iflist) {
+function calculate_traffic($ifstate, $iflist) {
+	if(!isset($ifstate['time']))
+		return false;
+	if(!isset($iflist['time']))
+		return false;
 	$timediff = $iflist['time'] - $ifstate['time'];
 	// echo "newtime = {$iflist['time']} - {$ifstate['time']}\n";
 	if($timediff < 0)
 		return false;
 	
-	// echo "yo";
-
+	if(!isset($iflist['stats64']))
+		return false;
+	if(!isset($ifstate['stats64']))
+		return false;
+	if(!isset($iflist['stats64start']))
+		return false;
+	if(!isset($ifstate['stats64start']))
+		return false;
+	
 	$rx = $iflist['stats64']['rx']['bytes'] - $ifstate['stats64']['rx']['bytes'];
 	$tx = $iflist['stats64']['tx']['bytes'] - $ifstate['stats64']['tx']['bytes'];
+
+
+	$traffic['totalrx'] = $iflist['stats64']['rx']['bytes'] - $ifstate['stats64start']['rx']['bytes'];
+	$traffic['totaltx'] = $iflist['stats64']['tx']['bytes'] - $ifstate['stats64start']['tx']['bytes'];
 	
 	// echo "rx {$rx}, tx {$tx}, timediff {$timediff}\n";
 	// Bytes per second
@@ -435,6 +455,16 @@ function working_msftconnect($captive) {
 		echo "Looks like we we are stuck behind a portal, someone needs to log in\n";
 		// Hook in OpenVPN start here
 		stop_service("client.ovpn");
+
+		echo "Attempting to parse the portal page\n";
+		// Attempt a Portal authentication, bit basic, but anyhow.
+		$request = parse_portal_page(); // Default url is msft connect
+		print_r($request);
+		$result = post_portal_form($request);
+		if($result === true)
+			echo "It actually worked?!";
+		else
+			echo "It tried, to bad, to sad, nevermind.\n";
 	}
 	return $msftconnect;
 }
@@ -445,7 +475,7 @@ function check_msft_connect() {
 	$opts = array(
 	  'http'=>array(
 		'method'=>"GET",
-		'timeout'=>2,
+		'timeout'=> 5,
 		'header'=>"Accept-language: en\r\n" .
 				  "Cookie: foo=bar\r\n"
 	  )
@@ -474,11 +504,41 @@ function check_msft_connect() {
 
 }
 
-function parse_portal_page($url){
+function post_portal_form($request) {
+	if(empty($request))
+		return false;
+	
+	$url = $request['form']['action'];
+	if($url == "")
+		return false;
+	
+	$method = strtoupper($request['form']['method']);
+	$data = $request['vars'];
+
+	// use key 'http' even if you send the request to https://...
+	$options = array(
+		'http' => array(
+			'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+			'method'  => $method,
+			'content' => http_build_query($data)
+		)
+	);
+	$context  = stream_context_create($options);
+	$result = file_get_contents($url, false, $context);
+	if ($result === FALSE) {
+		echo "Well, that didn't work";
+		return false;
+	}
+	return true;
+}
+
+// return request array based on parsing of portal page.
+function parse_portal_page($url = ""){
 	$opts = array(
 	  'http'=>array(
 		'method'=>"GET",
-		'timeout'=>2,
+        'follow_location' => 1,
+		'timeout'=> 5,
 		'header'=>"Accept-language: en\r\n" .
 				  "Cookie: foo=bar\r\n"
 	  )
@@ -488,20 +548,29 @@ function parse_portal_page($url){
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
 	$test = @file_get_contents($url, false, $context);
 		
+	if($test == "") {
+		echo "Nothing to parse ";
+		echo "string '". $test ."'\n";
+		return false;
+	}
 	// Collect forms and inputs from page
 	preg_match_all("/<form.*?>/", $test, $forms_a);
 	preg_match_all("/<input.*?>/", $test, $inputs_a);
-	
-	$request = build_form_request($forms_a, $inputs_a);
-	print_r($request);
+	// If we have a form and inputs, let's go.
+	if((!empty($forms_a)) && (!empty($inputs_a)))  {
+		$request = build_form_request($forms_a, $inputs_a);
+		print_r($request);
+	}
 }
 
 function build_form_request($forms_a, $inputs_a) {
 	// Spaghetti code alert
-	
+	// No forms, no go.
+	if(empty($forms_a))
+		return false;
 	$request = array();
 	// Transform form into associative array, 1st item only
-	//print_r($forms_a);
+	print_r($forms_a);
 	$form_a = transform_form_to_array($forms_a[0][0]);
 	//print_r($form_a);
 	foreach($form_a[1] as $key => $value) {
@@ -516,7 +585,10 @@ function build_form_request($forms_a, $inputs_a) {
 				break;
 		}
 	}
-	//print_r($request);
+	print_r($request);
+	// No form? No go.
+	if(!isset($request['form']))
+		return false;
 	// We need atleast 3 elements for a succesful form submission.
 	if(count($request['form']) < 3)
 		return false;
@@ -525,27 +597,30 @@ function build_form_request($forms_a, $inputs_a) {
 	route_add(url_to_ip($request['form']['action']), "");	
 	
 	// Transform inputs into associative arrays
-	// print_r($inputs_a);
 	$i = 0;
 	foreach($inputs_a[0] as $input) {
 		$input_a[$i] = transform_form_to_array($input);
+		//print_r($input_a[$i]);
+		
 		$proc = false;
 		$req = array();
-		foreach($input_a[$i][1] as $key => $value) {
-			switch($value) {
+		foreach($input_a[$i][1] as $key => $fname) {
+			$fname = strtolower($fname);
+			switch($fname) {
 				case "type":
 					// Might need to flip a variable
 					if(stristr($input_a[$i][2][$key], "checkbox")) {
-						echo "It has a checkbox ";
+						// echo "It has a checkbox \n";
+						$proc = true;
+					}
+					if(stristr($input_a[$i][2][$key], "hidden")) {
+						// echo "It has a hidden variable \n";
 						$proc = true;
 					}
 					if(stristr($input_a[$i][2][$key], "submit")) {
-						echo "It has a submit button ";
+						// echo "It has a submit button \n";
 						$proc = true;
 					}
-					break;
-				case "hidden":
-					$proc = true;
 					break;
 				case "name":
 					$req['name'] = $input_a[$i][2][$key];
@@ -553,36 +628,48 @@ function build_form_request($forms_a, $inputs_a) {
 				case "value":
 					$req['value'] = $input_a[$i][2][$key];
 					break;
+				case "onclick":
+					echo "It has a OnClick event\n";
+					// validateTerms(&quot;return f600122sub(&#39;continue&#39;);&quot;)
+					$request['onclick'] = $input_a[$i][2][$key];
+					$request['onclick'] = parse_js_function($request['onclick']);
+					break;
 			}
 			
 		}
 		if($proc == true) {
-			if(!isset($req['value']))
+			if(!isset($req['value'])) {
 				$req['value'] = "";
+				if(isset($request['onclick'])) {
+				echo "Well, the variable '{$req['name']}' has no value, and we do have a onclick value '{$request['onclick']}', try that\n";
+					$req['value'] = "{$request['onclick']}";
+				}
+			}
 			$request['vars'][$req['name']] = $req['value'];
 		}
 		$i++;
 	}
-	/*
-	$url = '{$request['form']['action']';
-	$data = $request['vars'];
-
-	// use key 'http' even if you send the request to https://...
-	$options = array(
-		'http' => array(
-			'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
-			'method'  => 'POST',
-			'content' => http_build_query($data)
-		)
-	);
-	$context  = stream_context_create($options);
-	$result = file_get_contents($url, false, $context);
-	if ($result === FALSE)
-		echo "Well, that didn't work";
-	*/
 	return $request;
 }
 
+function parse_js_function($string) {
+
+	// print_r($string);
+	// Let's see how far we can narrow this down
+	$i = 1;
+	while (strstr($string, "(",)) {
+		$start = strpos($string, "(") + 1;
+		$stop = strrpos($string, ")") - 1;
+		$length = strlen($string) - $stop - $start +3;
+		//echo " substr start at {$start}, stop at char {$stop}, length {$length} \n"; 
+		$string = substr($string, $start, $length);
+		$i++;
+	}
+	$string = preg_replace("/(\&#[0-9][0-9];)/", "", $string);
+	//echo "Found {$i} layers, result string is {$string}\n";
+	
+	return $string;
+}
 function ping($address = ""){
 	if($address == "") {
 		$defgw = fetch_default_route_gw();
@@ -592,6 +679,9 @@ function ping($address = ""){
 
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/i", $address, $ipmatch);
+
+	if($ipmatch[1] == "")
+		return false;
 
 	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}";
 	exec($cmd, $out, $ret);
@@ -603,6 +693,7 @@ function ping($address = ""){
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/([0-9\.]+)\/([0-9\.]+)\/([0-9\.]+)\//i", $line, $matches);
+	
 	
 	return round($matches[2]);
 	
@@ -620,6 +711,10 @@ function fetch_default_route_gw() {
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		return false;
+	
+	if(empty($out))
+		return false;
+	
 	$defgw = json_decode($out[0], true);
 	
 	return ($defgw[0]);
@@ -664,7 +759,6 @@ function dump_dhcp_lease($iflist, $ifname){
 
 function transform_form_to_array($string) {
 	preg_match_all("/([a-z0-9-_]+)=[\'\"](.*?)[\'\"]/i", $string, $matches);
-	
 	return $matches;	
 }
 
@@ -753,12 +847,14 @@ function if_address($iflist, $ifname) {
 	$add = array();
 	
 	//print_r($iflist[$ifname]);
-	foreach($iflist[$ifname]['addr_info'] as $index => $address) {
-		if($address['scope'] != "global")
-			continue;
-		
-		$add[] = $address['local'];
-		
+	if(isset($iflist[$ifname]['addr_info'])) {
+		foreach($iflist[$ifname]['addr_info'] as $index => $address) {
+			if($address['scope'] != "global")
+				continue;
+			
+			$add[] = $address['local'];
+			
+		}
 	}
 	return $add;
 }

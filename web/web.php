@@ -349,13 +349,13 @@ function html_status($state){
 }
 function html_interfaces($state){
 	echo " <div id='interfaces'>";
-	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Info</td></tr>\n";
+	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {	
 		$wireless = "&nbsp;";
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wireless = "SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td><td>". html_traffic($state['if'], $ifname) ."</td><td>{$wireless}</td></tr>\n";
+		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td><td>". html_traffic_speed($state['if'], $ifname) ."</td><td>". html_traffic_total($state['if'], $ifname) ."</td><td>{$wireless}</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "</div>\n";		
@@ -397,9 +397,13 @@ function html_openvpn($state){
 		
 }
 
-function html_traffic($iflist, $ifname) {
+function html_traffic_speed($iflist, $ifname) {
 	// Auto scale?
 	return "rx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['rx']) ."Bps, tx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['tx']) ."Bps";	
+}
+function html_traffic_total($iflist, $ifname) {
+	// Auto scale?
+	return "rx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['totalrx']) ."B, tx ". thousandsCurrencyFormat($iflist[$ifname]['traffic']['totaltx']) ."B";	
 }
 
 function send_json($state){

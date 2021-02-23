@@ -10,6 +10,7 @@ $state = array();
 $state['config'] = array();
 $state['config']['port'] = 8000;
 $state['if'] = array();
+$state['stats'] = array();
 $state['proc'] = array();
 $state['time'] = time();
 // Assume we start with no working internet
@@ -38,7 +39,7 @@ while (true) {
 
 		$iflist = interface_status();
 		$state['if'][$ifname] = process_if_changes($state['if'], $iflist, $ifname);
-		
+				
 	}
 	// Check if the local configuration files match the system, update where neccesary, and restart services where needed.
 	$chglist = compare_cfg_files($cfgdir);
