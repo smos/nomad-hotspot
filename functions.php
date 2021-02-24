@@ -19,7 +19,7 @@ $procmap = array(
 			"dnsmasq.conf" => "dnsmasq",
 			"dhcpcd.conf" => "dhcpcd",
 			"hostapd.conf" => "hostapd",
-			"client.ovpn" => "openvpn",			
+			"client.ovpn" => "openvpn",
 			"wpa_supplicant.conf" => "wpa_supplicant",
 			"webserver" => "php",
 			);
@@ -73,7 +73,7 @@ function list_iw_networks($ifstate, $ifname) {
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		echo "Failed to list wireless networks\n";
-	
+
 	$iw_networks = array();
 	foreach($out as $line) {
 		$line = trim($line);
@@ -82,15 +82,13 @@ function list_iw_networks($ifstate, $ifname) {
 		array_shift($el);
 		$iw_networks[$key] = implode(" ", $el);
 
-		
-		
 	}
 	return $iw_networks;
 }
 
 // Show which clients are connected
 // iw dev wlan0 station dump
-// Fetch arp table arp -i wlan0 -n 
+// Fetch arp table arp -i wlan0 -n
 // Find IP address on wlan0 interface address by matching mac address
 // perform DNS query against local resolver for hostname
 
@@ -131,7 +129,7 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		$ifstate[$ifname]['stats64start'] = $iflist[$ifname]['stats64'];
 	}
 	$iflist[$ifname]['stats64start'] = $ifstate[$ifname]['stats64start'];
-	
+
 	$iflist[$ifname]['time'] = time();
 	// If we are here, we can collect some statistics.
 	if(isset($ifstate[$ifname]))
@@ -153,7 +151,7 @@ function calculate_traffic($ifstate, $iflist) {
 	// echo "newtime = {$iflist['time']} - {$ifstate['time']}\n";
 	if($timediff < 0)
 		return false;
-	
+
 	if(!isset($iflist['stats64']))
 		return false;
 	if(!isset($ifstate['stats64']))
@@ -162,19 +160,19 @@ function calculate_traffic($ifstate, $iflist) {
 		return false;
 	if(!isset($ifstate['stats64start']))
 		return false;
-	
-	$rx = $iflist['stats64']['rx']['bytes'] - $ifstate['stats64']['rx']['bytes'];
-	$tx = $iflist['stats64']['tx']['bytes'] - $ifstate['stats64']['tx']['bytes'];
+
+	$rx = floatval($iflist['stats64']['rx']['bytes']) - floatval($ifstate['stats64']['rx']['bytes']);
+	$tx = floatval($iflist['stats64']['tx']['bytes']) - floatval($ifstate['stats64']['tx']['bytes']);
 
 
-	$traffic['totalrx'] = $iflist['stats64']['rx']['bytes'] - $ifstate['stats64start']['rx']['bytes'];
-	$traffic['totaltx'] = $iflist['stats64']['tx']['bytes'] - $ifstate['stats64start']['tx']['bytes'];
-	
+	$traffic['totalrx'] = floatval(floatval($iflist['stats64']['rx']['bytes']) - floatval($ifstate['stats64start']['rx']['bytes']));
+	$traffic['totaltx'] = floatval(floatval($iflist['stats64']['tx']['bytes']) - floatval($ifstate['stats64start']['tx']['bytes']));
+
 	// echo "rx {$rx}, tx {$tx}, timediff {$timediff}\n";
 	// Bytes per second
 	$traffic['rx'] = ($rx/$timediff);
 	$traffic['tx'] = ($tx/$timediff);
-	
+
 	return $traffic;
 }
 
@@ -233,7 +231,7 @@ function config_read_ovpn($state){
 	// We can't actually read the login file, as it is moved into place and doesn't exists here anymore
 	// $settings['login'] = config_read_ovpn_login($state);
 	return $settings;
-		
+
 }
 
 function config_read_ovpn_login($state){
@@ -268,7 +266,7 @@ function config_read_supplicant($state) {
 				case "priority":
 				case "key_mgmt":
 					$settings['network'][$i][$matches[1][0]] = $matches[2][0];
-					break;				
+					break;
 				case "ssid":
 				case "psk":
 					$settings['network'][$i][$matches[1][0]] = substr($matches[2][0], 1, -1);
@@ -315,7 +313,6 @@ function config_write_supplicant($settings) {
 									$conf_a[] = "    {$name}={$settings['network'][$index][$name]}";
 									break;
 							}
-									
 						}
 						$conf_a[] = "}";
 						$conf_a[] = "";
@@ -403,9 +400,9 @@ function config_read_dhcpcd($state) {
 							break;
 					}
 			}
-		
+
 		}
-		
+
 	}
 	return($settings);
 }
@@ -413,7 +410,7 @@ function config_read_dhcpcd($state) {
 function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 	if(!isset($iflist[$ifname]))
 		return false;
-	
+
 	$string[0] = "interface {$ifname}";
 	foreach(settings as $key => $value) {
 		switch($key) {
@@ -431,7 +428,7 @@ function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 	// Make sure that wlan0 is always the AP if for now.
 	if($ifname == "wlan0")
 		$string[3] .= "\tnohook wpa_supplicant"; 
-			
+
 	$conf = implode("\n", $string);
 	return $conf;
 }
@@ -458,35 +455,23 @@ function working_msftconnect($captive) {
 
 		echo "Attempting to parse the portal page\n";
 		// Attempt a Portal authentication, bit basic, but anyhow.
-		$request = parse_portal_page(); // Default url is msft connect
-		print_r($request);
-		$result = post_portal_form($request);
-		if($result === true)
-			echo "It actually worked?!";
-		else
+		$result = parse_portal_page(); // Default url is msft connect
+		if($result === false)
 			echo "It tried, to bad, to sad, nevermind.\n";
+		else
+			echo "It actually worked?!";
 	}
 	return $msftconnect;
 }
 
-function check_msft_connect() {
-	// Catch timeouts?
-	// Create a stream
-	$opts = array(
-	  'http'=>array(
-		'method'=>"GET",
-		'timeout'=> 5,
-		'header'=>"Accept-language: en\r\n" .
-				  "Cookie: foo=bar\r\n"
-	  )
-	);
-	$context = stream_context_create($opts);
+function check_msft_connect($url = "") {
+	if($url == "")
+		$url = "http://www.msftconnecttest.com/connecttest.txt";
 
-	$url = "http://www.msftconnecttest.com/connecttest.txt";
 	// Inject route to MSFT check directly
 	// echo "Adding route to MSFT NCSI server";
 	route_add(url_to_ip($url), "");
-	
+
 	$string = "Microsoft Connect Test";
 	// check DNS
 	$cmd = "host -W 1 www.msftconnecttest.com";
@@ -494,7 +479,7 @@ function check_msft_connect() {
 	if ($ret > 0)
 		return "DNSERR";
 
-	$test = @file_get_contents($url, false, $context, 0, 64);
+	$test = simple_web_request($url);
 
 	if($test == trim($string))
 		return "OK";
@@ -504,66 +489,106 @@ function check_msft_connect() {
 
 }
 
-function post_portal_form($request) {
-	if(empty($request))
-		return false;
-	
-	$url = $request['form']['action'];
-	if($url == "")
-		return false;
-	
-	$method = strtoupper($request['form']['method']);
-	$data = $request['vars'];
-
-	// use key 'http' even if you send the request to https://...
-	$options = array(
-		'http' => array(
-			'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
-			'method'  => $method,
-			'content' => http_build_query($data)
-		)
-	);
-	$context  = stream_context_create($options);
-	$result = file_get_contents($url, false, $context);
-	if ($result === FALSE) {
-		echo "Well, that didn't work";
-		return false;
-	}
-	return true;
-}
-
 // return request array based on parsing of portal page.
 function parse_portal_page($url = ""){
-	$opts = array(
-	  'http'=>array(
-		'method'=>"GET",
-        'follow_location' => 1,
-		'timeout'=> 5,
-		'header'=>"Accept-language: en\r\n" .
-				  "Cookie: foo=bar\r\n"
-	  )
-	);
-	$context = stream_context_create($opts);
 	if($url == "")
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
-	$test = @file_get_contents($url, false, $context);
+
+	// attempt this 3 times
+	$t = 3;
+	while($t > 0) {
+		// We might want to add the captive portal IP address to the routing table, we should be able to reach it regardless of Openvpn
+		route_add(url_to_ip($url), "");
 		
-	if($test == "") {
-		echo "Nothing to parse ";
-		echo "string '". $test ."'\n";
-		return false;
-	}
-	// Collect forms and inputs from page
-	preg_match_all("/<form.*?>/", $test, $forms_a);
-	preg_match_all("/<input.*?>/", $test, $inputs_a);
-	// If we have a form and inputs, let's go.
-	if((!empty($forms_a)) && (!empty($inputs_a)))  {
-		$request = build_form_request($forms_a, $inputs_a);
-		print_r($request);
+		$test = simple_web_request($url);
+		
+		// Save the portal page in /tmp for later diagnosis or testing
+		$datestr = date("Ymd-His");
+		file_put_contents("/tmp/portal_page_{$date}.html", "{$url}\n{$test}");
+
+		echo "String: {$test}\n";
+		// Test for javascript redirect
+		preg_match("/window.location=[\'\"](.*?)[\'\"]/i", $test, $jsmatches);
+		print_r($jsmatches);
+
+		if(isset($jsmatches[1])) {
+			if(strstr($jsmatches[1], "http")) {
+				echo "Oh Look, a javascript redirect, looks like we have a followup url, following, remember this\n";
+				$test = simple_web_request($jsmatches[1]);
+				$url = $jsmatches[1];
+			}
+		}
+		// Does this result have a form we can use?
+		// Collect forms and inputs from page
+		preg_match_all("/<form.*?>/", $test, $forms_a);
+		preg_match_all("/<input.*?>/", $test, $inputs_a);
+		preg_match_all("/onclick=[\'\"](.*?)[\'\"] /i", $test, $onclicks_a);
+
+		if(!empty($forms_a[0])) {
+			echo "Hey look, this one has forms!\n";
+			print_r($forms_a);
+			print_r($inputs_a);
+			print_r($onclicks_a);
+
+			$request = build_form_request($forms_a, $inputs_a, $onclicks_a);
+			print_r($request);
+
+			// Remember that url we found?, yeah, we need that here, we should strip to base and include form here. Then again, the post can be absolute. meh.
+			//$result = simple_web_request($url, $request['form']['method'], $request['vars']);
+			//print_r($result);
+			echo "Did it work?\n";
+			return $result;
+		}
+		$t--;
 	}
 }
 
-function build_form_request($forms_a, $inputs_a) {
+function simple_web_request($url, $method = "get", $vars = array(), $credentials = array()) {
+	if(!strstr($url, "msftconnecttest"))
+		echo "Request url '{$url}', method {$method}, vars". json_encode($vars) ."\n";
+	if($url == "")
+		return false;
+
+	if(!empty($credentials)) {
+		$username = $credentials[0];
+		$password = $credentials[1];
+	}
+	$method = strtolower($method);
+	switch($method) {
+		case "get":
+			$post = false;
+			break;
+		case "post":
+			$post = true;
+			break;
+		default:
+			return false;
+	}
+
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_HEADER, $post);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+	curl_setopt($ch, CURLOPT_COOKIEFILE, "/tmp/nomad-hotspot.jar");
+	curl_setopt($ch, CURLOPT_COOKIEJAR, "/tmp/nomad-hotspot.jar");
+	curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0");
+
+	if((!empty($vars)) && ($post === true)) {
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($vars));
+	}
+ 	$result = curl_exec($ch);
+	if(curl_error($ch)) {
+    		return curl_error($ch);
+	}
+	curl_close($ch);
+	return $result;
+}
+
+function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 	// Spaghetti code alert
 	// No forms, no go.
 	if(empty($forms_a))
@@ -592,16 +617,13 @@ function build_form_request($forms_a, $inputs_a) {
 	// We need atleast 3 elements for a succesful form submission.
 	if(count($request['form']) < 3)
 		return false;
-	
-	// We might want to add the captive portal IP address to the routing table, we should be able to reach it regardless of Openvpn
-	route_add(url_to_ip($request['form']['action']), "");	
-	
+
 	// Transform inputs into associative arrays
 	$i = 0;
 	foreach($inputs_a[0] as $input) {
 		$input_a[$i] = transform_form_to_array($input);
 		//print_r($input_a[$i]);
-		
+
 		$proc = false;
 		$req = array();
 		foreach($input_a[$i][1] as $key => $fname) {
@@ -635,7 +657,10 @@ function build_form_request($forms_a, $inputs_a) {
 					$request['onclick'] = parse_js_function($request['onclick']);
 					break;
 			}
-			
+		}
+		// If we can find a onclick function, try that too.
+		if(!empty($onclicks_a[1])) {
+			$request['onclick'] = parse_js_function($onclicks_a[1][0]);
 		}
 		if($proc == true) {
 			if(!isset($req['value'])) {
@@ -660,16 +685,16 @@ function parse_js_function($string) {
 	while (strstr($string, "(",)) {
 		$start = strpos($string, "(") + 1;
 		$stop = strrpos($string, ")") - 1;
-		$length = strlen($string) - $stop - $start +3;
-		//echo " substr start at {$start}, stop at char {$stop}, length {$length} \n"; 
-		$string = substr($string, $start, $length);
+		$length = $stop - strlen($string) +1;
+		$string = str_replace("'", "", substr($string, $start, $length));
+		//echo " substr start at {$start}, stop at char {$stop}, length {$length}, {$string} \n"; 
 		$i++;
 	}
 	$string = preg_replace("/(\&#[0-9][0-9];)/", "", $string);
 	//echo "Found {$i} layers, result string is {$string}\n";
-	
 	return $string;
 }
+
 function ping($address = ""){
 	if($address == "") {
 		$defgw = fetch_default_route_gw();
@@ -693,10 +718,9 @@ function ping($address = ""){
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/([0-9\.]+)\/([0-9\.]+)\/([0-9\.]+)\//i", $line, $matches);
-	
-	
+
+
 	return round($matches[2]);
-	
 }
 
 function url_to_ip($url){
@@ -711,12 +735,12 @@ function fetch_default_route_gw() {
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		return false;
-	
+
 	if(empty($out))
 		return false;
-	
+
 	$defgw = json_decode($out[0], true);
-	
+
 	return ($defgw[0]);
 }
 
@@ -727,12 +751,14 @@ function route_add($ip, $gwip = ""){
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/", $gwip, $gwipmatch);
 	//print_r($ipmatch);
-	
+	if($ip == "")
+		return false;
+
 	if($gwip == "")
 		$defgw = fetch_default_route_gw();
 	else
 		$defgw['gateway'] = $gwipmatch[1];
-	
+
 	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
 	//print_r($cmd);
 	exec($cmd, $out, $ret);
@@ -745,21 +771,21 @@ function dump_dhcp_lease($iflist, $ifname){
 	if(!isset($iflist[$ifname]))
 		return false;
 
-	$cmd = "sudo dhcpcd --dumplease {$ifname} 2>/dev/null";	
+	$cmd = "sudo dhcpcd --dumplease {$ifname} 2>/dev/null";
 	exec($cmd, $out, $ret);
 	// Don't check return value
 
 	$lease = array();
 	foreach($out as $line){
 		preg_match("/([a-z0-9-_]+)=[\'\"](.*?)[\'\"]/i", $line, $matches);
-		$lease[$matches[1]] = $matches[2];		
+		$lease[$matches[1]] = $matches[2];
 	}
 	return($lease);
 }
 
 function transform_form_to_array($string) {
 	preg_match_all("/([a-z0-9-_]+)=[\'\"](.*?)[\'\"]/i", $string, $matches);
-	return $matches;	
+	return $matches;
 }
 
 function check_procs($procmap) {
@@ -782,23 +808,20 @@ function check_procs($procmap) {
 		}
 	}
 	return $proccount;
-	
 }
 
 // Check process name
 function check_proc($file) {
 	global $procmap;
-	
 	if (!isset($procmap[$file]))
 		return false;
-	
 	$cmd = "ps auxww| awk '/{$procmap[$file]}/ {print $1}'";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		echo "Failed to check process for {$file} to {$procmap[$file]}\n";
 
 	return count($out);
-	
+
 }
 
 // Get all our interface information, index by ifname
@@ -845,15 +868,14 @@ function if_address($iflist, $ifname) {
 		return false;
 
 	$add = array();
-	
+
 	//print_r($iflist[$ifname]);
 	if(isset($iflist[$ifname]['addr_info'])) {
 		foreach($iflist[$ifname]['addr_info'] as $index => $address) {
 			if($address['scope'] != "global")
 				continue;
-			
+
 			$add[] = $address['local'];
-			
 		}
 	}
 	return $add;
@@ -867,14 +889,13 @@ function if_prefix($iflist, $ifname) {
 		return false;
 
 	$add = array();
-	
+
 	//print_r($iflist[$ifname]);
 	foreach($iflist[$ifname]['addr_info'] as $index => $address) {
 		if($address['scope'] != "global")
 			continue;
-		
+
 		$add[] = $address['local'] ."/". $address['prefixlen'];
-		
 	}
 	return $add;
 }
@@ -895,7 +916,7 @@ function check_gdns_rec(){
 		"2001:4860:4860::8844" => true,
 		);
 	$f = 0;
-	
+
 	$cmd = "host -W 1 dns.google";
 	exec($cmd, $out, $ret);
 	foreach($out as $line){
@@ -966,7 +987,7 @@ function process_cfg_changes($chglist) {
 }
 
 function parse_dnsmasq_leases() {
-	$file = "/var/lib/misc/dnsmasq.leases"; 
+	$file = "/var/lib/misc/dnsmasq.leases";
 	if(is_readable($file))
 		$lfile = file($file);
 
@@ -978,7 +999,6 @@ function parse_dnsmasq_leases() {
 		$leases[$i]['ip4'] = $el[2];
 		$leases[$i]['hostname'] = $el[3];
 	}
-	
 	return $leases;
 }
 
