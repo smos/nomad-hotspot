@@ -3,7 +3,7 @@
 include("functions.php");
 
 // Some settings
-$looptimer = 1;
+$looptimer = 3;
 
 $changes = array();
 $state = array();
@@ -30,6 +30,8 @@ $localif = if_address($iflist, "wlan0");
 $address = $localif[0];
 start_webserver($address, $state['config']['port'], $webdir);
 
+$i = 0;
+$p = 0;
 echo "Starting up, entering loop\n";
 while (true) {
 	foreach ($iflist as $ifname => $iface) {
@@ -39,7 +41,7 @@ while (true) {
 
 		$iflist = interface_status();
 		$state['if'][$ifname] = process_if_changes($state['if'], $iflist, $ifname);
-				
+
 	}
 	// Check if the local configuration files match the system, update where neccesary, and restart services where needed.
 	$chglist = compare_cfg_files($cfgdir);
@@ -55,13 +57,16 @@ while (true) {
 	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
 
 	// Store latency
-	$state['internet']['ping'] = ping();
-
+	if($p > 59 ) {
+		$state['internet']['ping'] = ping();
+		$p = 0;
+	}
 	// store leases
 	$state['leases']= parse_dnsmasq_leases();
-	
 
 	$state['time'] = time();
-	write_shm($shm_id, $state);	
+	write_shm($shm_id, $state);
 	sleep ($looptimer);
+	$i++;
+	$p++;
 }

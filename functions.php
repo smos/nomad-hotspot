@@ -454,8 +454,6 @@ function working_msftconnect($captive) {
 	}
 	if(($msftconnect == "PORTAL") && ($captive != "PORTAL")) {
 		echo "Looks like we we are stuck behind a portal, someone needs to log in\n";
-		// Hook in OpenVPN start here
-		stop_service("client.ovpn");
 
 		echo "Attempting to parse the portal page\n";
 		// Attempt a Portal authentication, bit basic, but anyhow.
@@ -463,7 +461,7 @@ function working_msftconnect($captive) {
 		if($result === false)
 			echo "It tried, to bad, to sad, nevermind.\n";
 		else
-			echo "It actually worked?!";
+			echo "It actually worked?!\n";
 	}
 	return $msftconnect;
 }
@@ -503,12 +501,17 @@ function parse_portal_page($url = ""){
 	while($t > 0) {
 		// We might want to add the captive portal IP address to the routing table, we should be able to reach it regardless of Openvpn
 		route_add(url_to_ip($url), "");
-		
+
 		$test = simple_web_request($url);
 		// Skip false positives under load, make sure we don't enter parsing stage.
 		if($test == "Microsoft Connect Test")
 			return true;
-		
+		if($test == "")
+			return true;
+
+		// Hook in OpenVPN stop here
+		stop_service("client.ovpn");
+
 		// Save the portal page in /tmp for later diagnosis or testing
 		$datestr = date("Ymd-His");
 		file_put_contents("/tmp/portal_page_{$datestr}.html", "{$url}\n{$test}");
