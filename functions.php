@@ -99,6 +99,10 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
 
+		// This interface resets counters when going up/down
+		if(strstr($ifname, "tun"))
+			$ifstate[$ifname]['stats64start'] = $iflist[$ifname]['stats64'];
+
 		if(if_state($iflist, $ifname) == "UP") {
 			$lease[$ifname] = dump_dhcp_lease($iflist, $ifname);
 			//print_r($lease);
@@ -501,10 +505,13 @@ function parse_portal_page($url = ""){
 		route_add(url_to_ip($url), "");
 		
 		$test = simple_web_request($url);
+		// Skip false positives under load, make sure we don't enter parsing stage.
+		if($test == "Microsoft Connect Test")
+			return true;
 		
 		// Save the portal page in /tmp for later diagnosis or testing
 		$datestr = date("Ymd-His");
-		file_put_contents("/tmp/portal_page_{$date}.html", "{$url}\n{$test}");
+		file_put_contents("/tmp/portal_page_{$datestr}.html", "{$url}\n{$test}");
 
 		echo "String: {$test}\n";
 		// Test for javascript redirect
