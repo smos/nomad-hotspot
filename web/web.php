@@ -195,8 +195,9 @@ function config_supplicant($state) {
 	$key_mgmt = array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE");
 	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
 	// Compare 
+		echo "<pre>" . print_r($settings, true) ."</pre>";
 	if(!empty($_POST)) {
-		//print_r($_POST);
+		print_r($_POST);
 		$i = 0;
 		foreach($settings as $varname => $setting) {
 			switch($varname) {
@@ -205,7 +206,19 @@ function config_supplicant($state) {
 						$settings[$varname] = $setting;
 					break;
 				case "network":
-					foreach($setting as $index => $values){
+					foreach($setting as $index => $values) {
+						// removing empty doesn't work
+						// echo " Index {$index}, ssid '{$settings['network'][$index]['ssid']}'";
+ 						if($settings['network'][$index]['ssid'] = "") {
+							echo "network index {$index} ssid empty";
+							unset($settings['network'][$index]);
+							continue;
+						}
+						if(!isset($settings['network'][$index]['ssid'])){
+							echo "network index {$index} ssid not set";
+							unset($settings['network'][$index]);
+							continue;
+						}
 						foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
 							$var = "{$index}{$name}";
 								switch($name) {
@@ -223,17 +236,39 @@ function config_supplicant($state) {
 										break;
 								}
 							}
-						$i++;
 					}
 			}
-
+		}
+		// Check for new entry
+		$index = count($settings['network'])+1;
+		$var = "{$i}ssid";
+		//echo "$_POST[$var]";
+		if(isset($_POST[$var]) && ($_POST[$var] != "")) {
+			foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
+				$var = "{$index}{$name}";
+					switch($name) {
+						case "ssid":
+						case "psk":
+							$settings['network'][$index][$name] = $_POST[$var];
+							break;
+						case "priority":
+							if(validate_select($priorities, $_POST[$var]))
+								$settings['network'][$index][$name] = $_POST[$var];
+							break;
+						case "key_mgmt":
+							if(validate_select($key_mgmt, $_POST[$var]))
+								$settings['network'][$index][$name] = $_POST[$var];
+							break;
+					}
+				}
 		}
 		// echo "<pre>".  print_r($settings, true);
 		config_write_supplicant($settings);
 		$settings = config_read_supplicant($state);
 	}
 	// Empty item at the end for adding new entry
-	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
+	// $settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
+	
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
 			case "country":
@@ -258,6 +293,32 @@ function config_supplicant($state) {
 		}		
 	}
 	//echo "<pre>". print_r($settings, true);
+	foreach ($state['if'] as $ifname => $iface) {
+		// Skip AP interface
+		if($ifname == "wlan0")
+			continue;
+
+		if(empty($state['if'][$ifname]['wi']))
+			continue;
+		
+		echo "<strong>Wireless network list {$ifname}</strong><br>";
+		echo "<table border=1><tr><td>bssid</td><td>name</td><td>Frequency</td><td>Encryption</td><td>Quality</td></tr>\n";
+		//print_r($iface['wi']);
+		if(is_array($iface['wi']))
+			$wi_list = list_iw_networks($state, $ifname);
+		
+		if(is_array($wi_list)) {
+			foreach($wi_list as $entry => $fields) {
+				echo "<tr>";
+				foreach($fields as $field)
+					echo "<td>{$field}</td>";
+				echo "</tr>";
+			}
+		}
+		echo "</table>";	
+	}
+	
+
 }
 
 function html_hidden($varname, $value){
@@ -365,6 +426,8 @@ function html_connectivity($state){
 	echo " <div id='connectivity'>";
 	echo "<table border=1><tr><td>Connectivity</td><td>Result</td></tr>\n";
 	foreach ($state['internet'] as $check => $result) {	
+		if($check == "url")
+	$result = "<a _target=_blank href='{$result}'>{$result}</a>";
 		echo "<tr><td>{$check}</td><td>{$result}</td></tr>\n";
 	}
 	echo "</table>";

@@ -19,9 +19,14 @@ $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
 $state['clients'] = array();
 // Where the configs live
+$basedir = "/home/pi/nomad-hotspot";
 $cfgdir = "conf";
 // Where the web files live
-$webdir = "web";
+$webdir = $basedir ."/". "web";
+
+// print_r($_SERVER);
+
+chdir($basedir);
 
 // Let's just start with seeing which interfaces work
 $iflist = interface_status();

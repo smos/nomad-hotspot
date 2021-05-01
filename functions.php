@@ -61,28 +61,58 @@ function iw_info($ifstate, $ifname) {
 	return $iw_state;
 }
 
-function list_iw_networks($ifstate, $ifname) {
-	if(!isset($ifstate[$ifname]))
+function list_iw_networks($state, $ifname) {
+	if(!isset($state['if'][$ifname]))
 		return false;
 	// Don't scan on our AP interface ;)
+
 	if($ifname == "wlan0")
 		return true;
 	// Show which network we are connected to
 	// sudo iw wlan1 scan
-	$cmd = "iw {$ifname} scan";
+	$cmd = "sudo iwlist {$ifname} scan";
+	
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		echo "Failed to list wireless networks\n";
 
-	$iw_networks = array();
-	foreach($out as $line) {
-		$line = trim($line);
-		$el = explode(" ", $line);
-		$key = $el[0];
-		array_shift($el);
-		$iw_networks[$key] = implode(" ", $el);
 
+	$iw_networks = array();
+	$i = 0;
+	foreach($out as $line) {
+		preg_replace("/^[ ]+/i", "", $line);
+		$line = trim($line);
+		$el = preg_split("/:/", $line);
+		if(strstr($line, "Cell")) {
+			$el[0] = "Address";
+			$el[1] = trim(strtolower("{$el[1]}:{$el[2]}:{$el[3]}:{$el[4]}:{$el[5]}:{$el[6]}"));
+		}
+		if(strstr($line, "Quality")) {
+			if($el[1] == "") {
+				$el[1] = trim($el[0]);
+				$el[0] = "Quality";
+			}
+		}
+		switch($el[0]) {
+			case "Address":
+			case "ESSID":
+			case "Frequency":
+			case "Quality":
+			case "Encryption key":
+				$iw_networks[$i][$el[0]] = $el[1];
+				break;
+		}
+
+		if(strstr($line, "Quality")) {
+			// Do not list self
+			if("{$iw_networks[$i]['Address']}" == $state['if']['wlan0']['address'])
+				continue;
+			$i++;
+		}
 	}
+	
+	
+	
 	return $iw_networks;
 }
 
@@ -493,9 +523,12 @@ function check_msft_connect($url = "") {
 
 // return request array based on parsing of portal page.
 function parse_portal_page($url = ""){
+	global $state;
 	if($url == "")
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
 
+
+	$state['internet']['url'] = $url;
 	// attempt this 3 times
 	$t = 3;
 	while($t > 0) {
@@ -519,13 +552,28 @@ function parse_portal_page($url = ""){
 		echo "String: {$test}\n";
 		// Test for javascript redirect
 		preg_match("/window.location=[\'\"](.*?)[\'\"]/i", $test, $jsmatches);
-		print_r($jsmatches);
+
+		// test for meta refresh
+		// <meta http-equiv="refresh" content="0; url=https://login.wifi.site.com" />
+		preg_match("/meta http-equiv=[\'\"]refresh[\'\"].*?url=(.*?)[\'\"]/i", $test, $metamatches);
 
 		if(isset($jsmatches[1])) {
 			if(strstr($jsmatches[1], "http")) {
-				echo "Oh Look, a javascript redirect, looks like we have a followup url, following, remember this\n";
-				$test = simple_web_request($jsmatches[1]);
 				$url = $jsmatches[1];
+				route_add(url_to_ip($url), "");
+				echo "Oh Look, a javascript redirect, looks like we have a followup url '{$url}', following, remember this\n";
+				$test = simple_web_request($url);
+				$state['internet']['url'] = $url;
+			}
+		}
+		print_r($metamatches);
+		if(isset($metamatches[1])) {
+			if(strstr($metamatches[1], "http")) {
+				$url = $metamatches[1];
+				route_add(url_to_ip($url), "");
+				echo "Oh Look, a meta refresh redirect, looks like we have a followup url '{$url}', following, remember this\n";
+				$test = simple_web_request($url);
+				$state['internet']['url'] = $url;
 			}
 		}
 		// Does this result have a form we can use?
@@ -536,12 +584,12 @@ function parse_portal_page($url = ""){
 
 		if(!empty($forms_a[0])) {
 			echo "Hey look, this one has forms!\n";
-			print_r($forms_a);
-			print_r($inputs_a);
-			print_r($onclicks_a);
+			// print_r($forms_a);
+			// print_r($inputs_a);
+			// print_r($onclicks_a);
 
 			$request = build_form_request($forms_a, $inputs_a, $onclicks_a);
-			print_r($request);
+			// print_r($request);
 
 			// Remember that url we found?, yeah, we need that here, we should strip to base and include form here. Then again, the post can be absolute. meh.
 			//$result = simple_web_request($url, $request['form']['method'], $request['vars']);
@@ -582,7 +630,7 @@ function simple_web_request($url, $method = "get", $vars = array(), $credentials
 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 	curl_setopt($ch, CURLOPT_AUTOREFERER, true);
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 	curl_setopt($ch, CURLOPT_COOKIEFILE, "/tmp/nomad-hotspot.jar");
 	curl_setopt($ch, CURLOPT_COOKIEJAR, "/tmp/nomad-hotspot.jar");
 	curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0");
