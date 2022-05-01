@@ -13,7 +13,8 @@ $cfgmap = array(
 			"client.ovpn.login" => "/etc/openvpn/client.ovpn.login",
 			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
 			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
-			"iptables.rules" => "/etc/iptables.rules",
+			"iptables.v4" => "/etc/iptables/iptables.v4",
+			"iptables.v6" => "/etc/iptables/iptables.v6",
 			);
 // Processes we know about
 $procmap = array(
@@ -1052,7 +1053,11 @@ function process_cfg_changes($chglist) {
 				copy_config($file);
 				restart_service($file);
 				break;
-			case "iptables.rules":
+			case "iptables.v4":
+				copy_config($file);
+				restart_service($file);
+				break;
+			case "iptables.v6":
 				copy_config($file);
 				restart_service($file);
 				break;
@@ -1099,8 +1104,11 @@ function restart_service($file) {
 			case "wpa_supplicant.conf":
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 				break;
-			case "iptables.rules":
-				$cmd = "sudo iptables-restore < /etc/iptables.rules;sudo iptables-save > /etc/iptables.rules;";
+			case "iptables.v4":
+				$cmd = "sudo iptables-restore < /etc/iptables/iptables.v4;sudo iptables-save > /etc/iptables/iptables.v4;";
+				break;
+			case "iptables.v6":
+				$cmd = "sudo iptables-restore < /etc/iptables/iptables.v6;sudo iptables-save > /etc/iptables/iptables.v6;";
 				break;
 			default:
 				echo "What is this mythical service file '{$file}' of which you speak?\n";
