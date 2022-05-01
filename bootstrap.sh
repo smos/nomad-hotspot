@@ -31,6 +31,7 @@ sudo systemctl unmask dnsmasq
 sudo systemctl enable dnsmasq
 
 echo "Install the nomad-hotspot service unit"
+sed -i "s/pi/$LOGNAME/g" install/nomad-hotspot.service
 sudo cp install/nomad-hotspot.service /etc/systemd/system/nomad-hotspot.service
 sudo systemctl enable nomad-hotspot.service
 
