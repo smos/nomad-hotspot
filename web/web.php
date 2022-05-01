@@ -416,7 +416,7 @@ function html_interfaces($state){
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wireless = "SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode(',', if_prefix($state['if'], $ifname)) ."</td><td>". html_traffic_speed($state['if'], $ifname) ."</td><td>". html_traffic_total($state['if'], $ifname) ."</td><td>{$wireless}</td></tr>\n";
+		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "</div>\n";		
