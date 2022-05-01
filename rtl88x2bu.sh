@@ -9,3 +9,4 @@ sudo sed -i 's/PACKAGE_VERSION="@PKGVER@"/PACKAGE_VERSION="git"/g' /usr/src/rtl8
 sudo dkms add -m rtl88x2bu -v git
 sudo dkms autoinstall
 
+sudo modprobe 88x2bu
