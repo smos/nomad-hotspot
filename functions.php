@@ -763,6 +763,9 @@ function ping($address = ""){
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/i", $address, $ipmatch);
 
+	if(!isset($ipmatch[1]))
+		return false;
+
 	if($ipmatch[1] == "")
 		return false;
 
@@ -809,20 +812,24 @@ function fetch_default_route_gw() {
 function route_add($ip, $gwip = ""){
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/", $ip, $ipmatch);
+
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/", $gwip, $gwipmatch);
 	//print_r($ipmatch);
+	//print_r($gwipmatch);
+
 	if($ip == "")
 		return false;
 
-	if($gwip == "")
+	if($gwip == "") {
 		$defgw = fetch_default_route_gw();
 		if($defgw === false) {
 			echo "We don't have a default route! Do we even have a wifi connection?\n";
 			return false;
 		}
-	else
+	} else {
 		$defgw['gateway'] = $gwipmatch[1];
+	}
 
 	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
 	//print_r($cmd);
