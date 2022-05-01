@@ -799,6 +799,9 @@ function fetch_default_route_gw() {
 
 	$defgw = json_decode($out[0], true);
 
+	if(empty($defgw))
+		return false;
+
 	return ($defgw[0]);
 }
 
@@ -814,6 +817,10 @@ function route_add($ip, $gwip = ""){
 
 	if($gwip == "")
 		$defgw = fetch_default_route_gw();
+		if($defgw === false) {
+			echo "We don't have a default route! Do we even have a wifi connection?\n";
+			return false;
+		}
 	else
 		$defgw['gateway'] = $gwipmatch[1];
 
