@@ -19,7 +19,7 @@ $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
 $state['clients'] = array();
 // Where the configs live
-$basedir = "/home/pi/nomad-hotspot";
+$basedir = "/home/{$_SERVER['LOGNAME']}/nomad-hotspot";
 $cfgdir = "conf";
 // Where the web files live
 $webdir = $basedir ."/". "web";
