@@ -45,7 +45,7 @@ textURL:	http://planet.debian.org/rss20.xml
 
 programs:								      \
 				webscreensaver -url			      \
-				  https://www.xkcd.com/random/comic/ \n\
+				  https://c.xkcd.com/random/comic/ \n\
 				maze -root				    \n\
 - GL: 				superquadrics -root			    \n\
 				attraction -root			    \n\
