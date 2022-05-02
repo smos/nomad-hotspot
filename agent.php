@@ -32,7 +32,17 @@ chdir($basedir);
 $iflist = interface_status();
 // Find the AP interface
 $localif = if_address($iflist, "wlan0");
+$w = 0;
+while (!isset($localif[0])) {
+	$iflist = interface_status();
+	$localif = if_address($iflist, "wlan0");
+	sleep(3);
+	if($w > 10)
+		break;
+	$w++;
+}
 $address = $localif[0];
+echo "Found wlan0 address {$address} after $w tries\n";
 start_webserver($address, $state['config']['port'], $webdir);
 
 $i = 0;
