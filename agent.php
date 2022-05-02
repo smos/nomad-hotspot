@@ -38,6 +38,11 @@ start_webserver($address, $state['config']['port'], $webdir);
 $i = 0;
 $p = 0;
 echo "Starting up, entering loop\n";
+// Initial load of firewall rules
+echo "Loading firewall rules\n";
+restart_service("iptables.v4");
+restart_service("iptables.v6");
+
 while (true) {
 	foreach ($iflist as $ifname => $iface) {
 		// Skip Loopback
