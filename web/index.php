@@ -11,7 +11,9 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/":
 		case "/status":
 			// html containing refreshing status divs
+			echo html_header();
 			echo html_head();
+			echo html_menu();
 			echo html_jquery();
 			echo html_status($state);
 			echo html_jquery_reload();
@@ -36,13 +38,23 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/cfgwiap":
 		case "/cfgwiclient":
 		case "/cfgovpn":
+			echo html_header();
 			echo html_head();
+			echo html_menu();
 			echo html_config($state, $_SERVER["REQUEST_URI"]);
 			echo html_foot();	
 			break;
 		case "/json":
 		case "/json?":
 			echo send_json($state);	
+			break;
+		case "/screensaver":
+			echo html_header();
+			echo html_head();
+			echo html_jquery();
+			echo html_status_screensaver($state);
+			echo html_jquery_reload_screensaver();
+			echo html_foot();	
 			break;
 	}
 	//print_r($_SERVER["REQUEST_URI"]);

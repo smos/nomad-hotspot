@@ -1,11 +1,17 @@
 <?php
 
 
-function html_head(){
+function html_header(){
 	header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
 	header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 	header("Content-Type: text/html");
-	echo "<html><head><title>Nomad Hotspot</title></head><body>\n";
+}
+	
+function html_head(){
+	echo "<html><head><title>Nomad Hotspot</title></head><body bgcolor='black'>\n";
+}
+
+function html_menu(){
 	// Menu Header
 	echo "<table><tr>";
 	echo "<td><a href='/status'>Status</a></td>";
@@ -15,8 +21,8 @@ function html_head(){
 	echo "<td><a href='/cfgovpn'>OpenVPN</a></td>";
 	echo "<td><a href='/json'>JSON</a></td>";
 	echo "<tr></table>\n";
-	
-}
+}	
+
 function html_foot(){
 	echo "</body></html>\n";		
 }
@@ -374,6 +380,7 @@ echo "<script
   integrity='sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0='
   crossorigin='anonymous'></script>\n";
 }
+
 function html_jquery_reload(){
 	echo "<script type='text/javascript'>\n";
 	echo "
@@ -398,6 +405,29 @@ function refresh() {
 	echo "</script>";
 
 }
+
+function html_jquery_reload_screensaver(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pageRefresh = 5000; //5 s
+    setInterval(function() {
+        refresh();
+    }, pageRefresh);
+});
+
+	// Functions
+
+function refresh() {
+    \$('#screensaver').load(\"/screensaver\");
+}
+
+";
+	echo "</script>";
+
+}
+
 function html_status($state){
 	//echo " <div id='interfaces'></div>\n";
 	echo html_interfaces($state);
@@ -408,6 +438,11 @@ function html_status($state){
 	//echo " <div id='processes'></div>\n";
 	echo html_processes($state);
 }
+
+function html_status_screensaver($state){
+	echo html_connectivity_screensaver($state);
+}
+
 function html_interfaces($state){
 	echo " <div id='interfaces'>";
 	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
@@ -430,6 +465,72 @@ function html_connectivity($state){
 	$result = "<a _target=_blank href='{$result}'>{$result}</a>";
 		echo "<tr><td>{$check}</td><td>{$result}</td></tr>\n";
 	}
+	echo "</table>";
+	echo "</div>\n";		
+		
+}
+function html_connectivity_screensaver($state){
+	echo " <div id='screensaver'>";
+	echo "<center>";
+	echo "<table>";
+	// VPN
+	$img = "images/vpngrey.png";
+	$vpncon = "Not configured";
+	if(isset($state['if']['tun0'])) {
+		if(!empty($state['if']['tun0']['addr_info'])) {
+			$img = "images/vpngreen.png";
+			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info']}";
+		} else {
+			$img = "images/vpnred.png";
+			$vpncon = "Not connected";
+		}
+	}
+	echo "<tr><td><img height='120px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
+	// Internet, ping color
+	$color = "white";
+	if($state['internet']['ping'] < 500)
+		$color = "red";
+	if($state['internet']['ping'] < 200)
+		$color = "orange";
+	if($state['internet']['ping'] < 100)
+		$color = "green";
+
+	switch($state['internet']['captive']) {
+		case "OK":
+			$img = "images/globe{$color}.png";
+			break;;
+		case "NOK":
+			$img = "images/nogo.png";
+			break;;
+		default:
+			$img = "images/globegrey.png";
+			break;;		
+	}
+	echo "<tr><td><img height='120px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
+	// DNS
+	switch($state['internet']['captive']) {
+		case "OK":
+			$img = "images/dnsgreen.png";
+			break;;
+		case "NOK":
+			$img = "images/dnsred.png";
+			break;;
+		default:
+			$img = "images/dnsgrey.png";
+			break;;		
+	}
+	echo "<tr><td><img height='120px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
+	// AP
+	switch($state['if']['wlan0']['wi']['type']) {
+		case "AP":
+			$img = "images/apgreen.png";
+			break;;
+		default:
+			$img = "images/apgrey.png";
+			break;;		
+	}
+	echo "<tr><td><img height='120px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
+
 	echo "</table>";
 	echo "</div>\n";		
 		

@@ -3,7 +3,7 @@
 # https://www.jwz.org/xscreensaver/
 
 timeout:	0:03:00
-cycle:		0:10:00
+cycle:		0:00:05
 lock:		False
 lockTimeout:	0:00:00
 passwdTimeout:	0:00:30
@@ -45,7 +45,7 @@ textURL:	http://planet.debian.org/rss20.xml
 
 programs:								      \
 				webscreensaver -url			      \
-				  https://c.xkcd.com/random/comic/ \n\
+				  http://172.17.88.1:8000/screensaver \n\
 				maze -root				    \n\
 - GL: 				superquadrics -root			    \n\
 				attraction -root			    \n\

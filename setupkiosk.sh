@@ -5,7 +5,7 @@ echo "Enable I2C for HyperPixel 4"
 sudo raspi-config nonint do_i2c 1
 
 echo "Install basic X neccessities"
-sudo apt-get -y install xserver-xorg xinit lxde-core lxterminal lxappearance lightdm unclutter
+sudo apt-get -y install xserver-xorg xinit lxde-core lxterminal lxappearance lightdm unclutter xdotool
 
 echo "Enable Gui Boot with autologin"
 sudo raspi-config nonint do_boot_behaviour B4
