@@ -3,7 +3,7 @@
 # https://www.jwz.org/xscreensaver/
 
 timeout:	0:03:00
-cycle:		0:00:05
+cycle:		0:10:00
 lock:		False
 lockTimeout:	0:00:00
 passwdTimeout:	0:00:30
