@@ -420,7 +420,7 @@ var pageRefresh = 5000; //5 s
 	// Functions
 
 function refresh() {
-    \$('#screensaver').load(\"/screensaver\");
+    \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
 }
 
 ";
@@ -470,7 +470,7 @@ function html_connectivity($state){
 		
 }
 function html_connectivity_screensaver($state){
-	echo " <div id='screensaver'>";
+	echo " <div id='connectivityscreensaver'>";
 	echo "<center>";
 	echo "<table>";
 	// VPN
