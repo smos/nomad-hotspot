@@ -37,6 +37,16 @@ function start_webserver($address, $port, $dir){
 
 }
 
+function find_wan_interface($state) {
+	//which has the default route?
+	$defgw = fetch_default_route_gw();
+	$iface = $defgw['dev'];
+	if($iface == "")
+		$iface = "wlan1";
+
+	return($iface);
+}
+
 function iw_info($ifstate, $ifname) {
 	if(!isset($ifstate[$ifname]))
 		return false;
@@ -126,6 +136,7 @@ function list_iw_networks($state, $ifname) {
 
 
 function process_if_changes($ifstate, $iflist, $ifname) {
+	global $state;
 	if(!isset($ifstate[$ifname])) {
 		// New interface!
 		echo "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."\n";
@@ -145,6 +156,10 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 				}
 			}
 		}
+		
+		// init Counters
+		$state['traffic'][$ifname]['toprx'] = 0;
+		$state['traffic'][$ifname]['toptx'] = 0;
 	}
 	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
 		// Interface went away!
@@ -168,8 +183,12 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 
 	$iflist[$ifname]['time'] = time();
 	// If we are here, we can collect some statistics.
+
+
+
+	// print_r($ifstate[$ifname]['traffic']);
 	if(isset($ifstate[$ifname]))
-		$iflist[$ifname]['traffic'] = calculate_traffic($ifstate[$ifname], $iflist[$ifname]);
+		$iflist[$ifname]['traffic'] = calculate_traffic($ifstate[$ifname], $iflist[$ifname], $ifname);
 
 	// save current interface state to the state array. 
 	if(isset($iflist[$ifname]))
@@ -178,7 +197,8 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		return false;
 }
 
-function calculate_traffic($ifstate, $iflist) {
+function calculate_traffic($ifstate, $iflist, $ifname) {
+	global $state;
 	if(!isset($ifstate['time']))
 		return false;
 	if(!isset($iflist['time']))
@@ -206,9 +226,16 @@ function calculate_traffic($ifstate, $iflist) {
 
 	// echo "rx {$rx}, tx {$tx}, timediff {$timediff}\n";
 	// Bytes per second
-	$traffic['rx'] = ($rx/$timediff);
-	$traffic['tx'] = ($tx/$timediff);
+	$traffic['rx'] = round($rx/$timediff);
+	$traffic['tx'] = round($tx/$timediff);
 
+
+	if($traffic['rx'] > $state['traffic'][$ifname]['toprx']) {
+		$state['traffic'][$ifname]['toprx'] = $traffic['rx'];
+	}
+	if($traffic['tx'] > $state['traffic'][$ifname]['toptx']) {
+		$state['traffic'][$ifname]['toptx'] = $traffic['tx'];
+	}	
 	return $traffic;
 }
 

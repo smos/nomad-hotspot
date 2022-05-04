@@ -421,6 +421,8 @@ var pageRefresh = 5000; //5 s
 
 function refresh() {
     \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
+    \$('#bwup').load(\"/bwup\");
+    \$('#bwdown').load(\"/bwdown\");
 }
 
 ";
@@ -440,8 +442,41 @@ function html_status($state){
 }
 
 function html_status_screensaver($state){
+	echo "<center>";
+	echo "<table border=1><tr><td valign=top>";
+	echo html_bw_down($state);
+	echo "</td><td>";
 	echo html_connectivity_screensaver($state);
+	echo "</td><td valign=bottom>";
+	echo html_bw_up($state);
+	echo "</td></tr>\n";
+	echo "</table>";
 }
+
+function html_bw_up($state) {
+	$ifname = find_wan_interface($state);
+	$height = ceil($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']);
+	
+	//echo " <div id='bwup'>";
+	echo "<table border=1 width='50px' valign='bottom'>";
+	echo "<tr><td><font color=white>{$state['traffic'][$ifname]['toptx']}Bps</td></tr>\n";
+	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
+	echo "</table>";	
+	echo "</div>\n";		
+}
+
+function html_bw_down($state) {
+	$ifname = find_wan_interface($state);
+	$height = ceil($state['if'][$ifname]['traffic']['rx'] / $state['traffic'][$ifname]['toprx']);
+
+	//echo " <div id='bwdown'>";
+	echo "<table border=1 width='50px'valign='top'>";
+	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
+	echo "<tr><td><font color=white>{$state['traffic'][$ifname]['toprx']}Bps</td></tr>\n";	
+	echo "</table>";
+	echo "</div>\n";		
+}
+
 
 function html_interfaces($state){
 	echo " <div id='interfaces'>";
@@ -471,7 +506,6 @@ function html_connectivity($state){
 }
 function html_connectivity_screensaver($state){
 	echo " <div id='connectivityscreensaver'>";
-	echo "<center>";
 	echo "<table>";
 	// VPN
 	$img = "images/vpngrey.png";
@@ -485,7 +519,7 @@ function html_connectivity_screensaver($state){
 			$vpncon = "Not connected";
 		}
 	}
-	echo "<tr><td><img height='120px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
+	echo "<tr><td><img height='150px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
 	// Internet, ping color
 	$color = "white";
 	if($state['internet']['ping'] < 500)
@@ -506,7 +540,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/globegrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='120px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
+	echo "<tr><td><img height='150px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
 	// DNS
 	switch($state['internet']['captive']) {
 		case "OK":
@@ -519,7 +553,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/dnsgrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='120px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
+	echo "<tr><td><img height='150px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
 	// AP
 	switch($state['if']['wlan0']['wi']['type']) {
 		case "AP":
@@ -529,7 +563,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/apgrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='120px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
+	echo "<tr><td><img height='150px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
 
 	echo "</table>";
 	echo "</div>\n";		
