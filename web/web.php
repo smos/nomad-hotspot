@@ -16,13 +16,14 @@ function html_head(){
 
 function html_menu(){
 	// Menu Header
+	echo "<center>";
 	echo "<table><tr>";
-	echo "<td><a href='/status'>Status</a></td>";
-	echo "<td><a href='/cfgif'>Interfaces</a></td>";
-	echo "<td><a href='/cfgwiap'>Wifi AP</a></td>";
-	echo "<td><a href='/cfgwiclient'>Wifi Client</a></td>";
-	echo "<td><a href='/cfgovpn'>OpenVPN</a></td>";
-	echo "<td><a href='/json'>JSON</a></td>";
+	echo "<td><a href='/status'><img height='50px' src='images/status.png' alt='Status'></a></td>";
+	echo "<td><a href='/cfgif'><img height='50px' src='images/interfaces.png' alt='Interfaces'></a></td>";
+	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apblue.png' alt='Wifi AP'></a></td>";
+	echo "<td><a href='/cfgwiclient'><img height='50px' src='images/wifi.png' alt='Wifi Client'></a></td>";
+	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnblue.png' alt='OpenVPN'></a></td>";
+	echo "<td><a href='/json'><img height='50px' src='images/json.png' alt='JSON'></a></td>";
 	echo "<tr></table>\n";
 }	
 
@@ -398,14 +399,16 @@ var pageRefresh = 5000; //5 s
 	// Functions
 
 function refresh() {
-    \$('#interfaces').load(\"/interfaces\");
-    \$('#connectivity').load(\"/connectivity\");
+    \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
+    \$('#bwup').load(\"/bwup\");
+    \$('#bwdown').load(\"/bwdown\");
     \$('#clients').load(\"/clients\");
-    \$('#processes').load(\"/processes\");
 }
 
 ";
 	echo "</script>";
+//    \$('#interfaces').load(\"/interfaces\");
+//    \$('#processes').load(\"/processes\");
 
 }
 
@@ -414,7 +417,7 @@ function html_jquery_reload_screensaver(){
 	echo "
 
 \$(document).ready(function() {
-var pageRefresh = 5000; //5 s
+var pageRefresh = 1000; //1 s
     setInterval(function() {
         refresh();
     }, pageRefresh);
@@ -426,6 +429,7 @@ function refresh() {
     \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
     \$('#bwup').load(\"/bwup\");
     \$('#bwdown').load(\"/bwdown\");
+    \$('#clients').load(\"/clients\");
 }
 
 ";
@@ -434,19 +438,8 @@ function refresh() {
 }
 
 function html_status($state){
-	//echo " <div id='interfaces'></div>\n";
-	echo html_interfaces($state);
-	//echo " <div id='connectivity'></div>\n";
-	echo html_connectivity($state);
-	//echo " <div id='clients'></div>\n";
-	echo html_clients($state);
-	//echo " <div id='processes'></div>\n";
-	echo html_processes($state);
-}
-
-function html_status_screensaver($state){
 	echo "<center>";
-	echo "<table border=1><tr><td valign=top>";
+	echo "<table border=0><tr><td valign=top>";
 	echo html_bw_down($state);
 	echo "</td><td>";
 	echo html_connectivity_screensaver($state);
@@ -454,6 +447,28 @@ function html_status_screensaver($state){
 	echo html_bw_up($state);
 	echo "</td></tr>\n";
 	echo "</table>";
+	
+	//echo " <div id='interfaces'></div>\n";
+	//echo html_interfaces($state);
+	//echo " <div id='connectivity'></div>\n";
+	//echo html_connectivity($state);
+	//echo " <div id='clients'></div>\n";
+	echo html_clients($state);
+	//echo " <div id='processes'></div>\n";
+	//echo html_processes($state);
+}
+
+function html_status_screensaver($state){
+	echo "<center>";
+	echo "<table border=0><tr><td valign=top>";
+	echo html_bw_down($state);
+	echo "</td><td>";
+	echo html_connectivity_screensaver($state);
+	echo "</td><td valign=bottom>";
+	echo html_bw_up($state);
+	echo "</td></tr>\n";
+	echo "</table>";
+	echo html_clients($state);
 }
 
 function html_bw_up($state) {
@@ -463,7 +478,8 @@ function html_bw_up($state) {
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
 	echo "<table border=0 width='50px' valign='bottom' height='600px'>";
-	echo "<tr><td height='20px' valign='top>{$state['traffic'][$ifname]['toptx']}Bps</td></tr>\n";
+	echo "<tr><td height='15px' valign='top'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toptx']) ."Bps</td></tr>\n";
+	echo "<tr><td></td></tr>\n";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
 	echo "</table>";	
 	echo "</div>\n";		
@@ -477,7 +493,8 @@ function html_bw_down($state) {
 	echo " <div id='bwdown'>";
 	echo "<table border=0 width='50px'valign='top' height='600px'>";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
-	echo "<tr><td height='20px' valign='bottom'>{$state['traffic'][$ifname]['toprx']}Bps</td></tr>\n";	
+	echo "<tr><td></td></tr>\n";
+	echo "<tr><td height='15px' valign='bottom'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toprx']) ."Bps</td></tr>\n";	
 	echo "</table>";
 	echo "</div>\n";		
 }
@@ -485,7 +502,7 @@ function html_bw_down($state) {
 
 function html_interfaces($state){
 	echo " <div id='interfaces'>";
-	echo "<table border=1><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
+	echo "<table border=0><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {	
 		$wireless = "&nbsp;";
 		//print_r($iface['wi']);
@@ -499,7 +516,7 @@ function html_interfaces($state){
 
 function html_connectivity($state){
 	echo " <div id='connectivity'>";
-	echo "<table border=1><tr><td>Connectivity</td><td>Result</td></tr>\n";
+	echo "<table border=0><tr><td>Connectivity</td><td>Result</td></tr>\n";
 	foreach ($state['internet'] as $check => $result) {	
 		if($check == "url")
 	$result = "<a _target=_blank href='{$result}'>{$result}</a>";
@@ -576,7 +593,7 @@ function html_connectivity_screensaver($state){
 }
 function html_clients($state){
 	echo " <div id='clients'>";
-	echo "<table border=1><tr><td>Client</td><td>Address</td><td>Mac</td><td>Time</td></tr>\n";
+	echo "<table border=0><tr><td>Client</td><td>Address</td><td>Mac</td><td>Time</td></tr>\n";
 	if(is_array($state['clients']))
 	foreach ($state['leases'] as $entry => $val) {
 		echo "<tr><td>{$val['hostname']}</td><td>{$val['ip4']}</td><td>{$val['mac']}</td><td>". date("Y-m-d H:i:s", $val['time']) ."</td></tr>\n";
@@ -587,7 +604,7 @@ function html_clients($state){
 }
 function html_processes($state){
 	echo " <div id='processes'>";
-	echo "<table border=1><tr><td>Process name</td><td>Number</td></tr>\n";
+	echo "<table border=0><tr><td>Process name</td><td>Number</td></tr>\n";
 	foreach ($state['proc'] as $procname => $number) {
 		echo "<tr><td>{$procname}</td><td>{$number}</td></tr>\n";
 	}
