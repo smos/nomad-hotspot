@@ -8,7 +8,10 @@ function html_header(){
 }
 	
 function html_head(){
-	echo "<html><head><title>Nomad Hotspot</title></head><body bgcolor='black'>\n";
+	echo "<html><head><title>Nomad Hotspot</title>";
+	echo "<link rel='stylesheet' href='web.css'>";
+	echo "</head>";
+	echo "<body bgcolor='black'>\n";
 }
 
 function html_menu(){
@@ -455,11 +458,12 @@ function html_status_screensaver($state){
 
 function html_bw_up($state) {
 	$ifname = find_wan_interface($state);
-	$height = ceil($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']);
+	$height = round(($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']),2) * 100;
 	
-	//echo " <div id='bwup'>";
-	echo "<table border=1 width='50px' valign='bottom'>";
-	echo "<tr><td><font color=white>{$state['traffic'][$ifname]['toptx']}Bps</td></tr>\n";
+	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
+	echo " <div id='bwup'>";
+	echo "<table border=0 width='50px' valign='bottom' height='600px'>";
+	echo "<tr><td height='20px' valign='top>{$state['traffic'][$ifname]['toptx']}Bps</td></tr>\n";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
 	echo "</table>";	
 	echo "</div>\n";		
@@ -467,12 +471,13 @@ function html_bw_up($state) {
 
 function html_bw_down($state) {
 	$ifname = find_wan_interface($state);
-	$height = ceil($state['if'][$ifname]['traffic']['rx'] / $state['traffic'][$ifname]['toprx']);
+	$height = round(($state['if'][$ifname]['traffic']['rx'] / $state['traffic'][$ifname]['toprx']), 2) * 100;
 
-	//echo " <div id='bwdown'>";
-	echo "<table border=1 width='50px'valign='top'>";
+	echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
+	echo " <div id='bwdown'>";
+	echo "<table border=0 width='50px'valign='top' height='600px'>";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
-	echo "<tr><td><font color=white>{$state['traffic'][$ifname]['toprx']}Bps</td></tr>\n";	
+	echo "<tr><td height='20px' valign='bottom'>{$state['traffic'][$ifname]['toprx']}Bps</td></tr>\n";	
 	echo "</table>";
 	echo "</div>\n";		
 }
