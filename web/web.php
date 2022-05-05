@@ -474,27 +474,28 @@ function html_status_screensaver($state){
 function html_bw_up($state) {
 	$ifname = find_wan_interface($state);
 	$height = round(($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']),2) * 100;
-	
+	$rest = abs(100 - $height); 
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
-	echo "<table border=0 width='50px' valign='bottom' height='600px'>";
-	echo "<tr><td height='15px' valign='top'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toptx']) ."Bps</td></tr>\n";
-	echo "<tr><td></td></tr>\n";
+	echo "<table border=0 width='50px' valign='bottom' height='600px'>\n";
+	echo "<tr><td valign='top'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toptx']) ."Bps</td></tr>\n";
+	echo "<tr><td height='{$rest}%'></td></tr>\n";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
-	echo "</table>";	
+	echo "</table>\n";	
 	echo "</div>\n";		
 }
 
 function html_bw_down($state) {
 	$ifname = find_wan_interface($state);
 	$height = round(($state['if'][$ifname]['traffic']['rx'] / $state['traffic'][$ifname]['toprx']), 2) * 100;
+	$rest = abs(100 - $height); 
 
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
 	echo " <div id='bwdown'>";
 	echo "<table border=0 width='50px'valign='top' height='600px'>";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
-	echo "<tr><td></td></tr>\n";
-	echo "<tr><td height='15px' valign='bottom'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toprx']) ."Bps</td></tr>\n";	
+	echo "<tr><td height='{$rest}%'></td></tr>\n";
+	echo "<tr><td valign='bottom'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toprx']) ."Bps</td></tr>\n";	
 	echo "</table>";
 	echo "</div>\n";		
 }
@@ -541,7 +542,7 @@ function html_connectivity_screensaver($state){
 			$vpncon = "Not connected";
 		}
 	}
-	echo "<tr><td><img height='150px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
+	echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
 	// Internet, ping color
 	$color = "white";
 	if($state['internet']['ping'] < 500)
@@ -562,7 +563,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/globegrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='150px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
+	echo "<tr><td><img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
 	// DNS
 	switch($state['internet']['captive']) {
 		case "OK":
@@ -575,7 +576,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/dnsgrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='150px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
+	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
 	// AP
 	switch($state['if']['wlan0']['wi']['type']) {
 		case "AP":
@@ -585,7 +586,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/apgrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='150px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
+	echo "<tr><td><img height='125px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
 
 	echo "</table>";
 	echo "</div>\n";		
@@ -593,10 +594,10 @@ function html_connectivity_screensaver($state){
 }
 function html_clients($state){
 	echo " <div id='clients'>";
-	echo "<table border=0><tr><td>Client</td><td>Address</td><td>Mac</td><td>Time</td></tr>\n";
+	echo "<table border=0><tr><td>Client</td><td>Address</td><td>Time</td></tr>\n";
 	if(is_array($state['clients']))
 	foreach ($state['leases'] as $entry => $val) {
-		echo "<tr><td>{$val['hostname']}</td><td>{$val['ip4']}</td><td>{$val['mac']}</td><td>". date("Y-m-d H:i:s", $val['time']) ."</td></tr>\n";
+		echo "<tr><td>{$val['hostname']}</td><td>{$val['ip4']}<br/>{$val['mac']}</td><td>". date("Y-m-d H:i:s", $val['time']) ."</td></tr>\n";
 	}
 	echo "</table>";
 	echo "</div>\n";		
