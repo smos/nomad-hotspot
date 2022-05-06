@@ -39,8 +39,9 @@ sudo sed -i 's/net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.
 sudo /sbin/sysctl -p/etc/sysctl.conf
 
 echo "Load some basic IPtables rules for forwarding"
-sudo iptables-restore < conf/iptables.rules
-sudo iptables-save > conf/iptables.rules
+sudo iptables-restore < conf/iptables.v4
+sudo iptables-save > conf/iptables.v4
 
 echo "System Services enabled, the agent will take care of the rest"
-sudo service nomad-hotspot start
+echo "Rebooting now, should come up with wireless network "Nomad-Hotspot""
+sudo reboot
