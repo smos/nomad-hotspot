@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if [ ! -d "/lib/modules/5.15.32-v8+/build" ]; then
-	sudo apt install linux-headers linux-build bc build-essential
+	sudo apt -y update
+	sudo apt install linux-headers bc build-essential dkms
 fi
 
 sudo git clone "https://github.com/RinCat/RTL88x2BU-Linux-Driver.git" /usr/src/rtl88x2bu-git
