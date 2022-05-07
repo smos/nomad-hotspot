@@ -396,6 +396,11 @@ function config_write_ovpn($settings) {
 	$conf = "../conf/client.ovpn";
 	if(is_writeable($conf)) {
 		//echo "<pre>". print_r($settings['conf'], true) ."</pre>";
+		// Replace "auth-user-pass" with "auth-user-pass client.ovpn.login"
+		if((stristr($settings['conf'], "auth-user-pass")) && (!stristr($settings['conf'], "client.ovpn.login"))) {
+			$settings['conf'] = str_replace("auth-user-pass", "auth-user-pass client.ovpn.login", $settings['conf']);
+			echo "Adding openvpn client login data parameter.<br />";
+		}
 		file_put_contents($conf, $settings['conf']);
 		return true;
 	}
@@ -403,11 +408,11 @@ function config_write_ovpn($settings) {
 function config_write_ovpn_login($settings) {
 	$conf = "../conf/client.ovpn.login";
 
-	if(is_writeable($conf)) {
+//	if(is_writeable($conf)) {
 		//echo "<pre>". print_r($settings['login'], true) ."</pre>";
 		file_put_contents($conf, $settings['login']);
 		return true;
-	}
+//	}
 }
 
 function config_read_hostapd($state) {
@@ -1152,6 +1157,48 @@ function restart_service($file) {
 	}
 }
 
+function disable_service($file) {
+	echo "Disable service for config file '{$file}'\n";
+	switch($file) {
+			case "client.ovpn":
+			case "client.ovpn.login":
+				$cmd = "sudo service openvpn stop; sudo systemctl disable openvpn; sudo systemctl mask openvpn";
+				break;
+			default:
+				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				return false;
+				break;
+	}
+	if($cmd != ""){
+		echo "Running command '{$cmd}'\n";
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			echo "Failed to disable service for {$file}\n";
+			return false;
+		}
+	}
+}
+function enable_service($file) {
+	echo "Enable service for config file '{$file}'\n";
+	switch($file) {
+			case "client.ovpn":
+			case "client.ovpn.login":
+				$cmd = "sudo systemctl unmask openvpn; sudo systemctl enable openvpn; sudo service openvpn start;  ";
+				break;
+			default:
+				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				return false;
+				break;
+	}
+	if($cmd != ""){
+		echo "Running command '{$cmd}'\n";
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			echo "Failed to enable service for {$file}\n";
+			return false;
+		}
+	}
+}
 function stop_service($file) {
 	echo "Stop service for config file '{$file}'\n";
 	switch($file) {

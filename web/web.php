@@ -73,17 +73,14 @@ function config_openvpn($state) {
 		$i = 0;
 		foreach($_POST as $varname => $setting) {
 			switch($varname) {
-				case "login":
-					if(!empty($_POST[$varname])) {
-						echo "Found new Login data <br>";
-						$credentials = explode("\n", $_POST[$varname]);
-						if(count ($credentials) < 2) {
-							echo "Not enough data, put username and password on seperate lines <br>";
-							$loginerror = true;
-						} else {
-							config_write_ovpn_login($_POST);
-						}						
-					}
+				case "enable":
+					$enabled = $_POST[$varname];
+					break;
+				case "username":
+					$username = $_POST[$varname];
+					break;
+				case "password":
+					$password = $_POST[$varname];
 					break;
 				case "conf":
 					if(!empty($_POST[$varname])) {
@@ -93,13 +90,39 @@ function config_openvpn($state) {
 					break;
 			}
 		}
-		restart_service("client.ovpn");
+		if((!empty($_POST['username'])) && (!empty($_POST['username']))){
+			echo "Found new Login data <br>";
+			$credentials = array("{$username}", "{$password}");
+			if(count ($credentials) < 2) {
+				echo "Not supplied both credentials<br>";
+				$loginerror = true;
+			} else {
+				config_write_ovpn_login($credentials);
+			}						
+		}
+		if($enabled == "on") {
+			$state['config']['openvpn'] = true;
+			enable_service("client.ovpn");
+			restart_service("client.ovpn");
+		} else {
+			$state['config']['openvpn'] = false;
+			stop_service("client.ovpn");
+			disable_service("client.ovpn");
+		}
 	}
 
 	$settings = config_read_ovpn($state);
 
-	echo "OpenVPN client username and password on seperate lines. Existing not shown.<br>";
-	html_textarea("login", $settings['login'], 3, 20);
+	echo "OpenVPN Enable<br>";
+	if($state['config']['openvon'] == true)
+		$checked = "checked";
+	html_checkbox("enable", "on", "{checked}");
+	echo "<br>";
+	echo "OpenVPN client username. Existing not shown.<br>";
+	html_input("username", "");
+	echo "<br>";
+	echo "OpenVPN client username. Existing not shown.<br>";
+	html_input("password", "");
 	echo "<br>";
 	echo "OpenVPN client configuration below<br>";
 	html_textarea("conf", $settings['conf'], 120, 80);
@@ -352,7 +375,10 @@ function html_select($varname, $options, $selected) {
 }
 // Generate a input box
 function html_input($varname, $existing) {
-	echo "<input type=text name='{$varname}' value='{$existing}' >";
+	$strtype = "text";
+	if(stristr($varname, "password"))
+		$strtype = "password";
+	echo "<input type='${strtype}' name='{$varname}' value='{$existing}' >";
 }
 
 // Generate a radio button
@@ -478,7 +504,7 @@ function html_bw_up($state) {
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
 	echo "<table border=0 width='50px' valign='bottom' height='600px'>\n";
-	echo "<tr><td valign='top'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toptx']) ."Bps</td></tr>\n";
+	echo "<tr><td valign='top'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toptx'] * 8)) ."bit</td></tr>\n";
 	echo "<tr><td height='{$rest}%'></td></tr>\n";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
 	echo "</table>\n";	
@@ -495,7 +521,7 @@ function html_bw_down($state) {
 	echo "<table border=0 width='50px'valign='top' height='600px'>";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
 	echo "<tr><td height='{$rest}%'></td></tr>\n";
-	echo "<tr><td valign='bottom'>". thousandsCurrencyFormat($state['traffic'][$ifname]['toprx']) ."Bps</td></tr>\n";	
+	echo "<tr><td valign='bottom'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toprx'] * 8)) ."bit</td></tr>\n";	
 	echo "</table>";
 	echo "</div>\n";		
 }
@@ -534,9 +560,10 @@ function html_connectivity_screensaver($state){
 	$img = "images/vpngrey.png";
 	$vpncon = "Not configured";
 	if(isset($state['if']['tun0'])) {
-		if(!empty($state['if']['tun0']['addr_info'])) {
+		// print_r($state['if']['tun0']['addr_info'][0]['local']);
+		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
 			$img = "images/vpngreen.png";
-			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info']}";
+			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
 		} else {
 			$img = "images/vpnred.png";
 			$vpncon = "Not connected";
