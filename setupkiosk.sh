@@ -50,3 +50,13 @@ echo "Copy webscreensaver to /usr/lib/xscreensaver"
 sudo cp -a install/kiosk/webscreensaver /usr/local/bin/webscreensaver
 
 sudo apt -y autoremove
+
+echo "Create RPi Hardware PWM for backlight control"
+git clone https://gitlab.com/anthonydigirolamo/rpi-hardware-pwm.git
+sudo apt -y install pigpio
+cd rpi-hardware-pwm
+gcc -Wall -pthread -o pwm pwm.c -lpigpio -lrt
+cd ..
+sudo cp -a rpi-hardware-pwm/pwm /usr/local/bin/pwm
+echo "Dimming screen"
+sudo pwm 19 1000000 135000
