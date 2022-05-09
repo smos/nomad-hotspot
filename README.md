@@ -1,40 +1,45 @@
 Hi There
 
+Open Source Wifi Travel Router based on Raspberry Pi OS (lite) with web UI.
+
 So this is my attempt at an Open Source Wifi Travel Router, most have limited features, or dropped support.
 Other motivations include
-- The reception is only proper from Y because building X is in the way when you are at Z
-- The camping site is still billing *per device* in 2020.
-- You can strategically place the device so you don't need to perform yoga to access a webpage. See 1.
+- The camping site is still billing *per device* in 2022.
+- You can strategically place the device so you don't need to perform yoga to access a webpage.
 - Tunnel all the traffic over OpenVPN because the only wireless network they offer is not protected.
 
-Requirements
-- You start with a Raspberry Pi 3B+ or later (for now, or older with 2 usb wifi adapters)
-- You add a USB wifi adapter as the client (extension cables work a treat for those difficult locations!)
-- The Onboard wifi adapter becomes the AP, as you are most likely close by
+Hardware Requirements
+- A Raspberry Pi 3B+ or later (for now, or older with 2 usb wifi adapters)
+- A USB wifi adapter as to connect to Wifi networks (USB extension cables work a treat for those difficult locations, or insulation/racks etc. !)
+	- The Edimax ac1200 USB3.0 mini has a Realtek 8822bu chipset and is fast, but needs a driver.
+	- USB3 sticks with the Mediatek 76x2 chipset are supported natively, but not as fast
+- The Onboard wifi adapter becomes the AP, as you are most likely close by, limits speed to ~70mbit. Works reliably.
+	- Ofcourse you can use another USB adapter if that has reliable Wifi AP mode.
 
-Software Features planned, in more or less my order
-- OpenVPN Client for tunneling traffic over untrusted open Wifi networks (works)
-- Add a webserver for configuration (partly done)
-- Add service and logging to syslog (not yet)
+Installation
+1. Write a SD card with Raspberry Pi OS lite
+	- Configure SSH access
+	- Configure User name
+	- Setup with your current Wireless network for easy SSH access
+2. Login into the Pi via SSH or using the console
+	- sudo apt -y install git
+	- git clone https://github.com/smos/nomad-hotspot.git
+	- cd nomad-hotspot
+	- ./bootstrap.sh
+3. Connect to wireless network "Nomad-Hotspot" with password "OnTheRoadAgain".
+	- You can change this later.
 
-Nice to have?
-- Perform Multi-Wan Failover
-- Integrate pi-hole into dnsmasq
-
-Where it is now
-- Has a 5Ghz AP Nomad-Hotspot with passphrase OnTheRoadAgain
+What it does
+- Has a 5Ghz AP named Nomad-Hotspot
 - Performs DHCP on eth0 and wlan1
-- IP forwarding with outbound NAT on eth0, wlan1 and tun0
+- IP forwarding with outbound NAT on eth0, wlan1, wlan2 and tun0
 - DHCP Server on wlan0 (onboard)
 - Webserver configuration works for Wireless Client network list.
-- Webserver does show OpenVPN config, but no save button yet. Should be more-or-less ExpressVPN compatible.
-- Has absolutely no UI interface makeup to speak of.
+- Webserver does show OpenVPN config. Should be more-or-less ExpressVPN compatible.
+- Has a refreshing UI with icons showing state
 
 To get things going.
 
-- Check out the git repository in the pi home directory
-git clone https://github.com/databeestje/nomad-hotspot.git
-- Change into the nomad-hotspot directory with "cd ~/nomad-hotspot" and run "sudo ./bootstrap.sh"
 - In case you want to uninstall you can run the uninstall.sh script which should restore the previous configuration.
 
 Changing the configuration manually
