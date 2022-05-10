@@ -219,6 +219,7 @@ function validate_select($array, $item){
 
 function config_supplicant($state) {
 	echo "<br>Config wireless client networks<br>";
+	echo "<table border=1><tr><td>";
 	// Process POST request
 	$settings = config_read_supplicant($state);
 	// Empty item at the end for adding new entry
@@ -228,7 +229,7 @@ function config_supplicant($state) {
 	$key_mgmt = array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE");
 	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
 	// Compare 
-		echo "<pre>" . print_r($settings, true) ."</pre>";
+	// echo "<pre>" . print_r($settings, true) ."</pre>";
 	if(!empty($_POST)) {
 		print_r($_POST);
 		$i = 0;
@@ -350,7 +351,8 @@ function config_supplicant($state) {
 		}
 		echo "</table>";	
 	}
-	
+	echo "</td></tr></table>\n";
+
 
 }
 
@@ -571,7 +573,9 @@ function html_connectivity_screensaver($state){
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
 	// Internet, ping color
-	$color = "white";
+	$color = "grey";
+	if($state['internet']['ping'] == 999)
+		$color = "blue";
 	if($state['internet']['ping'] < 500)
 		$color = "red";
 	if($state['internet']['ping'] < 200)
@@ -588,7 +592,7 @@ function html_connectivity_screensaver($state){
 			break;;
 		default:
 			$img = "images/globegrey.png";
-			break;;		
+			break;;
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
 	// DNS
@@ -601,7 +605,7 @@ function html_connectivity_screensaver($state){
 			break;;
 		default:
 			$img = "images/dnsgrey.png";
-			break;;		
+			break;;
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
 	// AP
