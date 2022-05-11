@@ -76,8 +76,8 @@ function iw_info($ifstate, $ifname) {
 function list_iw_networks($state, $ifname) {
 	if(!isset($state['if'][$ifname]))
 		return false;
-	// Don't scan on our AP interface ;)
 
+	// Don't scan on our AP interface ;)
 	if($ifname == "wlan0")
 		return true;
 	// Show which network we are connected to
@@ -123,9 +123,38 @@ function list_iw_networks($state, $ifname) {
 		}
 	}
 	
-	
-	
 	return $iw_networks;
+}
+
+function clean_wi_list($iw_networks) {
+	// normalise array by ssid
+	
+	
+	//echo "<br/>";
+	$iw_list = array();
+	foreach($iw_networks as $num => $net) {
+		
+		//echo "<pre>". print_r($net, true) ."</pre>";
+		//echo "'{$net['ESSID']}' <br/>";
+		
+		if(!isset($iw_list[$net['ESSID']])) {
+			$iw_list[$net['ESSID']] = array();
+		}
+		$iw_list[$net['ESSID']]['encryption'] = $net['Encryption key'];
+		$iw_list[$net['ESSID']]['bssid'][] = $net['Address'];
+		
+		// Only save highest quality
+		if(!isset($iw_list[$net['ESSID']]['snr'])) {
+			$iw_list[$net['ESSID']]['snr'] = $net['Quality'];
+		} else {
+			if(floatval($net['Quality']) > floatval($iw_list[$net['ESSID']]['snr']))
+				$iw_list[$net['ESSID']]['snr'] = $net['Quality'];
+		}
+		
+	}
+
+	//echo "<pre> test". print_r($iw_list, true) ."</pre>";
+	return $iw_list;
 }
 
 // Show which clients are connected

@@ -135,6 +135,7 @@ function config_openvpn($state) {
 
 function config_dhcpcd($state) {
 	echo "<br>Config interfaces dhcpcd<br>";
+	echo "<table border=1><tr><td>";
 	$settings = config_read_dhcpcd($state);
 	echo "<form >";
 	foreach($settings as $ifname => $setting) {
@@ -156,11 +157,13 @@ function config_dhcpcd($state) {
 		echo "<br>";
 	}
 	echo "</form >";
+	echo "</td></tr></table>\n";
 	//echo print_r($settings, true);
 	// Will want to write dnsmasq.conf too, for LAN address(es) and dhcp range(s).
 }
 function config_hostapd($state) {
 	echo "<br>Config interfaces hostapd: <br>";
+	echo "<table border=1><tr><td>";
 	$settings = config_read_hostapd($state);
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
@@ -207,6 +210,7 @@ function config_hostapd($state) {
 		}		
 		echo "<br>";
 	}
+	echo "</td></tr></table>\n";
 	//echo print_r($settings, true);
 }
 
@@ -229,9 +233,8 @@ function config_supplicant($state) {
 	$key_mgmt = array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE");
 	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
 	// Compare 
-	// echo "<pre>" . print_r($settings, true) ."</pre>";
 	if(!empty($_POST)) {
-		print_r($_POST);
+		//echo "<pre>". print_r($_POST, true);
 		$i = 0;
 		foreach($settings as $varname => $setting) {
 			switch($varname) {
@@ -255,53 +258,56 @@ function config_supplicant($state) {
 						}
 						foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
 							$var = "{$index}{$name}";
-								switch($name) {
-									case "ssid":
-									case "psk":
+							switch($name) {
+								case "ssid":
+								case "psk":
+									$settings['network'][$index][$name] = $_POST[$var];
+									break;
+								case "priority":
+									if(validate_select($priorities, $_POST[$var]))
 										$settings['network'][$index][$name] = $_POST[$var];
-										break;
-									case "priority":
-										if(validate_select($priorities, $_POST[$var]))
-											$settings['network'][$index][$name] = $_POST[$var];
-										break;
-									case "key_mgmt":
-										if(validate_select($key_mgmt, $_POST[$var]))
-											$settings['network'][$index][$name] = $_POST[$var];
-										break;
-								}
+									break;
+								case "key_mgmt":
+									if(validate_select($key_mgmt, $_POST[$var]))
+										$settings['network'][$index][$name] = $_POST[$var];
+									break;
 							}
+						}
 					}
 			}
 		}
+		// echo "<pre>" . print_r($settings, true) ."</pre>";
 		// Check for new entry
-		$index = count($settings['network'])+1;
-		$var = "{$i}ssid";
+		$index = count($settings['network']) +1;
+		$var = "{$index}ssid";
+		// echo "<pre>". print_r($var, true);
+		
 		//echo "$_POST[$var]";
 		if(isset($_POST[$var]) && ($_POST[$var] != "")) {
 			foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
 				$var = "{$index}{$name}";
-					switch($name) {
-						case "ssid":
-						case "psk":
+				switch($name) {
+					case "ssid":
+					case "psk":
+						$settings['network'][$index][$name] = $_POST[$var];
+						break;
+					case "priority":
+						if(validate_select($priorities, $_POST[$var]))
 							$settings['network'][$index][$name] = $_POST[$var];
-							break;
-						case "priority":
-							if(validate_select($priorities, $_POST[$var]))
-								$settings['network'][$index][$name] = $_POST[$var];
-							break;
-						case "key_mgmt":
-							if(validate_select($key_mgmt, $_POST[$var]))
-								$settings['network'][$index][$name] = $_POST[$var];
-							break;
-					}
+						break;
+					case "key_mgmt":
+						if(validate_select($key_mgmt, $_POST[$var]))
+							$settings['network'][$index][$name] = $_POST[$var];
+						break;
 				}
+			}
 		}
 		// echo "<pre>".  print_r($settings, true);
 		config_write_supplicant($settings);
 		$settings = config_read_supplicant($state);
 	}
 	// Empty item at the end for adding new entry
-	// $settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
+	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE");
 	
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
@@ -311,21 +317,31 @@ function config_supplicant($state) {
 				echo "<br>\n";
 				break;
 			case "network":
-				echo "Client networks to connect to:\n";
+				echo "Client networks to connect to:<br/>";
 				foreach($setting as $index => $values){
-					echo "Index {$index} <br>";
+					echo "Index {$index} <br>\n";
 					echo "SSID: ";
-					html_input("{$index}ssid", $values['ssid']) ."<br>";
+					html_input("{$index}ssid", $values['ssid']) ."<br>\n";
 					echo "Pre Shared Key: ";
-					html_input("{$index}psk", $values['psk']) ."<br>";
+					html_input("{$index}psk", $values['psk']) ."<br>\n";
 					echo "Type: ";
-					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>";
-					echo "Priority: ";
-					html_select("{$index}priority", $priorities, $values['priority']) ."<br>";
+					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>\n";
 					echo "<br>";
 				}			
 		}		
 	}
+/*	
+	echo "New Entry<br/>";
+	$index = 0;
+
+		echo "SSID: ";
+		html_input("{$index}ssid", $_GET['ssid']) ."<br>";
+		echo "Pre Shared Key: ";
+		html_input("{$index}psk", $_GET['psk']) ."<br>";
+		echo "Type: ";
+		html_select("{$index}key_mgmt", $key_mgmt, $_GET['key_mgmt']) ."<br/>";
+		echo "<br>";
+	*/
 	//echo "<pre>". print_r($settings, true);
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
@@ -336,17 +352,66 @@ function config_supplicant($state) {
 			continue;
 		
 		echo "<strong>Wireless network list {$ifname}</strong><br>";
-		echo "<table border=1><tr><td>bssid</td><td>name</td><td>Frequency</td><td>Encryption</td><td>Quality</td></tr>\n";
+		echo "<table border=1><tr><td>ssid</td><td>encryption</td><td>Quality</td></tr>\n";
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
+				
+		//echo "<pre>". print_r($wi_list) ."</pre>";
+		$clean_wi_list = clean_wi_list($wi_list);
+		// echo "<pre>". print_r($clean_wi_list) ."</pre>";
 		
-		if(is_array($wi_list)) {
-			foreach($wi_list as $entry => $fields) {
+		$index = count($settings['network']);
+		$ssidvar = "{$index}ssid";
+		$encvar = "{$index}key_mgmt";
+		$pskvar = "{$index}psk";
+
+		echo "<script>\n";
+		echo "	function setssid(ssid) { \n";
+//		echo "    var txt=document.getElementById(\"{$ssidvar}\").value; \n";
+//		echo "    txt= ssid; \n";
+		echo "    document.getElementById(\"{$ssidvar}\").value=ssid; \n";
+		echo "    } \n";
+		echo "	function setenc(enc) { \n";
+//		echo "	  console.log(enc);\n";
+		echo "	    if(enc == 'on') { \n";
+		echo " 	    newpsk='EnterPasswordHere'; \n";
+		echo " 	    newkey_mgmt='WPA-PSK'; \n";
+		echo "		document.getElementById(\"{$pskvar}\").focus(); \n";
+		echo " 		   } else { \n";
+		echo " 	    newpsk=''; \n";
+		echo " 	    newkey_mgmt='NONE'; \n";
+		echo " 	   } \n";
+//		echo "	  console.log(newkey_mgmt);\n";
+//		echo "	  console.log(newpsk);\n";
+//		echo "  	  document.getElementById(\"{$pskvar}\").value=newpsk; \n";
+		echo "  	  document.getElementById(\"{$encvar}\").value=newkey_mgmt; \n";
+//		echo "	    var txt=document.getElementById(\"{$pskvar}\").value; \n";
+//		echo "  	  txt= newpsk; \n";
+		echo "    } \n";
+		echo "</script>\n";
+		
+		
+		if(is_array($clean_wi_list)) {
+			foreach($clean_wi_list as $entry => $fields) {
+
 				echo "<tr>";
-				foreach($fields as $field)
-					echo "<td>{$field}</td>";
-				echo "</tr>";
+				$entry = str_replace("\"", "", $entry);
+				//echo "<td>'{$entry}'</a></td>";
+				echo "<td><input type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
+				foreach($fields as $fname =>$field) {
+					switch($fname) {
+						case "bssid":
+							continue 2;
+						case "encryption":
+							echo "<td><input type=\"button\" value=\"{$field}\" name=\"no\" onclick=\"setenc(this.value)\"></td>";
+							break;
+						default:
+							echo "<td>{$field}</td>";
+							break;
+					}
+				}
+				echo "</tr>\n";
 			}
 		}
 		echo "</table>";	
@@ -366,7 +431,7 @@ echo "<textarea name='{$varname}' rows='{$rows}' cols='{$cols}'>{$value}</textar
 
 // Generate a drop down
 function html_select($varname, $options, $selected) {
-	echo "<select name='{$varname}' >";
+	echo "<select name='{$varname}' id='{$varname}' >";
 	foreach($options as $option => $name) {
 		$sel = '';
 		if($option == $selected)
@@ -380,7 +445,7 @@ function html_input($varname, $existing) {
 	$strtype = "text";
 	if(stristr($varname, "password"))
 		$strtype = "password";
-	echo "<input type='${strtype}' name='{$varname}' value='{$existing}' >";
+	echo "<input type='${strtype}' name='{$varname}' id='{$varname}' value='{$existing}' >";
 }
 
 // Generate a radio button
