@@ -37,6 +37,7 @@ echo "Copy loop script to Kiosk user"
 sudo cp -a install/kiosk/kiosk.sh /home/kiosk/kiosk.sh
 
 echo "Copy lxsession autostart to Kiosk user"
+sudo -u kiosk mkdir -p /home/kiosk/.config/lxsession/LXDE/
 sudo cp -a install/kiosk/autostart /home/kiosk/.config/lxsession/LXDE/autostart
 
 echo "Copy xscreensaver config to Kiosk user"
