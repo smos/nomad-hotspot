@@ -9,9 +9,10 @@ function html_header(){
 	
 function html_head(){
 	echo "<html><head><title>Nomad Hotspot</title>";
-	echo "<link rel='stylesheet' href='web.css'>";
+	echo "<link rel='stylesheet' href='web.css'>\n";
+	echo "<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n";
 	echo "</head>";
-	echo "<body bgcolor='black'>\n";
+	echo "<body >\n";
 }
 
 function html_menu(){
@@ -50,14 +51,18 @@ function html_config($state, $uri){
 	switch($uri) {
 		case "/cfgif":
 			config_dhcpcd($state);
+			echo html_interfaces($state);
 			break;
 		case "/cfgwiap":
+			echo html_interfaces($state, "wlan0");
 			config_hostapd($state);
 			break;
 		case "/cfgwiclient":
+			echo html_interfaces($state, "wlan1");
 			config_supplicant($state);
 			break;
 		case "/cfgovpn":
+			echo html_interfaces($state, "tun0");
 			config_openvpn($state);
 			break;
 		
@@ -570,7 +575,7 @@ function html_bw_up($state) {
 	$rest = abs(100 - $height); 
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
-	echo "<table border=0 width='50px' valign='bottom' height='600px'>\n";
+	echo "<table border=0 width='50px' valign='bottom' height='550px'>\n";
 	echo "<tr><td valign='top'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toptx'] * 8)) ."bit</td></tr>\n";
 	echo "<tr><td height='{$rest}%'></td></tr>\n";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
@@ -585,7 +590,7 @@ function html_bw_down($state) {
 
 	echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
 	echo " <div id='bwdown'>";
-	echo "<table border=0 width='50px'valign='top' height='600px'>";
+	echo "<table border=0 width='50px'valign='top' height='550px'>";
 	echo "<tr><td bgcolor='lightblue' height='{$height}%'></td></tr>\n";
 	echo "<tr><td height='{$rest}%'></td></tr>\n";
 	echo "<tr><td valign='bottom'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toprx'] * 8)) ."bit</td></tr>\n";	
@@ -594,15 +599,31 @@ function html_bw_down($state) {
 }
 
 
-function html_interfaces($state){
+function html_interfaces($state, $interface = ""){
+
 	echo " <div id='interfaces'>";
-	echo "<table border=0><tr><td>Interface</td><td>State</td><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
-	foreach ($state['if'] as $ifname => $iface) {	
+	echo "<table border=0>\n";
+	//<tr><td>Interface</td><td>State</td></tr>\n";
+	//echo "<tr><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
+	foreach ($state['if'] as $ifname => $iface) {
+		
+		if(!preg_match("/{$interface}/i", $ifname)) {
+			continue;
+		}
+		
 		$wireless = "&nbsp;";
 		//print_r($iface['wi']);
-		if(is_array($iface['wi']))
-			$wireless = "SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-		echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
+		
+		//echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
+		echo "<tr><td>Interface: {$ifname}, State: ". if_state($state['if'], $ifname)."</td></tr>\n";
+		if(is_array($iface['wi'])) {
+			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
+			echo "<tr><td >{$wireless}</td></tr>\n";
+		}
+		if(!empty(if_prefix($state['if'], $ifname))) {
+			echo "<tr><td >&nbsp;&nbsp;". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
+		}
+		//echo "<tr><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td></tr>\n";
 	}
 	echo "</table>";	
 	echo "</div>\n";		
