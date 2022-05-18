@@ -2,6 +2,7 @@
 
 include("functions.php");
 
+openlog("", LOG_PID, LOG_LOCAL0 );
 // Some settings
 $looptimer = 3;
 
@@ -46,14 +47,14 @@ while (!isset($localif[0])) {
 	$w++;
 }
 $address = $localif[0];
-echo "Found wlan0 address {$address} after $w tries\n";
+msglog("agent.php", "Found wlan0 address {$address} after $w tries");
 start_webserver($address, $state['config']['port'], $webdir);
 
 $i = 0;
 $p = 0;
-echo "Starting up, entering loop\n";
+msglog("agent.php", "Starting up, entering loop");
 // Initial load of firewall rules
-echo "Loading firewall rules\n";
+msglog("agent.php", "Loading firewall rules");
 restart_service("iptables.v4");
 restart_service("iptables.v6");
 
