@@ -373,9 +373,9 @@ function html_wi_network_list($state) {
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
 				
-		//echo "<pre>". print_r($wi_list) ."</pre>";
+		//echo "<pre>". print_r($wi_list, true) ."</pre>";
 		$clean_wi_list = clean_wi_list($wi_list);
-		// echo "<pre>". print_r($clean_wi_list) ."</pre>";
+		// echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
 		
 		$index = count($settings['network']) +1;
 		$ssidvar = "{$index}ssid";

@@ -143,12 +143,17 @@ function clean_wi_list($iw_networks) {
 		$iw_list[$net['ESSID']]['encryption'] = $net['Encryption key'];
 		$iw_list[$net['ESSID']]['bssid'][] = $net['Address'];
 		
+		// Parse quality number
+		preg_match("/Quality\=([0-9]+)\/100/i", $net['Quality'], $matches);
+		
+		$snr = $matches[1];
+		
 		// Only save highest quality
 		if(!isset($iw_list[$net['ESSID']]['snr'])) {
-			$iw_list[$net['ESSID']]['snr'] = $net['Quality'];
+			$iw_list[$net['ESSID']]['snr'] = $snr;
 		} else {
-			if(floatval($net['Quality']) > floatval($iw_list[$net['ESSID']]['snr']))
-				$iw_list[$net['ESSID']]['snr'] = $net['Quality'];
+			if(floatval($snr) > floatval($iw_list[$net['ESSID']]['snr']))
+				$iw_list[$net['ESSID']]['snr'] = $snr;
 		}
 		
 	}
