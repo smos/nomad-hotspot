@@ -496,7 +496,7 @@ function html_jquery_reload(){
 	echo "
 
 \$(document).ready(function() {
-var pageRefresh = 5000; //5 s
+var pageRefresh = 1000; //1 s
     setInterval(function() {
         refresh();
     }, pageRefresh);
