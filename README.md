@@ -28,6 +28,17 @@ Installation
 	- ./bootstrap.sh
 3. Connect to wireless network "Nomad-Hotspot" with password "OnTheRoadAgain".
 	- You can change this later.
+	- Browse to http://172.17.88.1:8000
+	- Click the Wireless icon to connect to a wireless network
+
+Optional
+
+4. Setup a Kiosk screen on the HyperPixel4 if you have it
+	- run "./setupkiosk.sh" and it should set everything up. Might need a 2nd run after a reboot if the browser doesn't launch.
+	- See the install/kiosk directory for some pointers
+	- Raspberry case here: https://www.thingiverse.com/thing:5383201 which also shows screensaver UI
+	- Has a on screen keyboard for basic data entry to connect a wireless network, otherwise use browser from phone.
+
 
 What it does
 - Has a 5Ghz AP named Nomad-Hotspot
@@ -38,8 +49,6 @@ What it does
 - Webserver does show OpenVPN config. Should be more-or-less ExpressVPN compatible.
 - Has a refreshing UI with icons showing state
 
-To get things going.
-
 - In case you want to uninstall you can run the uninstall.sh script which should restore the previous configuration.
 
 Changing the configuration manually
@@ -48,3 +57,19 @@ As you change the configuration files it will compare them and replace as needed
 
 Startup script included and installs systemd service file
 You can have a look at the agent and webserver process by attaching their screen session nomad-hotspot or nomad-webserver. You can detach screen with crtl-a-d
+
+The Kiosk Part
+
+The kiosk profile launches a chromium-browser in a loop and has a virtual keyboard that comes on when requested.
+That way you can connect to a protected wifi network if you also have the screen.
+You can go into the kiosk profile using a "sudo -u kiosk -i"
+You can "killall kiosk.sh" to kill the loop
+You can "killall chromium-browser" to stop the browser
+Set the environment with "DISPLAY=:0" and "export DISPLAY"
+If you install x11vnc, you can launch x11vnc under the kiosk user to get the display.
+
+Case for the Pi and Screen
+I used the following case from Thingiverse as the source. https://www.thingiverse.com/thing:4095591 and
+made a few changes so it can have a slide cover for the display for transport and night dimming reasons.
+https://www.thingiverse.com/thing:5383201
+
