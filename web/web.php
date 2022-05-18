@@ -342,7 +342,7 @@ function config_supplicant($state) {
 	}
 	echo "</td></tr></table>\n";
 	echo " <div id='wilist'>";
-	echo "<table border=1><tr><td>Loading Wireless network list ..\n";
+	echo "<table border=1><tr><td>Loading Wireless network list ...\n";
 	echo "<script type='text/javascript'>\n";
 	echo "
 		\$(document).ready(function() {
@@ -357,6 +357,8 @@ function config_supplicant($state) {
 function html_wi_network_list($state) {
 	echo " <div id='wilist'>";
 	echo "<table border=1><tr><td>";
+	$settings = config_read_supplicant($state);
+
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
 		if($ifname == "wlan0")
@@ -375,7 +377,7 @@ function html_wi_network_list($state) {
 		$clean_wi_list = clean_wi_list($wi_list);
 		// echo "<pre>". print_r($clean_wi_list) ."</pre>";
 		
-		$index = count($settings['network']);
+		$index = count($settings['network']) +1;
 		$ssidvar = "{$index}ssid";
 		$encvar = "{$index}key_mgmt";
 		$pskvar = "{$index}psk";
