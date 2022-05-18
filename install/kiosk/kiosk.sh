@@ -20,11 +20,11 @@ unclutter &
 # Nothing started? Enter the loop
 while true
 do
-	rsync -a --delete ~/chromium-default ~/.config/chromium
+	rsync -a --delete ~/chromium-default/ ~/.config/chromium/
 	# If Chromium crashes (usually due to rebooting), clear the crash flag so we don't have the annoying warning bar
 	sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' ~/.config/chromium/Default/Preferences
 	sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' ~/.config/chromium/Default/Preferences
 	chromium-browser --app="$URL" --no-default-browser-check --no-first-run --noerrdialogs --disable-gpu \
 	--disable-restore-background-contents --start-maximized --bwsi --disable-infobars --no-error-dialogs --disable-translate \
-	--window-size=480,800 --window-position=0,0
+	--window-size=470,800 --window-position=0,0
 done
