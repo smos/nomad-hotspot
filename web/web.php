@@ -51,18 +51,23 @@ function html_config($state, $uri){
 	switch($uri) {
 		case "/cfgif":
 			config_dhcpcd($state);
+			echo html_jquery_reload_cfgif();
 			echo html_interfaces($state);
 			break;
 		case "/cfgwiap":
 			echo html_interfaces($state, "wlan0");
+			echo html_jquery_reload_cfgap();
 			config_hostapd($state);
 			break;
 		case "/cfgwiclient":
 			echo html_interfaces($state, "wlan1");
+			echo html_jquery_reload_cfgwi();
 			config_supplicant($state);
+			echo html_jquery_reload_wilist();
 			break;
 		case "/cfgovpn":
 			echo html_interfaces($state, "tun0");
+			echo html_jquery_reload_cfgvpn();
 			config_openvpn($state);
 			break;
 		
@@ -322,7 +327,7 @@ function config_supplicant($state) {
 				echo "<br>\n";
 				break;
 			case "network":
-				echo "Client networks to connect to:<br/>";
+				//echo "Client networks to connect to:<br/>";
 				foreach($setting as $index => $values){
 					echo "Index {$index} <br>\n";
 					echo "SSID: ";
@@ -335,19 +340,23 @@ function config_supplicant($state) {
 				}			
 		}		
 	}
-/*	
-	echo "New Entry<br/>";
-	$index = 0;
+	echo "</td></tr></table>\n";
+	echo " <div id='wilist'>";
+	echo "<table border=1><tr><td>Loading Wireless network list ..\n";
+	echo "<script type='text/javascript'>\n";
+	echo "
+		\$(document).ready(function() {
+			\$('#wilist').load(\"/wilist\");
+		});
+";
+	echo "</script>\n";
+	echo "</td></tr></table>\n";
+	echo "</div>\n";
+}
 
-		echo "SSID: ";
-		html_input("{$index}ssid", $_GET['ssid']) ."<br>";
-		echo "Pre Shared Key: ";
-		html_input("{$index}psk", $_GET['psk']) ."<br>";
-		echo "Type: ";
-		html_select("{$index}key_mgmt", $key_mgmt, $_GET['key_mgmt']) ."<br/>";
-		echo "<br>";
-	*/
-	//echo "<pre>". print_r($settings, true);
+function html_wi_network_list($state) {
+	echo " <div id='wilist'>";
+	echo "<table border=1><tr><td>";
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
 		if($ifname == "wlan0")
@@ -422,8 +431,7 @@ function config_supplicant($state) {
 		echo "</table>";	
 	}
 	echo "</td></tr></table>\n";
-
-
+	echo "</div>\n";
 }
 
 function html_hidden($varname, $value){
@@ -528,6 +536,117 @@ function refresh() {
     \$('#bwup').load(\"/bwup\");
     \$('#bwdown').load(\"/bwdown\");
     \$('#clients').load(\"/clients\");
+}
+
+";
+	echo "</script>";
+
+}
+
+
+function html_jquery_reload_cfgif(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pageifRefresh = 1000; //1 s
+    setInterval(function() {
+        ifrefresh();
+    }, pageifRefresh);
+});
+
+	// Functions
+
+function ifrefresh() {
+    \$('#interfaces').load(\"/interfaces\");
+}
+
+";
+	echo "</script>";
+
+}
+
+function html_jquery_reload_cfgwi(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pageifRefresh = 1000; //1 s
+    setInterval(function() {
+        ifrefresh();
+    }, pageifRefresh);
+});
+
+	// Functions
+
+function ifrefresh() {
+    \$('#interfaces').load(\"/interfacewlan1\");
+}
+
+";
+	echo "</script>";
+
+}
+
+function html_jquery_reload_cfgap(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pageifRefresh = 1000; //1 s
+    setInterval(function() {
+        ifrefresh();
+    }, pageifRefresh);
+});
+
+	// Functions
+
+function ifrefresh() {
+    \$('#interfaces').load(\"/interfacewlan0\");
+}
+
+";
+	echo "</script>";
+
+}
+
+function html_jquery_reload_wilist(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pagewiRefresh = 30000; //30 s
+    setInterval(function() {
+        wirefresh();
+    }, pagewiRefresh);
+});
+
+	// Functions
+
+function wirefresh() {
+    \$('#wilist').load(\"/wilist\");
+}
+
+";
+	echo "</script>";
+
+}
+
+function html_jquery_reload_cfgvpn(){
+	echo "<script type='text/javascript'>\n";
+	echo "
+
+\$(document).ready(function() {
+var pageifRefresh = 1000; //1 s
+    setInterval(function() {
+        ifrefresh();
+    }, pageifRefresh);
+});
+
+	// Functions
+
+function ifrefresh() {
+    \$('#interfaces').load(\"/interfacetun0\");
 }
 
 ";

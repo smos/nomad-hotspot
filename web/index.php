@@ -13,8 +13,8 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			// html containing refreshing status divs
 			echo html_header();
 			echo html_head();
-			echo html_menu();
 			echo html_jquery();
+			echo html_menu();
 			echo html_status($state);
 			echo html_jquery_reload();
 			echo html_foot();	
@@ -22,6 +22,22 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/interfaces":
 			// interface status div
 			echo html_interfaces($state);
+			break;
+		case "/interfacewlan0":
+			// interface status div
+			echo html_interfaces($state, "wlan0");
+			break;
+		case "/interfacewlan1":
+			// interface status div
+			echo html_interfaces($state, "wlan1");
+			break;
+		case "/interfacetun0":
+			// interface status div
+			echo html_interfaces($state, "tun0");
+			break;
+		case "/wilist":
+			// clients status div 
+			echo html_wi_network_list($state);
 			break;
 		case "/clients":
 			// clients status div 
@@ -40,6 +56,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/cfgovpn":
 			echo html_header();
 			echo html_head();
+			echo html_jquery();
 			echo html_menu();
 			echo html_config($state, $_SERVER["REQUEST_URI"]);
 			echo html_foot();	
