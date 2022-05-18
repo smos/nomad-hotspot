@@ -19,6 +19,7 @@ $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
 $state['clients'] = array();
+$state['log']['agent.php'] = array;
 // Where the configs live
 $basedir = "/home/{$_SERVER['LOGNAME']}/nomad-hotspot";
 $cfgdir = "conf";
