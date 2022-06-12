@@ -187,6 +187,7 @@ function config_dhcpcd($state) {
 	//echo print_r($settings, true);
 	// Will want to write dnsmasq.conf too, for LAN address(es) and dhcp range(s).
 }
+
 function config_hostapd($state) {
 	echo "<br>Config interfaces hostapd: <br>";
 	echo "<table border=1><tr><td>";
@@ -195,7 +196,7 @@ function config_hostapd($state) {
 		switch($varname) {
 			case "country_code":
 				echo "Country setting for Wireless AP adapter: ";
-				html_select($varname, array("NL" => "NL", "US" => "US", "JP" => "JP"), $setting);			
+				html_select($varname, array("NL" => "NL", "US" => "US", "JP" => "JP"), $setting);
 				break;
 			case "interface":
 				echo "AP Interface: ";
@@ -220,20 +221,20 @@ function config_hostapd($state) {
 			case "wpa_pairwise":
 				echo "WPA Keying: ";
 				html_select($varname, array("TKIP" => "TKIP"), $setting);
-				break;				
+				break;
 			case "rsn_pairwise":
 				echo "RSN Keying: ";
 				html_select($varname, array("CCMP" => "CCMP"), $setting);
-				break;				
+				break;
 			case "hw_mode":
 				echo "AP band: ";
 				html_select($varname, array("a" => "a", "n"=>"n"), $setting);
-				break;				
+				break;
 			case "channel":
 				echo "AP Channel: "; 
-				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => 44, 48 => 48), $setting);			
+				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => 44, 48 => 48), $setting);
 				break;
-		}		
+		}
 		echo "<br>";
 	}
 	echo "</td></tr></table>\n";
@@ -334,12 +335,12 @@ function config_supplicant($state) {
 	}
 	// Empty item at the end for adding new entry
 	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE");
-	
+
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
 			case "country":
 				echo "Country setting for Wireless adapter: ";
-				html_select($varname, $countries, $setting);			
+				html_select($varname, $countries, $setting);
 				echo "<br>\n";
 				break;
 			case "network":
@@ -353,8 +354,8 @@ function config_supplicant($state) {
 					echo "Type: ";
 					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>\n";
 					echo "<br>";
-				}			
-		}		
+				}
+		}
 	}
 	echo "</td></tr></table>\n";
 	echo " <div id='wilist'>";
@@ -382,17 +383,17 @@ function html_wi_network_list($state) {
 
 		if(empty($state['if'][$ifname]['wi']))
 			continue;
-		
+
 		echo "<strong>Wireless network list {$ifname}</strong><br>";
 		echo "<table border=1><tr><td>ssid</td><td>encryption</td><td>Quality</td></tr>\n";
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
-				
+
 		//echo "<pre>". print_r($wi_list, true) ."</pre>";
 		$clean_wi_list = clean_wi_list($wi_list);
 		// echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
-		
+
 		$index = count($settings['network']) +1;
 		$ssidvar = "{$index}ssid";
 		$encvar = "{$index}key_mgmt";
@@ -446,7 +447,7 @@ function html_wi_network_list($state) {
 				echo "</tr>\n";
 			}
 		}
-		echo "</table>";	
+		echo "</table>";
 	}
 	echo "</td></tr></table>\n";
 	echo "</div>\n";

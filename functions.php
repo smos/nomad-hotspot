@@ -427,6 +427,10 @@ function config_read_supplicant($state) {
 					$settings['network'][$i][$matches[1][0]] = $matches[2][0];
 					break;
 				case "ssid":
+					$settings['network'][$i][$matches[1][0]] = substr($matches[2][0], 1, -1);
+					if($settings['network'][$i][$matches[1][0]] == "")
+						$settings['network'][$i][$matches[1][0]] = "any";
+					break;
 				case "psk":
 					$settings['network'][$i][$matches[1][0]] = substr($matches[2][0], 1, -1);
 					break;
@@ -444,6 +448,7 @@ function config_write_supplicant($settings) {
 	$conf_a = array();
 	$conf_a[] = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev";
 	$conf_a[] = "update_config=1";
+	$conf_a[] = "bgscan=\"simple:30:-70:3600\"";
 	$conf_a[] = "";
 	if(is_writeable($conf)) {
 		$i = 0;
@@ -458,10 +463,22 @@ function config_write_supplicant($settings) {
 						// Skip empty entries
 						if(($setting['ssid'] == "") && ($setting['psk'] == "") &&($setting['priority'] == "-1"))
 							continue;
+
+						if($setting['ssid'] == "any")
+							$setting['priority'] = "-9";
+
 						foreach($values as $name => $value) {
 							$var = "{$index}{$name}";
 							switch($name) {
 								case "ssid":
+									// Override the any setting to ""
+									if($settings['network'][$index][$name] != "") {
+										if($settings['network'][$index][$name] == "any")
+											$conf_a[] = "    {$name}=\"\"";
+										else
+											$conf_a[] = "    {$name}=\"{$settings['network'][$index][$name]}\"";
+									}
+									break;
 								case "psk":
 									// Don't leave empty PSK fields, that is illegal config.
 									if($settings['network'][$index][$name] != "")
