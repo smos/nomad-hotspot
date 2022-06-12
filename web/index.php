@@ -6,7 +6,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 } else {
 	include "../functions.php";
 	$state = read_shm($shm_id, $shm_size);
-	
+
 	switch($_SERVER["REQUEST_URI"]) {
 		case "/":
 		case "/status":

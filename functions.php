@@ -3,6 +3,7 @@
 // Shared memory for exchanging between proc and webserver
 $shm_size = 32768;
 $shm_id = create_shm($shm_size);
+
 // You can list and delete these with ipcs and ipcrm -m 0
 // Config files we know about
 $cfgmap = array(
@@ -15,6 +16,7 @@ $cfgmap = array(
 			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
 			"iptables.v4" => "/etc/iptables/iptables.v4",
 			"iptables.v6" => "/etc/iptables/iptables.v6",
+			"config.json" => "config.json",
 			);
 // Processes we know about
 $procmap = array(
@@ -61,6 +63,40 @@ function msglog($process = "", $msg = "") {
 	}
 		
 
+}
+
+function save_config ($cfgfile, $config){
+	global $state;
+	if(empty($cfgfile))
+		return false;
+
+	//echo "<pre>". print_r($state['config'], true) . "</pre>";
+	file_put_contents($cfgfile, json_encode($config, JSON_PRETTY_PRINT));
+	msglog("agent.php", "saving config to json");
+
+	$state['config'] = $config;
+	echo "<pre>". print_r($state['config'], true) . "</pre>";
+
+	return true;
+}
+
+function read_config ($cfgfile){
+	if(empty($cfgfile))
+		return false;
+
+
+	// echo "<pre>". print_r($cfgfile, true) . "</pre>";
+
+	$config = json_decode(file_get_contents($cfgfile), true);
+	// msglog("agent.php", "reading config.json to state");
+
+	// print_r($config);
+	if(empty($config))
+		$config['port'] = 8000;
+
+	// print_r($config);
+
+	return($config);
 }
 
 function find_wan_interface($state) {
@@ -1128,6 +1164,7 @@ function compare_cfg_files ($dir) {
 }
 
 function process_cfg_changes($chglist) {
+	global $state;
 	foreach($chglist as $file => $mtime) {
 		switch($file) {
 			case "client.ovpn.login":
@@ -1152,6 +1189,9 @@ function process_cfg_changes($chglist) {
 			case "iptables.v6":
 				copy_config($file);
 				restart_service($file);
+				break;
+			case "config.json":
+				$state['config'] = read_config($state['cfgfile']);
 				break;
 			default:
 				echo "What is this mythical config file '{$file}' of which you speak?\n";

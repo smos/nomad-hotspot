@@ -70,13 +70,17 @@ function html_config($state, $uri){
 			echo html_jquery_reload_cfgvpn();
 			config_openvpn($state);
 			break;
-		
+
 	}
-	html_form_close();		
+	html_form_close();
 }
 
 function config_openvpn($state) {
 	echo "<br>Config OpenVPN<br>";
+	// global $shm_id;
+	// global $state;
+	$state['config'] = read_config($state['cfgfile']);
+	//echo "<pre> blah ". print_r($state['config'], true) . "</pre>";
 
 	if(!empty($_POST)) {
 		//print_r($_POST);
@@ -108,25 +112,37 @@ function config_openvpn($state) {
 				$loginerror = true;
 			} else {
 				config_write_ovpn_login($credentials);
-			}						
+			}
 		}
-		if($enabled == "on") {
+		if(($enabled == "on") && ($state['config']['openvpn'] != true)) {
 			$state['config']['openvpn'] = true;
+			//write_shm($shm_id, $state);
+			echo "<pre>";
+			save_config($state['cfgfile'], $state['config']);
 			enable_service("client.ovpn");
 			restart_service("client.ovpn");
+			echo "</pre>";
 		} else {
 			$state['config']['openvpn'] = false;
+			//write_shm($shm_id, $state);
+			echo "<pre>";
+			save_config($state['cfgfile'], $state['config']);
 			stop_service("client.ovpn");
 			disable_service("client.ovpn");
+			echo "</pre>";
 		}
 	}
 
 	$settings = config_read_ovpn($state);
+	$state['config'] = read_config($state['cfgfile']);
+	//echo "<pre> blah ". print_r($state['config'], true) . "</pre>";
 
-	echo "OpenVPN Enable<br>";
-	if($state['config']['openvon'] == true)
-		$checked = "checked";
-	html_checkbox("enable", "on", "{checked}");
+	echo "OpenVPN Enabled<br>";
+	if(isset($state['config']['openvpn'])) {
+		//echo "hoi;";
+		$checked = "on";
+	}
+	html_checkbox("enable", "on", $checked);
 	echo "<br>";
 	echo "OpenVPN client username. Existing not shown.<br>";
 	html_input("username", "");
@@ -140,7 +156,7 @@ function config_openvpn($state) {
 
 
 	//echo "<pre>". print_r($settings, true);
-
+	return $state;
 }
 
 function config_dhcpcd($state) {
@@ -154,10 +170,10 @@ function config_dhcpcd($state) {
 		//print_r($setting);
 		html_hidden("interface", $ifname);
 		echo "Mode: ";
-		html_radio("{$ifname}mode", array("dhcp" => "dhcp", "static" => "static"), $setting['mode']);			
+		html_radio("{$ifname}mode", array("dhcp" => "dhcp", "static" => "static"), $setting['mode']);
 		echo "<br>";
 		echo "AP mode: ";
-		html_checkbox("{$ifname}nohook", "wpa_supplicant", $setting['nohook']);			
+		html_checkbox("{$ifname}nohook", "wpa_supplicant", $setting['nohook']);
 		echo "<br>";
 		echo "IP4 Address: ";
 		html_input("{$ifname}ip4", $setting['ip4']);
