@@ -90,6 +90,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_header();
 			echo html_head();
 			echo html_jquery();
+			echo html_menu();
 			echo html_logs($state);
 			echo html_foot();
 			break;
