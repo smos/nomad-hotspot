@@ -56,9 +56,10 @@ function msglog($process = "", $msg = "") {
 		echo "{$time}: {$msg}\n";
 
 		// Prune array
-		while(count($state['log'][$process]) > 10) {
-			array_shift($state['log'][$process]);			
-		}
+		//while(count($state['log'][$process]) > 20) {
+		//	array_shift($state['log'][$process]);			
+		//}
+		//write_shm($shm_id, $state);
 			
 	}
 		
@@ -75,7 +76,7 @@ function save_config ($cfgfile, $config){
 	msglog("agent.php", "saving config to json");
 
 	$state['config'] = $config;
-	echo "<pre>". print_r($state['config'], true) . "</pre>";
+	//echo "<pre>". print_r($state['config'], true) . "</pre>";
 
 	return true;
 }
@@ -713,7 +714,7 @@ function parse_portal_page($url = ""){
 				$state['internet']['url'] = $url;
 			}
 		}
-		print_r($metamatches);
+		//print_r($metamatches);
 		if(isset($metamatches[1])) {
 			if(strstr($metamatches[1], "http")) {
 				$url = $metamatches[1];
@@ -800,7 +801,7 @@ function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 		return false;
 	$request = array();
 	// Transform form into associative array, 1st item only
-	print_r($forms_a);
+	//print_r($forms_a);
 	$form_a = transform_form_to_array($forms_a[0][0]);
 	//print_r($form_a);
 	foreach($form_a[1] as $key => $value) {
@@ -815,7 +816,7 @@ function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 				break;
 		}
 	}
-	print_r($request);
+	//print_r($request);
 	// No form? No go.
 	if(!isset($request['form']))
 		return false;

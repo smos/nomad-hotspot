@@ -35,8 +35,6 @@ $state['clients'] = array();
 // Where the web files live
 $webdir = $basedir ."/". "web";
 
-// print_r($_SERVER);
-
 // If we have a screen we dim the brightness
 if(is_executable("/usr/local/bin/pwm"))
 	exec("sudo pwm 19 1000000 135000");

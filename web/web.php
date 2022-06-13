@@ -24,7 +24,7 @@ function html_menu(){
 	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apblue.png' alt='Wifi AP'></a></td>";
 	echo "<td><a href='/cfgwiclient'><img height='50px' src='images/wifi.png' alt='Wifi Client'></a></td>";
 	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnblue.png' alt='OpenVPN'></a></td>";
-	echo "<td><a href='/json'><img height='50px' src='images/json.png' alt='JSON'></a></td>";
+	echo "<td><a href='/logs'><img height='50px' src='images/json.png' alt='Logs'></a></td>";
 	echo "<tr></table>\n";
 }	
 
@@ -692,6 +692,63 @@ function html_status($state){
 	echo html_clients($state);
 	//echo " <div id='processes'></div>\n";
 	//echo html_processes($state);
+}
+
+function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
+	switch($proc) {
+		case "agent.php":
+		case "web.php":
+		case "hostapd":
+		case "ovpn-client":
+			break;
+		default:
+			return false;		
+	}
+	$limit = intval($limit);
+	$cmd = "awk '/{$proc}/ {print $0}' '{$logfile}'| tail -n{$limit}";
+	if($cmd != ""){
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			msglog("web.php", "Failed to fetch log results for {$proc}");
+			return false;
+		}
+	}
+	return $out;
+}
+
+function html_log ($state) {
+	echo "<div id='logs'>";
+	$cats = array("Agent" => "agent.php", "Web" => "web.php", "Accesspoint" => "hostapd", "OpenVPN" => "ovpn-client");
+	foreach($cats as $name => $proc) {
+		echo "<table border=0>";
+		echo "<tr><td>{$name}</td></tr>\n";
+		 
+		foreach(filter_log($proc) as $line) {
+			$line = preg_replace("/nomad-hotspot/", "", $line);
+			echo "<tr><td>{$line}</td></tr>\n";
+		}
+		echo "</table>\n";
+	}
+	echo "</div>";
+	
+}
+
+function html_logs($state){
+	echo "<table border=0><tr><td valign=top>";
+	echo "</td></tr>\n";
+	echo html_log($state);
+	echo "<tr><td>\n";
+	echo html_clients($state);
+	echo "</td></tr>\n";
+	echo "<tr><td>\n";
+	echo "<div id='json'>";
+	echo "<a href='/json?'>JSON</a>";
+	echo "<pre>";
+	echo json_encode($state, JSON_PRETTY_PRINT);
+	echo "</pre>";
+	echo "</div>";
+	echo "</td></tr>\n";
+	echo "</table>";
 }
 
 function html_status_screensaver($state){

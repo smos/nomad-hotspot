@@ -85,6 +85,14 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			// status div screensaver
 			echo html_bw_down($state);
 			break;
+		case "/logs":
+			// logs
+			echo html_header();
+			echo html_head();
+			echo html_jquery();
+			echo html_logs($state);
+			echo html_foot();
+			break;
 	}
 	//print_r($_SERVER["REQUEST_URI"]);
 }
