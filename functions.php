@@ -462,32 +462,31 @@ function config_write_supplicant($settings) {
 					foreach($setting as $index => $values){
 						$conf_a[] = "network={";
 						// Skip empty entries
-						if(($setting['ssid'] == "") && ($setting['psk'] == "") &&($setting['priority'] == "-1"))
+						if(($values['ssid'] == "") && ($values['psk'] == ""))
 							continue;
 
-						if($setting['ssid'] == "any")
-							$setting['priority'] = "-9";
+						if($values['ssid'] == "any") {
+							$values['priority'] = "-9";
+							$values['ssid'] = "";
+							//echo print_r($settings['network'][$index], true);
+						}
 
+							
 						foreach($values as $name => $value) {
 							$var = "{$index}{$name}";
 							switch($name) {
 								case "ssid":
 									// Override the any setting to ""
-									if($settings['network'][$index][$name] != "") {
-										if($settings['network'][$index][$name] == "any")
-											$conf_a[] = "    {$name}=\"\"";
-										else
-											$conf_a[] = "    {$name}=\"{$settings['network'][$index][$name]}\"";
-									}
+									$conf_a[] = "    {$name}=\"{$values[$name]}\"";
 									break;
 								case "psk":
 									// Don't leave empty PSK fields, that is illegal config.
-									if($settings['network'][$index][$name] != "")
-										$conf_a[] = "    {$name}=\"{$settings['network'][$index][$name]}\"";
+									if($values[$name] != "")
+										$conf_a[] = "    {$name}=\"{$values[$name]}\"";
 									break;
 								case "priority":
 								case "key_mgmt":
-									$conf_a[] = "    {$name}={$settings['network'][$index][$name]}";
+									$conf_a[] = "    {$name}={$values[$name]}";
 									break;
 							}
 						}
