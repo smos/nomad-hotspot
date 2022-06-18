@@ -104,7 +104,7 @@ function config_openvpn($state) {
 					break;
 			}
 		}
-		if((!empty($_POST['username'])) && (!empty($_POST['username']))){
+		if((!empty($_POST['username'])) && (!empty($_POST['password']))){
 			echo "Found new Login data <br>";
 			$credentials = array("{$username}", "{$password}");
 			if(count ($credentials) < 2) {
@@ -114,22 +114,24 @@ function config_openvpn($state) {
 				config_write_ovpn_login($credentials);
 			}
 		}
-		if(($enabled == "on") && ($state['config']['openvpn'] != true)) {
-			$state['config']['openvpn'] = true;
-			//write_shm($shm_id, $state);
-			echo "<pre>";
-			save_config($state['cfgfile'], $state['config']);
-			enable_service("client.ovpn");
-			restart_service("client.ovpn");
-			echo "</pre>";
-		} else {
-			$state['config']['openvpn'] = false;
-			//write_shm($shm_id, $state);
-			echo "<pre>";
-			save_config($state['cfgfile'], $state['config']);
-			stop_service("client.ovpn");
-			disable_service("client.ovpn");
-			echo "</pre>";
+		if(!empty($_POST['enable'])) {
+			if(($enabled == "on") && ($state['config']['openvpn'] != true)) {
+				$state['config']['openvpn'] = true;
+				//write_shm($shm_id, $state);
+				echo "<pre>";
+				save_config($state['cfgfile'], $state['config']);
+				enable_service("client.ovpn");
+				restart_service("client.ovpn");
+				echo "</pre>";
+			} else {
+				$state['config']['openvpn'] = false;
+				//write_shm($shm_id, $state);
+				echo "<pre>";
+				save_config($state['cfgfile'], $state['config']);
+				stop_service("client.ovpn");
+				disable_service("client.ovpn");
+				echo "</pre>";
+			}
 		}
 	}
 
