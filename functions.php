@@ -30,13 +30,65 @@ $procmap = array(
 
 // Start PHP builtin webserver for the local interface on port 8000
 function start_webserver($address, $port, $dir){
+	create_certificate();
+	create_stunnel4_config($address, $port);
+	start_stunnel4();
+	
+
+
 	// Start in a detached screen session
 	msglog("agent.php", "Starting webserver on adress {$address} and port {$port} in dir {$dir}");
 	$cmd = "screen -d -m -S nomad-webserver php -S $address:$port -t $dir";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		msglog("agent.php", "Failed to start webserver process in screen");
+		
 
+	// Start in a detached screen session
+	msglog("redirect.php", "Starting redirect webserver on adress {$address} and port 80");
+	$cmd = "screen -d -m -S nomad-redirect sudo php -S $address:80 $dir/redirect.php";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		msglog("agent.php", "Failed to start webserver process in screen");
+
+}
+
+function start_stunnel4() {
+	// Start in a detached screen session
+	msglog("stunnel4", "Starting redirect https webserver on port 443");
+	$cmd = "screen -d -m -S nomad-stunnel sudo stunnel4 ssl/stunnel4.conf";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		msglog("agent.php", "Failed to start webserver process in screen");
+
+}
+
+function create_stunnel4_config($address, $port){
+
+$cfg = "
+
+[webserver]
+accept = {$address}:443
+connect = {$address}:{$port}
+
+cert = ssl/nomad-hotspot.crt
+key = ssl/nomad-hotspot.keygen
+
+";
+
+file_put_contents("ssl/stunnel4.conf", $cfg);
+
+}
+
+function create_certificate() {
+if(!file_exists("ssl/nomad-hotspot.crt")) {
+
+$cmd = "openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout ssl/nomad-hotspot.key -out ssl/nomad-hotspot.crt -batch";
+
+exec($cmd, $out, $ret);
+	if($ret > 0)
+		msglog("agent.php", "failed toe generate new certificate");
+}
 }
 
 function msglog($process = "", $msg = "") {
@@ -367,9 +419,12 @@ function read_shm($shm_id, $shm_size) {
 }
 // Working DNS check
 function working_dns($dns) {
+	global $state;
 	$gdns = check_gdns_rec();
 	if(($gdns === true) && ($dns != "OK")){
 		msglog("agent.php", "Looks like we have a sane DNS for dns.google");
+		if($state['config']['openvpn'] == true)
+			start_service("client.ovpn");
 		return "OK";
 	}
 	if(($gdns === false) && ($dns != "NOK")) {
