@@ -54,6 +54,9 @@ function start_webserver($address, $port, $dir){
 }
 
 function start_stunnel4() {
+	if(!is_executable("/usr/bin/stunnel4"))
+		exec("sudo apt install stunnel4");
+		
 	// Start in a detached screen session
 	msglog("stunnel4", "Starting redirect https webserver on port 443");
 	$cmd = "screen -d -m -S nomad-stunnel sudo stunnel4 ssl/stunnel4.conf";
