@@ -3,7 +3,7 @@
 # Hi, let's get some requirements out of the way
 
 echo "Installing some software requirements"
-sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent
+sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4
 
 echo "Save original configuration files"
 cd ~/nomad-hotspot/orig
