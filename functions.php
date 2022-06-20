@@ -75,7 +75,7 @@ accept = {$address}:443
 connect = {$address}:{$port}
 
 cert = ssl/nomad-hotspot.crt
-key = ssl/nomad-hotspot.keygen
+key = ssl/nomad-hotspot.key
 
 ";
 
