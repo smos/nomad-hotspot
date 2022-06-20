@@ -2,7 +2,7 @@ Hi There
 
 Open Source Wifi Travel Router based on Raspberry Pi OS (lite) with web UI.
 WebUI demo on YouTube
-https://youtu.be/EVa4HDayCnA
+https://youtu.be/01yDtZZiN-k
 
 So this is my attempt at a basic Open Source Wifi Travel Router, to scratch my personal itch.
 
