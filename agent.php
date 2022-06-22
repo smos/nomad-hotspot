@@ -20,17 +20,18 @@ if(strstr($_SERVER['DOCUMENT_ROOT'], "web")) {
 $cfgfile = "{$basedir}/{$cfgdir}/config.json";
 $state['config'] = read_config($cfgfile);
 $state['cfgfile'] = $cfgfile;
-
-$state['log']['agent.php'] = array();
-$state['if'] = array();
-$state['stats'] = array();
-$state['proc'] = array();
 $state['time'] = time();
 // Assume we start with no working internet
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
 $state['clients'] = array();
+
+$state['log']['agent.php'] = array();
+$state['if'] = array();
+$state['stats'] = array();
+$state['proc'] = array();
+
 
 // Where the web files live
 $webdir = $basedir ."/". "web";
@@ -95,7 +96,7 @@ while (true) {
 		$p = 0;
 	}
 	// store leases
-	$state['leases']= parse_dnsmasq_leases();
+	$state['clients']= parse_dnsmasq_leases();
 
 	$state['time'] = time();
 	write_shm($shm_id, $state);

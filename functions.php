@@ -299,10 +299,10 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 			$ifstate[$ifname]['stats64start'] = $iflist[$ifname]['stats64'];
 
 		if(if_state($iflist, $ifname) == "UP") {
-			$lease[$ifname] = dump_dhcp_lease($iflist, $ifname);
+			$state['leases'][$ifname] = dump_dhcp_lease($iflist, $ifname);
 			//print_r($lease);
-			if(isset($lease[$ifname]['domain_name_servers'])) {
-				foreach(explode(" ", $lease[$ifname]['domain_name_servers']) as $dns_server) {
+			if(isset($state['leases'][$ifname]['domain_name_servers'])) {
+				foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
 					msglog("agent.php", "Adding route to DNS Server {$dns_server} via default GW of {$ifname}");
 					route_add($dns_server, "");
 				}

@@ -873,13 +873,16 @@ function html_connectivity_screensaver($state){
 		case "NOK":
 			$img = "images/nogo.png";
 			break;;
+		case "DNSERR":
+			$img = "images/nogo.png";
+			break;;
 		default:
 			$img = "images/globegrey.png";
 			break;;
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
 	// DNS
-	switch($state['internet']['captive']) {
+	switch($state['internet']['dns']) {
 		case "OK":
 			$img = "images/dnsgreen.png";
 			break;;
@@ -910,7 +913,7 @@ function html_clients($state){
 	echo " <div id='clients'>";
 	echo "<table border=0><tr><td>Client</td><td>Address</td><td>Time</td></tr>\n";
 	if(is_array($state['clients']))
-	foreach ($state['leases'] as $entry => $val) {
+	foreach ($state['clients'] as $entry => $val) {
 		echo "<tr><td>{$val['hostname']}</td><td>{$val['ip4']}<br/>{$val['mac']}</td><td>". date("Y-m-d H:i:s", $val['time']) ."</td></tr>\n";
 	}
 	echo "</table>";
