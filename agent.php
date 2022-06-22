@@ -25,7 +25,9 @@ $state['time'] = time();
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
 $state['internet']['ping'] = false;
+$state['leases'] = array();
 $state['clients'] = array();
+
 
 $state['log']['agent.php'] = array();
 $state['if'] = array();

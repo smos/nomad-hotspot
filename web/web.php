@@ -818,7 +818,13 @@ function html_interfaces($state, $interface = ""){
 			echo "<tr><td >{$wireless}</td></tr>\n";
 		}
 		if(!empty(if_prefix($state['if'], $ifname))) {
-			echo "<tr><td >&nbsp;&nbsp;". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
+			echo "<tr><td >&nbsp;&nbsp;IP ". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
+		}
+		if(!empty($state['leases'][$ifname]['domain_name_servers'])) {
+			echo "<tr><td >&nbsp;&nbsp;DNS {$state['leases'][$ifname]['domain_name_servers']}</td></tr>\n";
+		}
+		if(!empty($state['leases'][$ifname]['routers'])) {
+			echo "<tr><td >&nbsp;&nbsp;Gateway {$state['leases'][$ifname]['routers']}</td></tr>\n";
 		}
 		//echo "<tr><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td></tr>\n";
 	}
@@ -839,6 +845,8 @@ function html_connectivity($state){
 		
 }
 function html_connectivity_screensaver($state){
+	$hrefo = "";
+	$hrefc = "";
 	echo " <div id='connectivityscreensaver'>";
 	echo "<table>";
 	// VPN
@@ -870,8 +878,11 @@ function html_connectivity_screensaver($state){
 		case "OK":
 			$img = "images/globe{$color}.png";
 			break;;
+		case "PORTAL":
 		case "NOK":
 			$img = "images/nogo.png";
+			$hrefo = "<a target='_parent' href='http://www.msftconnecttest.com/connecttest.txt' >";
+			$hrefc = "</a>";
 			break;;
 		case "DNSERR":
 			$img = "images/nogo.png";
@@ -880,7 +891,7 @@ function html_connectivity_screensaver($state){
 			$img = "images/globegrey.png";
 			break;;
 	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'></td></tr>\n";
+	echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td></tr>\n";
 	// DNS
 	switch($state['internet']['dns']) {
 		case "OK":
