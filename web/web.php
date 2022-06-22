@@ -744,10 +744,12 @@ function html_logs($state){
 	echo "</td></tr>\n";
 	echo "<tr><td>\n";
 	echo "<div id='json'>";
+	echo "<table><tr><td>";
 	echo "<a href='/json?'>JSON</a>";
 	echo "<pre>";
 	echo json_encode($state, JSON_PRETTY_PRINT);
 	echo "</pre>";
+	echo "</td></tr></table>";
 	echo "</div>";
 	echo "</td></tr>\n";
 	echo "</table>";
@@ -815,7 +817,7 @@ function html_interfaces($state, $interface = ""){
 		echo "<tr><td>Interface: {$ifname}, State: ". if_state($state['if'], $ifname)."</td></tr>\n";
 		if(is_array($iface['wi'])) {
 			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-			echo "<tr><td >{$wireless}</td></tr>\n";
+			echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Channel {$iface['wi']['channel']}</td></tr>\n";
 		}
 		if(!empty(if_prefix($state['if'], $ifname))) {
 			echo "<tr><td >&nbsp;&nbsp;IP ". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
