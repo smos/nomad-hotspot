@@ -23,6 +23,13 @@ echo "Changing Hostname"
 sudo hostnamectl set-hostname nomad-hotspot
 sudo sed -i 's/raspberrypi/nomad-hotspot/g' /etc/hosts
 
+HIGH=`iwlist wlan0 freq | awk '/Channel [0-9]+ :/ { print $2}' | sort -ru | head -n1`
+if [ "$HIGH" -lt 32 ]; then
+	echo "Highest wlan0 channel "$HIGH", adjust hostapd.conf"
+	sed -i 's/channel=48/channel=11/g' conf/hostapd.conf
+	sed -i 's/hw_mode=a/hw_mode=g/g' conf/hostapd.conf
+fi
+
 echo "Enable system services required for Wifi AP and DHCP Server"
 sudo systemctl unmask hostapd
 sudo systemctl enable hostapd
