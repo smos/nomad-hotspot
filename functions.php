@@ -1250,6 +1250,10 @@ function process_cfg_changes($chglist) {
 				copy_config($file);
 				break;
 			case "wpa_supplicant.conf":
+				copy_config($file);
+				restart_service($file);
+				restart_service("dhcpcd.conf");
+				break;
 			case "dnsmasq.conf":
 			case "hostapd.conf":
 			case "client.ovpn":
