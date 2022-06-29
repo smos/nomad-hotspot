@@ -679,7 +679,8 @@ function working_msftconnect($captive) {
 	if(($msftconnect == "OK") && ($captive != "OK")){
 		msglog("agent.php", "Captive Portal check succeeded, looks like we have working Internet");
 		// Hook in OpenVPN start here
-		start_service("client.ovpn");
+		if($state['config']['openvpn'] == true)
+			start_service("client.ovpn");
 
 	}
 	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
