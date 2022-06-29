@@ -41,6 +41,9 @@ sed -i "s/pi/$LOGNAME/g" install/nomad-hotspot.service
 sudo cp install/nomad-hotspot.service /etc/systemd/system/nomad-hotspot.service
 sudo systemctl enable nomad-hotspot.service
 
+echo "Fixup user in dhcpcd.conf"
+sed -i "s/controlgroup pi/controlgroup $LOGNAME/g" conf/dhcpcd.conf
+
 echo "Enable IP forwarding"
 sudo sed -i 's/net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.conf
 sudo /sbin/sysctl -p/etc/sysctl.conf
