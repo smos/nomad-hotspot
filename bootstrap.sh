@@ -6,18 +6,19 @@ echo "Installing some software requirements"
 sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4
 
 echo "Save original configuration files"
-cd ~/nomad-hotspot/orig
-
+cd ~/nomad-hotspot
 if [ ! -f "dnsmasq.conf" ]; then
-	sudo cp -a /etc/dnsmasq.conf .
+	sudo cp -a /etc/dnsmasq.conf orig/
 fi
 if [ ! -f "dhcpcd.conf" ]; then
-	sudo cp -a /etc/dhcpcd.conf .
+	sudo cp -a /etc/dhcpcd.conf orig/
 fi
 if [ ! -f "hostapd.conf" ]; then
-	sudo cp -a /etc/hostapd/hostapd.conf .
+	sudo cp -a /etc/hostapd/hostapd.conf orig/
 fi
-cd ~/nomad-hotspot
+
+echo "Copy templates to the conf directory if they do not exist"
+cp -pn templates/* conf/
 
 echo "Changing Hostname"
 sudo hostnamectl set-hostname nomad-hotspot
