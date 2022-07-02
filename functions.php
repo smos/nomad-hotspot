@@ -17,6 +17,7 @@ $cfgmap = array(
 			"iptables.v4" => "/etc/iptables/iptables.v4",
 			"iptables.v6" => "/etc/iptables/iptables.v6",
 			"config.json" => "config.json",
+			"README.md" => "README.md",
 			);
 // Processes we know about
 $procmap = array(
@@ -1272,6 +1273,9 @@ function process_cfg_changes($chglist) {
 				break;
 			case "config.json":
 				$state['config'] = read_config($state['cfgfile']);
+				break;
+			case "README.md":
+				// do nothing
 				break;
 			default:
 				echo "What is this mythical config file '{$file}' of which you speak?\n";
