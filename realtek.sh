@@ -11,8 +11,7 @@ echo 1 8812au-20210629
 echo 2 8821au-20210708
 echo 3 8814au
 echo 4 8821cu-20210118
-echo 5 8812au-20210629
-echo 6 88x2bu-20210702
+echo 5 88x2bu-20210702
 
 read option
 
