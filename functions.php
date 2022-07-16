@@ -582,7 +582,8 @@ function config_write_ovpn_login($settings) {
 
 //	if(is_writeable($conf)) {
 		//echo "<pre>". print_r($settings['login'], true) ."</pre>";
-		file_put_contents($conf, $settings['login']);
+		file_put_contents($conf, implode("\n", $settings));
+		
 		return true;
 //	}
 }
@@ -1242,10 +1243,14 @@ function compare_cfg_files ($dir) {
 
 function process_cfg_changes($chglist) {
 	global $state;
+	global $cfgmap;
 	foreach($chglist as $file => $mtime) {
 		switch($file) {
 			case "client.ovpn.login":
 				move_config($file);
+				// Set permissions on destination
+				$cmd = "sudo chmod 0600 {$cfgmap[$file]};sudo chown root.root {$cfgmap[$file]}";
+				exec($cmd, $out, $ret);
 				restart_service($file);
 				break;
 			case "sysctl-routed-ap.conf":
