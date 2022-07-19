@@ -17,7 +17,6 @@ $cfgmap = array(
 			"iptables.v4" => "/etc/iptables/iptables.v4",
 			"iptables.v6" => "/etc/iptables/iptables.v6",
 			"config.json" => "config.json",
-			"README.md" => "README.md",
 			);
 // Processes we know about
 $procmap = array(
@@ -534,6 +533,10 @@ function config_write_supplicant($settings) {
 						foreach($values as $name => $value) {
 							$var = "{$index}{$name}";
 							switch($name) {
+								case "bssid":
+									if($values[$name] != "")
+										$conf_a[] = "    {$name}={$values[$name]}";
+									break;
 								case "ssid":
 									// Override the any setting to ""
 									$conf_a[] = "    {$name}=\"{$values[$name]}\"";
@@ -582,8 +585,7 @@ function config_write_ovpn_login($settings) {
 
 //	if(is_writeable($conf)) {
 		//echo "<pre>". print_r($settings['login'], true) ."</pre>";
-		file_put_contents($conf, implode("\n", $settings));
-		
+		file_put_contents($conf, $settings['login']);
 		return true;
 //	}
 }
@@ -681,8 +683,7 @@ function working_msftconnect($captive) {
 	if(($msftconnect == "OK") && ($captive != "OK")){
 		msglog("agent.php", "Captive Portal check succeeded, looks like we have working Internet");
 		// Hook in OpenVPN start here
-		if($state['config']['openvpn'] == true)
-			start_service("client.ovpn");
+		start_service("client.ovpn");
 
 	}
 	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
@@ -1038,6 +1039,9 @@ function route_add($ip, $gwip = ""){
 	} else {
 		$defgw['gateway'] = $gwipmatch[1];
 	}
+	
+	if(!isset($defgw['gateway']))
+		return false;
 
 	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
 	//print_r($cmd);
@@ -1243,24 +1247,16 @@ function compare_cfg_files ($dir) {
 
 function process_cfg_changes($chglist) {
 	global $state;
-	global $cfgmap;
 	foreach($chglist as $file => $mtime) {
 		switch($file) {
 			case "client.ovpn.login":
 				move_config($file);
-				// Set permissions on destination
-				$cmd = "sudo chmod 0600 {$cfgmap[$file]};sudo chown root.root {$cfgmap[$file]}";
-				exec($cmd, $out, $ret);
 				restart_service($file);
 				break;
 			case "sysctl-routed-ap.conf":
 				copy_config($file);
 				break;
 			case "wpa_supplicant.conf":
-				copy_config($file);
-				restart_service($file);
-				restart_service("dhcpcd.conf");
-				break;
 			case "dnsmasq.conf":
 			case "hostapd.conf":
 			case "client.ovpn":
@@ -1278,9 +1274,6 @@ function process_cfg_changes($chglist) {
 				break;
 			case "config.json":
 				$state['config'] = read_config($state['cfgfile']);
-				break;
-			case "README.md":
-				// do nothing
 				break;
 			default:
 				echo "What is this mythical config file '{$file}' of which you speak?\n";

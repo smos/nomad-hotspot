@@ -250,10 +250,35 @@ function validate_select($array, $item){
 		return false;
 }
 
+function list_bssid_assoc($wi_list, $ssid = "") {
+	$bssid_a = array("" => "Roam");
+
+	foreach ($wi_list as $entry) {
+
+		if($entry['ESSID'] == "\"{$ssid}\"") {
+
+				preg_match("/\((.*?)\)/", $entry['Frequency'], $chnmatch);
+			$bssid_a[$entry['Address']] = "{$chnmatch[1]} {$entry['Quality']}";
+		
+		}
+	
+	}
+
+	// echo "<pre>". print_r($bssid_a, true) ."</pre>";
+	return $bssid_a;
+
+}
+
 function config_supplicant($state) {
 	echo "<br>Config wireless client networks<br>";
-	echo "<table border=1><tr><td>";
+	echo "<table border=1><tr><td>\n";
 	// Process POST request
+	// fetch channel list for bbsid per ssid
+	$ifname = "wlan1";
+		$wi_list = list_iw_networks($state, $ifname);
+		// echo "<pre>". print_r($wi_list, true) ."</pre>";
+	
+	
 	$settings = config_read_supplicant($state);
 	// Empty item at the end for adding new entry
 	//$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
@@ -263,7 +288,7 @@ function config_supplicant($state) {
 	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
 	// Compare 
 	if(!empty($_POST)) {
-		//echo "<pre>". print_r($_POST, true);
+		// echo "<pre>". print_r($_POST, true);
 		$i = 0;
 		foreach($settings as $varname => $setting) {
 			switch($varname) {
@@ -285,9 +310,10 @@ function config_supplicant($state) {
 							unset($settings['network'][$index]);
 							continue;
 						}
-						foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
+						foreach(array("ssid", "psk", "priority", "key_mgmt", "bssid") as $name) {
 							$var = "{$index}{$name}";
 							switch($name) {
+								case "bssid":
 								case "ssid":
 								case "psk":
 									$settings['network'][$index][$name] = $_POST[$var];
@@ -355,6 +381,9 @@ function config_supplicant($state) {
 					html_input("{$index}psk", $values['psk']) ."<br>\n";
 					echo "Type: ";
 					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>\n";
+					echo "<br>";
+					echo "Bssid: ";
+					html_select("{$index}bssid", list_bssid_assoc($wi_list, $values['ssid']), $values['bssid']) ."<br>\n";
 					echo "<br>";
 				}
 		}
@@ -470,7 +499,7 @@ function html_select($varname, $options, $selected) {
 		$sel = '';
 		if($option == $selected)
 			$sel = "selected";
-		echo "<option name='{$option}' {$sel} >{$name}</option>";
+		echo "<option value='{$option}' {$sel} >{$name}</option>";
 	}
 	echo "</select>";
 }
@@ -839,7 +868,7 @@ function html_connectivity($state){
 	echo "<table border=0><tr><td>Connectivity</td><td>Result</td></tr>\n";
 	foreach ($state['internet'] as $check => $result) {	
 		if($check == "url")
-	$result = "<a _target=_blank href='{$result}'>{$result}</a>";
+	$result = "<a target=\"_blank\" href='{$result}'>{$result}</a>";
 		echo "<tr><td>{$check}</td><td>{$result}</td></tr>\n";
 	}
 	echo "</table>";
