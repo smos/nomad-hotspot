@@ -721,9 +721,9 @@ function check_msft_connect($url = "") {
 
 	$string = "Microsoft Connect Test";
 	// check DNS
-	$cmd = "host -W 2 www.msftconnecttest.com";
+	$cmd = "host -W 1 www.msftconnecttest.com";
 	$i = 0;
-	while ($i < 3) {
+	while ($i < 5) {
 		exec($cmd, $out, $ret);
 		if($ret == 0)
 			break;
