@@ -1,7 +1,7 @@
 <?php
 
 // Shared memory for exchanging between proc and webserver
-$shm_size = 32768;
+$shm_size = 128 * 1024;
 $shm_id = create_shm($shm_size);
 
 // You can list and delete these with ipcs and ipcrm -m 0
@@ -17,6 +17,7 @@ $cfgmap = array(
 			"iptables.v4" => "/etc/iptables/iptables.v4",
 			"iptables.v6" => "/etc/iptables/iptables.v6",
 			"config.json" => "config.json",
+			"README.md" => "README.md",
 			);
 // Processes we know about
 $procmap = array(
@@ -39,29 +40,29 @@ function start_webserver($address, $port, $dir){
 	// Start in a detached screen session
 	msglog("agent.php", "Starting webserver on adress {$address} and port {$port} in dir {$dir}");
 	$cmd = "screen -d -m -S nomad-webserver php -S $address:$port -t $dir";
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to start webserver process in screen");
 		
 
 	// Start in a detached screen session
 	msglog("redirect.php", "Starting redirect webserver on adress {$address} and port 80");
 	$cmd = "screen -d -m -S nomad-redirect sudo php -S $address:80 $dir/redirect.php";
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to start webserver process in screen");
 
 }
 
 function start_stunnel4() {
-	if(!is_executable("/usr/bin/stunnel4"))
-		exec("sudo apt install stunnel4");
+	if(!is_executable("/usr/bin/stunnel4")) {
+		$cmd = "sudo apt -y install stunnel4";
+		if(exec_log($cmd) === false)
+			msglog("agent.php", "Failed to install stunnel4");
+	}
 		
 	// Start in a detached screen session
 	msglog("stunnel4", "Starting redirect https webserver on port 443");
 	$cmd = "screen -d -m -S nomad-stunnel sudo stunnel4 ssl/stunnel4.conf";
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to start webserver process in screen");
 
 }
@@ -84,14 +85,14 @@ file_put_contents("ssl/stunnel4.conf", $cfg);
 }
 
 function create_certificate() {
-if(!file_exists("ssl/nomad-hotspot.crt")) {
+	if(!file_exists("ssl/nomad-hotspot.crt")) {
 
-$cmd = "openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout ssl/nomad-hotspot.key -out ssl/nomad-hotspot.crt -batch";
+		$cmd = "openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout ssl/nomad-hotspot.key -out ssl/nomad-hotspot.crt -batch";
 
-exec($cmd, $out, $ret);
-	if($ret > 0)
-		msglog("agent.php", "failed toe generate new certificate");
-}
+		if(exec_log($cmd) === false)
+			msglog("agent.php", "failed to generate new certificate");
+	}
+
 }
 
 function msglog($process = "", $msg = "") {
@@ -202,8 +203,7 @@ function list_iw_networks($state, $ifname) {
 	// sudo iw wlan1 scan
 	$cmd = "sudo iwlist {$ifname} scan";
 	
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to list wireless networks");
 
 
@@ -280,12 +280,6 @@ function clean_wi_list($iw_networks) {
 	return $iw_list;
 }
 
-// Show which clients are connected
-// iw dev wlan0 station dump
-// Fetch arp table arp -i wlan0 -n
-// Find IP address on wlan0 interface address by matching mac address
-// perform DNS query against local resolver for hostname
-
 
 function process_if_changes($ifstate, $iflist, $ifname) {
 	global $state;
@@ -316,6 +310,7 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
 		// Interface went away!
 		msglog("agent.php", "Interface {$ifname}, went away! Used to have, addresses ". implode(',', if_prefix($ifstate, $ifname)) ."");
+		unset($state['if'][$ifname]);
 	}
 	if(isset($ifstate[$ifname]) && isset($iflist[$ifname])) {
 		// We already have this interface, check if it changed
@@ -426,13 +421,14 @@ function working_dns($dns) {
 	$gdns = check_gdns_rec();
 	if(($gdns === true) && ($dns != "OK")){
 		msglog("agent.php", "Looks like we have a sane DNS for dns.google");
-		if($state['config']['openvpn'] == true)
-			start_service("client.ovpn");
+		//if($state['config']['openvpn'] == true)
+		//	start_service("client.ovpn");
 		return "OK";
 	}
 	if(($gdns === false) && ($dns != "NOK")) {
 		msglog("agent.php", "Looks like we can not resolve Public DNS, stop OpenVPN, reload DNSmasq");
-		stop_service("client.ovpn");
+		if($config['openvpn'] === true)
+			stop_service("client.ovpn");
 		restart_service("dnsmasq.conf");
 		return "NOK";
 	}
@@ -676,20 +672,30 @@ function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 	return $conf;
 }
 
-// Working DNS check
+// Working internet check
 function working_msftconnect($captive) {
-	$msftconnect = check_msft_connect();
+	global $state;
+	$i = 0;
+	while($i < 3) {
+		$msftconnect = check_msft_connect();
+		if($msftconnect !== false)
+			break;
+		$i++;
+	}
+	$config = read_config($state['cfgfile']);
 	//print_r($msftconnect);
 	if(($msftconnect == "OK") && ($captive != "OK")){
 		msglog("agent.php", "Captive Portal check succeeded, looks like we have working Internet");
 		// Hook in OpenVPN start here
-		start_service("client.ovpn");
+		if($config['openvpn'] === true)
+			start_service("client.ovpn");
 
 	}
 	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
 		msglog("agent.php", "Looks like DNS doesn't work properly yet");
 		// Hook in OpenVPN start here
-		stop_service("client.ovpn");
+		if($config['openvpn'] === true)
+			stop_service("client.ovpn");
 	}
 	if(($msftconnect == "PORTAL") && ($captive != "PORTAL")) {
 		msglog("agent.php", "Looks like we we are stuck behind a portal, someone needs to log in");
@@ -715,24 +721,42 @@ function check_msft_connect($url = "") {
 
 	$string = "Microsoft Connect Test";
 	// check DNS
-	$cmd = "host -W 1 www.msftconnecttest.com";
-	exec($cmd, $out, $ret);
-	if ($ret > 0)
+	$cmd = "host -W 2 www.msftconnecttest.com";
+	$i = 0;
+	while ($i < 3) {
+		exec($cmd, $out, $ret);
+		if($ret == 0)
+			break;
+		$i++;
+	}
+	if($ret > 0)
 		return "DNSERR";
 
 	$test = simple_web_request($url);
 
-	if($test == trim($string))
-		return "OK";
+	// catch curl error, skip  timeout
+	if(is_numeric($string)) {
+		switch($string) {
+			default:
+				msglog("agent.php", "msft connect test returned code '$string'");
+				return false;
+				break;
+		}
+	}
+	if(is_string($string)) {
+		if($test == trim($string))
+			return "OK";
 
-	if($test != trim($string))
-		return "PORTAL";
+		if($test != trim($string))
+			return "PORTAL";
+	}
 
 }
 
 // return request array based on parsing of portal page.
 function parse_portal_page($url = ""){
 	global $state;
+	$config = read_config($state['cfgfile']);
 	if($url == "")
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
 
@@ -752,7 +776,8 @@ function parse_portal_page($url = ""){
 			return true;
 
 		// Hook in OpenVPN stop here
-		stop_service("client.ovpn");
+		if($config['openvpn'] === true)
+			stop_service("client.ovpn");
 
 		// Save the portal page in /tmp for later diagnosis or testing
 		$datestr = date("Ymd-His");
@@ -980,7 +1005,7 @@ function ping($address = ""){
 
 	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}";
 	exec($cmd, $out, $ret);
-	if($ret > 0) {
+	if ($ret > 0) {
 		// Timeout
 		$latency = 999;
 		return $latency;
@@ -1003,7 +1028,7 @@ function fetch_default_route_gw() {
 	// Fetch the default gateway
 	$cmd = "ip -j route show default";
 	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if ($ret > 0)
 		return false;
 
 	if(empty($out))
@@ -1024,16 +1049,19 @@ function route_add($ip, $gwip = ""){
 
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/", $gwip, $gwipmatch);
-	//print_r($ipmatch);
-	//print_r($gwipmatch);
 
-	if($ip == "")
+	// print_r($gwipmatch);
+	// Needs actual ip address check
+
+	if($ipmatch[1] == "")
+		return false;
+	if($ipmatch[1] == ".")
 		return false;
 
 	if($gwip == "") {
 		$defgw = fetch_default_route_gw();
 		if($defgw === false) {
-			echo "We don't have a default route! Do we even have a wifi connection?\n";
+			msglog("agent.php", "We don't have a default route! Do we even have a wifi connection?");
 			return false;
 		}
 	} else {
@@ -1042,13 +1070,25 @@ function route_add($ip, $gwip = ""){
 	
 	if(!isset($defgw['gateway']))
 		return false;
-
+		
+	if($defgw['gateway'] == "")
+		return false;	
+		
+	// print_r($ipmatch);
 	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
 	//print_r($cmd);
-	exec($cmd, $out, $ret);
-	if($ret > 0)
-		return false;
+	if(exec_log($cmd) === false)
+		msglog("agent.php", "Failed to change route for '{$ipmatch[1]}' through '{$defgw['gateway']}'");
 
+}
+
+function exec_log($cmd) {
+	exec($cmd, $out, $ret);
+	if($ret > 0) {
+		msglog("agent.php", "Failed to exec '{$cmd}'");
+		return false;
+	}
+	return $ret;
 }
 
 function dump_dhcp_lease($iflist, $ifname){
@@ -1102,7 +1142,7 @@ function check_proc($file) {
 	$cmd = "ps auxww| awk '/{$procmap[$file]}/ {print $1}'";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
-		echo "Failed to check process for {$file} to {$procmap[$file]}\n";
+		msglog("agent.php", "Failed to check process for {$file} to {$procmap[$file]}");
 
 	return count($out);
 
@@ -1201,8 +1241,15 @@ function check_gdns_rec(){
 		);
 	$f = 0;
 
-	$cmd = "host -W 1 dns.google";
-	exec($cmd, $out, $ret);
+	$cmd = "host -W 2 dns.google";
+	$i = 0;
+	while ($i < 3) {
+		exec($cmd, $out, $ret);
+		if($ret == 0)
+			break;
+		$i++;
+	}
+
 	foreach($out as $line){
 		$dns = explode(" ", $line);
 		$add = end($dns);
@@ -1259,11 +1306,14 @@ function process_cfg_changes($chglist) {
 			case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
 			case "hostapd.conf":
-			case "client.ovpn":
 			case "dhcpcd.conf":
 				copy_config($file);
 				restart_service($file);
 				break;
+			case "client.ovpn":
+				copy_config($file);
+				if($config['openvpn'] === true)
+					restart_service($file);
 			case "iptables.v4":
 				copy_config($file);
 				restart_service($file);
@@ -1275,8 +1325,11 @@ function process_cfg_changes($chglist) {
 			case "config.json":
 				$state['config'] = read_config($state['cfgfile']);
 				break;
+			case "README.md":
+				// do nothing
+				break;
 			default:
-				echo "What is this mythical config file '{$file}' of which you speak?\n";
+				msglog("agent.php", "What is this mythical config file '{$file}' of which you speak?");
 				break;
 		}
 	}
@@ -1304,6 +1357,8 @@ function restart_service($file) {
 	switch($file) {
 			case "client.ovpn":
 			case "client.ovpn.login":
+				if($config['openvpn'] === false)
+					return false;
 				$cmd = "sudo service openvpn reload";
 				break;
 			case "dnsmasq.conf":
@@ -1325,15 +1380,14 @@ function restart_service($file) {
 				$cmd = "sudo iptables-restore < /etc/iptables/iptables.v6;sudo iptables-save > /etc/iptables/iptables.v6;";
 				break;
 			default:
-				echo "What is this mythical service file '{$file}' of which you speak?\n";
+				msglog("agent.php", "What is this mythical service file '{$file}' of which you speak?");
 				return false;
 				break;
 	}
 	if($cmd != ""){
 		msglog("agent.php", "Running command '{$cmd}'");
-		exec($cmd, $out, $ret);
-		if($ret > 0) {
-			echo "Failed to restart service for {$file}\n";
+		if(exec_log($cmd) === false) {
+			msglog("agent.php", "Failed to restart service for {$file}");
 			return false;
 		}
 	}
@@ -1353,8 +1407,7 @@ function disable_service($file) {
 	}
 	if($cmd != ""){
 		msglog("agent.php", "Running command '{$cmd}'");
-		exec($cmd, $out, $ret);
-		if($ret > 0) {
+		if(exec_log($cmd) === false) {
 			msglog("agent.php", "Failed to disable service for {$file}");
 			return false;
 		}
@@ -1374,8 +1427,7 @@ function enable_service($file) {
 	}
 	if($cmd != ""){
 		msglog("agent.php", "Running command '{$cmd}'");
-		exec($cmd, $out, $ret);
-		if($ret > 0) {
+		if(exec_log($cmd) === false) {
 			msglog("agent.php", "Failed to enable service for {$file}");
 			return false;
 		}
@@ -1395,8 +1447,7 @@ function stop_service($file) {
 	}
 	if($cmd != ""){
 		msglog("agent.php", "Running command '{$cmd}'");
-		exec($cmd, $out, $ret);
-		if($ret > 0) {
+		if(exec_log($cmd) === false) {
 			msglog("agent.php", "Failed to stop service for {$file}");
 			return false;
 		}
@@ -1416,8 +1467,7 @@ function start_service($file) {
 	}
 	if($cmd != ""){
 		msglog("agent.php", "Running command '{$cmd}'");
-		exec($cmd, $out, $ret);
-		if($ret > 0) {
+		if(exec_log($cmd) === false) {
 			msglog("agent.php", "Failed to start service for {$file}");
 			return false;
 		}
@@ -1430,8 +1480,7 @@ function copy_config($file) {
 
 	msglog("agent.php", "Copy config file '{$file}' to '{$cfgmap[$file]}'");
 	$cmd = "sudo cp -a {$cfgdir}/{$file} {$cfgmap[$file]}";
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to copy config {$file} to {$cfgmap[$file]}");
 }
 
@@ -1442,7 +1491,6 @@ function move_config($file) {
 
 	msglog("agent.php", "Move config file '{$file}' to '{$cfgmap[$file]}'");
 	$cmd = "sudo mv -f {$cfgdir}/{$file} {$cfgmap[$file]}";
-	exec($cmd, $out, $ret);
-	if($ret > 0)
+	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to move config {$file} to {$cfgmap[$file]}");
 }
