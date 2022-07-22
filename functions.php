@@ -466,7 +466,7 @@ function config_read_supplicant($state) {
 		foreach(file($conf) as $line) {
 			$line = trim($line);
 			$matches = array();
-			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z]+)/", $line, $matches);
+			preg_match_all("/([a-zA-Z_]+)=([{\" _a-z0-9-A-Z:]+)/", $line, $matches);
 			if(empty($matches[1]))
 				continue;
 			// echo "<pre>". print_r($matches, true);
@@ -478,6 +478,7 @@ function config_read_supplicant($state) {
 					$i++;
 					break;
 				case "priority":
+				case "bssid":
 				case "key_mgmt":
 					$settings['network'][$i][$matches[1][0]] = $matches[2][0];
 					break;

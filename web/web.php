@@ -342,10 +342,11 @@ function config_supplicant($state) {
 		
 		//echo "$_POST[$var]";
 		if(isset($_POST[$var]) && ($_POST[$var] != "")) {
-			foreach(array("ssid", "psk", "priority", "key_mgmt") as $name) {
+			foreach(array("ssid", "psk", "priority", "key_mgmt", "bssid") as $name) {
 				$var = "{$index}{$name}";
 				switch($name) {
 					case "ssid":
+					case "bssid":
 					case "psk":
 						$settings['network'][$index][$name] = $_POST[$var];
 						break;
@@ -360,12 +361,13 @@ function config_supplicant($state) {
 				}
 			}
 		}
-		// echo "<pre>".  print_r($settings, true);
+
 		config_write_supplicant($settings);
 		$settings = config_read_supplicant($state);
 	}
+	// echo "<pre>".  print_r($settings, true) ."</pre>";
 	// Empty item at the end for adding new entry
-	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE");
+	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "bssid" => "");
 
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
@@ -377,6 +379,7 @@ function config_supplicant($state) {
 			case "network":
 				//echo "Client networks to connect to:<br/>";
 				foreach($setting as $index => $values){
+					// echo "<pre>". print_r($values, true) ."</pre>";
 					echo "Index {$index} <br>\n";
 					echo "SSID: ";
 					html_input("{$index}ssid", $values['ssid']) ."<br>\n";
@@ -386,7 +389,10 @@ function config_supplicant($state) {
 					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>\n";
 					echo "<br>";
 					echo "Bssid: ";
-					html_select("{$index}bssid", list_bssid_assoc($wi_list, $values['ssid']), $values['bssid']) ."<br>\n";
+					$bssid_a = list_bssid_assoc($wi_list, $values['ssid']);
+					if(!isset($bssid_a[$values['bssid']]))
+						$bssid_a[$values['bssid']] = "Configured to '{$values['bssid']}'";
+					html_select("{$index}bssid", $bssid_a, $values['bssid']) ."<br>\n";
 					echo "<br>";
 				}
 		}
@@ -424,7 +430,7 @@ function html_wi_network_list($state) {
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
 
-		//echo "<pre>". print_r($wi_list, true) ."</pre>";
+
 		$clean_wi_list = clean_wi_list($wi_list);
 		// echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
 
