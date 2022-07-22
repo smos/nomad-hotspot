@@ -123,7 +123,10 @@ function config_openvpn($state) {
 				enable_service("client.ovpn");
 				restart_service("client.ovpn");
 				echo "</pre>";
-			} else {
+			}
+		}
+		if(empty($_POST['enable'])) {
+			if(($enabled == "") && ($state['config']['openvpn'] != false)) {
 				$state['config']['openvpn'] = false;
 				//write_shm($shm_id, $state);
 				echo "<pre>";
@@ -140,7 +143,7 @@ function config_openvpn($state) {
 	//echo "<pre> blah ". print_r($state['config'], true) . "</pre>";
 
 	echo "OpenVPN Enabled<br>";
-	if(isset($state['config']['openvpn'])) {
+	if($state['config']['openvpn'] === true) {
 		//echo "hoi;";
 		$checked = "on";
 	}
