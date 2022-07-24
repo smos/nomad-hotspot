@@ -202,8 +202,8 @@ function list_iw_networks($state, $ifname) {
 	// Show which network we are connected to
 	// sudo iw wlan1 scan
 	$cmd = "sudo iwlist {$ifname} scan";
-	
-	if(exec_log($cmd) === false)
+	exec($cmd, $out, $ret);
+	if($ret > 0)
 		msglog("agent.php", "Failed to list wireless networks");
 
 
@@ -656,18 +656,24 @@ function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 		switch($key) {
 			case "dhcp":
 				$string[0] .= "dhcp";
+				$string[1] .= "no ipv4ll";
 				break;
 			case "static":
 				$string[2] .= "static ip_address= {$settings['address']}/{$settings['prefixlen']}";
 				break;
 			case "lan":
-				$string[3] .= "\tnohook wpa_supplicant"; 
+				$string[3] .= "\tnohook wpa_supplicant";
+				$string[4] .= "\tnoipv4ll";
+				$string[5] .= "\tnoipv6rs";
 				break;
 		}
 	}
 	// Make sure that wlan0 is always the AP if for now.
-	if($ifname == "wlan0")
-		$string[3] .= "\tnohook wpa_supplicant"; 
+	if($ifname == "wlan0") {
+		$string[3] .= "\tnohook wpa_supplicant";
+		$string[4] .= "\tnoipv4ll";
+		$string[5] .= "\tnoipv6rs";
+	}
 
 	$conf = implode("\n", $string);
 	return $conf;
