@@ -429,7 +429,7 @@ function working_dns($dns) {
 		msglog("agent.php", "Looks like we can not resolve Public DNS, stop OpenVPN, reload DNSmasq");
 		if($config['openvpn'] === true)
 			stop_service("client.ovpn");
-		restart_service("dnsmasq.conf");
+		// restart_service("dnsmasq.conf");
 		return "NOK";
 	}
 	return $dns;
@@ -734,28 +734,42 @@ function check_msft_connect($url = "") {
 		exec($cmd, $out, $ret);
 		if($ret == 0)
 			break;
+		sleep (1);
 		$i++;
 	}
-	if($ret > 0)
+	if($ret > 0) {
+		msglog("agent.php", "msft connect failed to resolve in $i attempts");
 		return "DNSERR";
-
-	$test = simple_web_request($url);
-
-	// catch curl error, skip  timeout
-	if(is_numeric($string)) {
-		switch($string) {
-			default:
-				msglog("agent.php", "msft connect test returned code '$string'");
-				return false;
-				break;
-		}
 	}
-	if(is_string($string)) {
-		if($test == trim($string))
-			return "OK";
 
-		if($test != trim($string))
-			return "PORTAL";
+	$j = 0;
+	while($j < 5) {
+		$test = simple_web_request($url);
+
+		// catch curl error, skip  timeout
+		if(stristr($test, "operation timed out after 15")) {
+					msglog("agent.php", "msft connect test returned code '$test' attempt $j");
+					sleep(3);
+					$j++;
+					continue;
+		}
+		
+		if(is_string($test) && (strlen($test) == strlen($string))) {
+			if($test == trim($string)) {
+					// msglog("agent.php", "msft connect test suceeded code '$test' attempt $j");
+					return "OK";
+			}
+
+
+			if($test != trim($string))
+				return "PORTAL";
+		}
+		$j++;
+	}
+
+	if($j == 5){
+			msglog("agent.php", "msft connect test failed to fetch in $j attempts");
+			return "TIMEOUT";
 	}
 
 }
@@ -997,6 +1011,8 @@ function parse_js_function($string) {
 function ping($address = ""){
 	if($address == "") {
 		$defgw = fetch_default_route_gw();
+		if($defgw === false)
+			return false;
 		$address = $defgw['gateway'];
 	}
 	$latency = 0;

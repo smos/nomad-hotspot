@@ -915,6 +915,10 @@ function html_connectivity_screensaver($state){
 		$color = "green";
 
 	switch($state['internet']['captive']) {
+		case "TIMEOUT":
+			$color = "red";
+			$img = "images/globe{$color}.png";
+			break;
 		case "OK":
 			$img = "images/globe{$color}.png";
 			break;;
