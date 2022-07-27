@@ -212,10 +212,10 @@ function list_iw_networks($state, $ifname) {
 	foreach($out as $line) {
 		preg_replace("/^[ ]+/i", "", $line);
 		$line = trim($line);
-		$el = preg_split("/:/", $line);
+		$el = preg_split("/:/", $line, 2);
 		if(strstr($line, "Cell")) {
 			$el[0] = "Address";
-			$el[1] = trim(strtolower("{$el[1]}:{$el[2]}:{$el[3]}:{$el[4]}:{$el[5]}:{$el[6]}"));
+			$el[1] = trim(strtolower("{$el[1]}"));
 		}
 		if(strstr($line, "Quality")) {
 			if($el[1] == "") {
@@ -224,8 +224,8 @@ function list_iw_networks($state, $ifname) {
 			}
 		}
 		switch($el[0]) {
-			case "Address":
 			case "ESSID":
+			case "Address":
 			case "Frequency":
 			case "Quality":
 			case "Encryption key":
