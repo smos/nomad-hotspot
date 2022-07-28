@@ -175,18 +175,66 @@ function iw_info($ifstate, $ifname) {
 
 	// List wireless interface statistics
 	// iw wlan0 info
-	$cmd = "iw {$ifname} info";
+	$cmd = "iwconfig {$ifname}";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
 
 	$iw_state = array();
+	$i = 0;
 	foreach($out as $line) {
 		$line = trim($line);
-		$el = explode(" ", $line);
-		$key = $el[0];
-		array_shift($el);
-		$iw_state[$key] = implode(" ", $el);
+		$els = preg_split("/[ ]+/", $line);
+
+		if($i == 0) {
+		 	preg_match("/ESSID\:\"(.*?)\"/", $line, $essidmatch);
+		 	preg_match("/Mode\:([a-zA-Z0-9]+) /", $line, $modematch);
+			if(!empty($essidmatch)) {
+				$iw_state['essid'] = "{$essidmatch[1]}";
+			}
+			if(!empty($modematch)) {
+				$iw_state['mode'] = "{$modematch[1]}";
+			}
+			$iw_state['phy'] = "{$els[1]}{$els[2]}";
+			$i++;
+			continue;
+		}
+		foreach($els as $num => $val) {
+			$elc = preg_split("/\:/", $val, 2);
+			$ele = preg_split("/\=/", $val, 2);
+			switch($elc[0]) {
+				case "Point":
+					$key = "bssid";
+					$value = strtolower($els[$num+1]);
+					break;
+				case "Frequency":
+				case "Rate":
+				case "Mode":
+					$key = strtolower($elc[0]);
+					$value = $elc[1];
+					break;
+			
+			}
+
+			if(!isset($iw_state['level'])) {
+				switch($ele[0]) {
+					case "level":
+					case "Quality":
+						$ell = preg_split("/\//", $ele[1], 2);
+						$key = strtolower($ele[0]);
+						$value = $ell[0];
+						break;
+			
+				}
+
+			}
+
+				$iw_state[$key] = $value;
+
+		}
+		$i++;
+
+
 	}
 	//print_r($el);
 	return $iw_state;

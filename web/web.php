@@ -365,7 +365,7 @@ function config_supplicant($state) {
 		config_write_supplicant($settings);
 		$settings = config_read_supplicant($state);
 	}
-	// echo "<pre>".  print_r($settings, true) ."</pre>";
+	// echo "<pre>".  print_r($settings, true) ."</h>";
 	// Empty item at the end for adding new entry
 	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "bssid" => "");
 
@@ -567,6 +567,7 @@ function refresh() {
     \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
     \$('#bwup').load(\"/bwup\");
     \$('#bwdown').load(\"/bwdown\");
+    \$('#processing').load(\"/processing\");
     \$('#clients').load(\"/clients\");
 }
 
@@ -594,6 +595,7 @@ function refresh() {
     \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
     \$('#bwup').load(\"/bwup\");
     \$('#bwdown').load(\"/bwdown\");
+    \$('#processing').load(\"/processing\");
     \$('#clients').load(\"/clients\");
 }
 
@@ -728,6 +730,7 @@ function html_status($state){
 	//echo html_interfaces($state);
 	//echo " <div id='connectivity'></div>\n";
 	//echo html_connectivity($state);
+	echo html_processing($state);
 	//echo " <div id='clients'></div>\n";
 	echo html_clients($state);
 	//echo " <div id='processes'></div>\n";
@@ -740,6 +743,8 @@ function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
 		case "web.php":
 		case "hostapd":
 		case "ovpn-client":
+		case "dnsmasq\[":
+		case "dhcpcd":
 			break;
 		default:
 			return false;		
@@ -758,7 +763,7 @@ function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
 
 function html_log ($state) {
 	echo "<div id='logs'>";
-	$cats = array("Agent" => "agent.php", "Web" => "web.php", "Accesspoint" => "hostapd", "OpenVPN" => "ovpn-client");
+	$cats = array("Agent" => "agent.php", "Web" => "web.php", "Accesspoint" => "hostapd", "OpenVPN" => "ovpn-client", "Dnsmasq" => "dnsmasq\[", "DHCPcd" => "dhcpcd");
 	foreach($cats as $name => $proc) {
 		echo "<table border=0>";
 		echo "<tr><td>{$name}</td></tr>\n";
@@ -803,6 +808,7 @@ function html_status_screensaver($state){
 	echo html_bw_up($state);
 	echo "</td></tr>\n";
 	echo "</table>";
+	echo html_processing($state);
 	echo html_clients($state);
 }
 
@@ -840,6 +846,7 @@ function html_interfaces($state, $interface = ""){
 
 	echo " <div id='interfaces'>";
 	echo "<table border=0>\n";
+	//echo "<pre>".  print_r($state['if'][$interface]['wi'], true) ."</h>";
 	//<tr><td>Interface</td><td>State</td></tr>\n";
 	//echo "<tr><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
 	foreach ($state['if'] as $ifname => $iface) {
@@ -853,9 +860,17 @@ function html_interfaces($state, $interface = ""){
 		
 		//echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
 		echo "<tr><td>Interface: {$ifname}, State: ". if_state($state['if'], $ifname)."</td></tr>\n";
-		if(is_array($iface['wi'])) {
-			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['ssid']}', Mode: {$iface['wi']['type']}";
-			echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Channel {$iface['wi']['channel']}</td></tr>\n";
+		if((is_array($iface['wi'])) && ($iface['wi']['mode'] != "Master")){
+			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['essid']}', BSSID: {$iface['wi']['bssid']}";
+			echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Frequency {$iface['wi']['frequency']}, Type {$iface['wi']['phy']}, Rate {$iface['wi']['rate']} Mbit/s</td></tr>\n";
+			echo "<tr><td >";
+			echo "<table>";
+			echo "<tr><td width=60px >Quality</td><td bgcolor=olive width='{$iface['wi']['quality']}px'>&nbsp;{$iface['wi']['quality']}</td><td width='". (100 - $iface['wi']['quality']) ."px'>&nbsp;</td></tr>";
+			echo "</table>\n";
+			echo "<table>";
+			echo "<tr><td width=60px >Level</td><td bgcolor=olive width='{$iface['wi']['level']}px'>&nbsp;{$iface['wi']['level']}</td><td width='". (100 - $iface['wi']['level']) ."px'>&nbsp;</td></tr>";
+			echo "</table>\n";
+			echo "</td></tr>\n";
 		}
 		if(!empty(if_prefix($state['if'], $ifname))) {
 			echo "<tr><td >&nbsp;&nbsp;IP ". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
@@ -949,9 +964,11 @@ function html_connectivity_screensaver($state){
 			break;;
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
+	
+	// print_r($state['if']['wlan0']['wi']);
 	// AP
-	switch($state['if']['wlan0']['wi']['type']) {
-		case "AP":
+	switch($state['if']['wlan0']['wi']['mode']) {
+		case "Master":
 			$img = "images/apgreen.png";
 			break;;
 		default:
@@ -975,12 +992,31 @@ function html_clients($state){
 	echo "</div>\n";		
 		
 }
+
 function html_processes($state){
 	echo " <div id='processes'>";
 	echo "<table border=0><tr><td>Process name</td><td>Number</td></tr>\n";
 	foreach ($state['proc'] as $procname => $number) {
 		echo "<tr><td>{$procname}</td><td>{$number}</td></tr>\n";
 	}
+	echo "</table>";	
+	echo "</div>\n";		
+}
+
+
+function html_processing($state){
+	echo " <div id='processing'>";
+	$diff = time() - $state['time']; 
+	if($diff < 0)
+		$bgcolor = "mediumpurple";
+	elseif($diff < 11)
+		$bgcolor = "forestgreen";
+	elseif($diff < 21)
+		$bgcolor = "darkorange";	
+	else
+		$bgcolor = "crimson";
+		
+	echo "<table border=0><tr><td width='130px' bgcolor='{$bgcolor}'>&nbsp;{$diff}</td></tr>\n";
 	echo "</table>";	
 	echo "</div>\n";		
 }
