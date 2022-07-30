@@ -50,6 +50,10 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			// processes status div 
 			echo html_processes($state);
 			break;
+		case "/processing":
+			// processing status div 
+			echo html_processing($state);
+			break;
 		case "/cfgif":
 		case "/cfgwiap":
 		case "/cfgwiclient":
