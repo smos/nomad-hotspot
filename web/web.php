@@ -864,12 +864,7 @@ function html_interfaces($state, $interface = ""){
 			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['essid']}', BSSID: {$iface['wi']['bssid']}";
 			echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Frequency {$iface['wi']['frequency']}, Type {$iface['wi']['phy']}, Rate {$iface['wi']['rate']} Mbit/s</td></tr>\n";
 			echo "<tr><td >";
-			echo "<table>";
-			echo "<tr><td width=60px >Quality</td><td bgcolor=olive width='{$iface['wi']['quality']}px'>&nbsp;{$iface['wi']['quality']}</td><td width='". (100 - $iface['wi']['quality']) ."px'>&nbsp;</td></tr>";
-			echo "</table>\n";
-			echo "<table>";
-			echo "<tr><td width=60px >Level</td><td bgcolor=olive width='{$iface['wi']['level']}px'>&nbsp;{$iface['wi']['level']}</td><td width='". (100 - $iface['wi']['level']) ."px'>&nbsp;</td></tr>";
-			echo "</table>\n";
+			echo html_wi_link_bar($iface);
 			echo "</td></tr>\n";
 		}
 		if(!empty(if_prefix($state['if'], $ifname))) {
@@ -887,6 +882,33 @@ function html_interfaces($state, $interface = ""){
 	echo "</div>\n";		
 }
 
+function html_wi_link_bar($iface, $width = 300) {
+
+	if($width < 150) {
+		$qstr = "";
+		$lstr = "";
+		$lwidth = "0";
+		$factor = 1;
+	} else {
+		$qstr = "Quality";
+		$lstr = "Level";
+		$lwidth = "60";
+		$factor = 3;
+	
+	}
+	
+	$qcolor = scale_to_colorname($iface['wi']['quality']);
+	$lcolor = scale_to_colorname($iface['wi']['level']);
+
+			echo "<table>";
+			echo "<tr><td width={$lwidth}px >{$qstr}</td><td bgcolor={$qcolor} width='{$iface['wi']['quality']}px'>&nbsp;{$iface['wi']['quality']}</td><td width='". ((100 - $iface['wi']['quality'])*$factor) ."px'>&nbsp;</td></tr>";
+			echo "</table>\n";
+			echo "<table>";
+			echo "<tr><td width={$lwidth}px >{$lstr}</td><td bgcolor={$lcolor} width='{$iface['wi']['level']}px'>&nbsp;{$iface['wi']['level']}</td><td width='". ((100 - $iface['wi']['level'])*$factor) ."px'>&nbsp;</td></tr>";
+			echo "</table>\n";
+
+}
+
 function html_connectivity($state){
 	echo " <div id='connectivity'>";
 	echo "<table border=0><tr><td>Connectivity</td><td>Result</td></tr>\n";
@@ -899,6 +921,34 @@ function html_connectivity($state){
 	echo "</div>\n";		
 		
 }
+
+function scale_to_color($num = 0) {
+	$bgcolor = "red";
+	$num = floatval($num);
+	if($num < 20)
+		$bgcolor = "red";
+	elseif($num< 50)
+		$bgcolor = "orange";
+	elseif($num> 49)
+		$bgcolor = "green";
+
+	return $bgcolor;
+}
+
+function scale_to_colorname($num = 0) {
+	$bgcolor = "crimson";
+	$num = floatval($num);
+	if($num < 20)
+		$bgcolor = "crimson";
+	elseif($num< 50)
+		$bgcolor = "darkorange";
+	elseif($num> 49)
+		$bgcolor = "forestgreen";
+
+	return $bgcolor;
+}
+
+
 function html_connectivity_screensaver($state){
 	$hrefo = "";
 	$hrefc = "";
@@ -951,6 +1001,7 @@ function html_connectivity_screensaver($state){
 			break;;
 	}
 	echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td></tr>\n";
+
 	// DNS
 	switch($state['internet']['dns']) {
 		case "OK":
@@ -965,8 +1016,35 @@ function html_connectivity_screensaver($state){
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
 	
-	// print_r($state['if']['wlan0']['wi']);
-	// AP
+	// find the default route interface
+	$defif = find_wan_interface($state);
+	
+	if($defif != "") {
+		// check for wireless stats
+		if(isset($state['if'][$defif]['wi'])) {
+			echo "<tr><td>";
+			echo html_wi_link_bar($state['if'][$defif], 140);
+			echo "</td></tr>\n";
+			
+			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
+				
+			$img = "images/wifi{$bgcolor}.png";
+			echo "<tr><td><img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+		} else {
+			// must be wired
+		
+			$img = "images/ether{$bgcolor}.png";
+			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td></tr>\n";
+		}
+		
+	}
+	
+	echo "</table>";
+	echo "</div>\n";		
+		
+
+/* 
+	// AP is kind of a waste of screen real estate.
 	switch($state['if']['wlan0']['wi']['mode']) {
 		case "Master":
 			$img = "images/apgreen.png";
@@ -975,11 +1053,10 @@ function html_connectivity_screensaver($state){
 			$img = "images/apgrey.png";
 			break;;		
 	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
+	// echo "<tr><td><img height='125px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
+*/
 
-	echo "</table>";
-	echo "</div>\n";		
-		
+
 }
 function html_clients($state){
 	echo " <div id='clients'>";
