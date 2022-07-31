@@ -548,6 +548,9 @@ function config_read_supplicant($state) {
 }
 
 function config_write_supplicant($settings) {
+
+	$freq = fetch_freq_list("wlan1", 5);
+	// print_r($freq);
 	$conf = "../conf/wpa_supplicant.conf";
 	$conf_a = array();
 	$conf_a[] = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev";
@@ -571,6 +574,8 @@ function config_write_supplicant($settings) {
 						if($values['ssid'] == "any") {
 							$values['priority'] = "-9";
 							$values['ssid'] = "";
+							//$values['freq_list'] = implode(" ", $freq);
+							
 							//echo print_r($settings['network'][$index], true);
 						}
 
@@ -581,6 +586,10 @@ function config_write_supplicant($settings) {
 								case "bssid":
 									if($values[$name] != "")
 										$conf_a[] = "    {$name}={$values[$name]}";
+									break;
+								case "freq_list":
+									if($values[$name] != "")
+										$conf_a[] = "    {$name}=". implode(" ", $freq);
 									break;
 								case "ssid":
 									// Override the any setting to ""
@@ -597,6 +606,7 @@ function config_write_supplicant($settings) {
 									break;
 							}
 						}
+																		$conf_a[] = "    freq_list=". implode(" ", $freq);
 						$conf_a[] = "}";
 						$conf_a[] = "";
 						$i++;
@@ -1093,6 +1103,31 @@ function url_to_ip($url){
 	$host = parse_url($url, PHP_URL_HOST);
 	$ip = gethostbyname($host);
 	return $ip;
+}
+
+function fetch_freq_list($iface, $band = "25") {
+	if($iface == "")
+		return false;
+	
+	$band = strval($band);
+	$freq = array();
+	$cmd = "iwlist {$iface} freq";
+	exec($cmd, $out, $ret);
+	if ($ret > 0)
+		return false;
+
+	if(empty($out))
+		return false;
+		
+	foreach($out as $line) {
+		// print_r($line);
+		preg_match("/\: ([{$band}]\.[0-9]+)/i", $line, $freqmatch);
+		// print_r($freqmatch);
+		if($freqmatch[1] > 0)
+			$freq[] = floatval($freqmatch[1]) * 1000;
+	
+	}
+	return $freq;
 }
 
 function fetch_default_route_gw() {
