@@ -927,9 +927,11 @@ function scale_to_color($num = 0) {
 	$num = floatval($num);
 	if($num < 20)
 		$bgcolor = "red";
-	elseif($num< 50)
+	elseif($num< 40)
 		$bgcolor = "orange";
-	elseif($num> 49)
+	elseif($num< 60)
+		$bgcolor = "orange";
+	elseif($num> 59)
 		$bgcolor = "green";
 
 	return $bgcolor;
@@ -940,9 +942,11 @@ function scale_to_colorname($num = 0) {
 	$num = floatval($num);
 	if($num < 20)
 		$bgcolor = "crimson";
-	elseif($num< 50)
+	elseif($num< 40)
 		$bgcolor = "darkorange";
-	elseif($num> 49)
+	elseif($num< 60)
+		$bgcolor = "yellow";
+	elseif($num> 59)
 		$bgcolor = "forestgreen";
 
 	return $bgcolor;
