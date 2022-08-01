@@ -229,7 +229,7 @@ function iw_info($ifstate, $ifname) {
 
 			}
 
-				$iw_state[$key] = $value;
+			if((isset($key)) && (isset($value)))				$iw_state[$key] = $value;
 
 		}
 		$i++;
