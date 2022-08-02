@@ -976,9 +976,9 @@ function html_connectivity_screensaver($state){
 	$color = "grey";
 	if($state['internet']['ping'] == 999)
 		$color = "blue";
-	if($state['internet']['ping'] < 500)
+	if($state['internet']['ping'] < 999)
 		$color = "red";
-	if($state['internet']['ping'] < 200)
+	if($state['internet']['ping'] < 300)
 		$color = "orange";
 	if($state['internet']['ping'] < 100)
 		$color = "green";
