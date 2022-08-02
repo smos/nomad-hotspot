@@ -46,7 +46,7 @@ echo "Fixup user in dhcpcd.conf"
 sed -i "s/controlgroup pi/controlgroup $LOGNAME/g" conf/dhcpcd.conf
 
 echo "Increase WPA supplicant logging"
-sudo sed -i 's/supplicant -B -c/supplicant -d -B -c/g' /lib/dhcpcd/dhcpcd-hooks/10-wpa_supplicant
+sudo sed -i 's/supplicant -B -c/supplicant -dd -B -c/g' /lib/dhcpcd/dhcpcd-hooks/10-wpa_supplicant
 
 echo "Enable IP forwarding"
 sudo sed -i 's/net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.conf
