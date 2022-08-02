@@ -555,7 +555,7 @@ function config_write_supplicant($settings) {
 	$conf_a = array();
 	$conf_a[] = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev";
 	$conf_a[] = "update_config=1";
-	$conf_a[] = "bgscan=\"simple:30:-70:3600\"";
+	$conf_a[] = "bgscan=\"learn:30:-70:3600\"";
 	$conf_a[] = "";
 	if(is_writeable($conf)) {
 		$i = 0;
@@ -607,6 +607,7 @@ function config_write_supplicant($settings) {
 							}
 						}
 																		$conf_a[] = "    freq_list=". implode(" ", $freq);
+																		$conf_a[] = "    scan_freq=". implode(" ", $freq);
 						$conf_a[] = "}";
 						$conf_a[] = "";
 						$i++;
