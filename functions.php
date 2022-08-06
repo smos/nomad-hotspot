@@ -218,10 +218,27 @@ function iw_info($ifstate, $ifname) {
 
 			if(!isset($iw_state['level'])) {
 				switch($ele[0]) {
+					case "Rate":
+						$key = strtolower($ele[0]);
+						$value = $ele[1];
+						break;
 					case "level":
-					case "Quality":
 						$ell = preg_split("/\//", $ele[1], 2);
 						$key = strtolower($ele[0]);
+						// Normalize level to 100
+						if($ell[0] < 0) {
+							$ell[0] = round((($ell[0] + 90)/70)*100); // Minimum is -90, max is -30 so add 90. 
+						}
+						$value = $ell[0];
+						break;
+					case "Quality":
+						$ell = preg_split("/\//", $ele[1], 2);
+						if($ell[1] < 100) {
+							$ell[0] = round(($ell[0] / $ell[1])*100);
+						}
+						$key = strtolower($ele[0]);
+						// Normalize level to 100
+						
 						$value = $ell[0];
 						break;
 			
@@ -229,7 +246,8 @@ function iw_info($ifstate, $ifname) {
 
 			}
 
-			if((isset($key)) && (isset($value)))				$iw_state[$key] = $value;
+			if((isset($key)) && (isset($value)))
+				$iw_state[$key] = $value;
 
 		}
 		$i++;
