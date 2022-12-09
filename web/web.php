@@ -1036,7 +1036,7 @@ function html_connectivity_screensaver($state){
 			echo "<tr><td><img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
 		} else {
 			// must be wired
-		
+			$bgcolor = "green"; // place holder for now without indicators
 			$img = "images/ether{$bgcolor}.png";
 			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td></tr>\n";
 		}
