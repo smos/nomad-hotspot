@@ -1179,6 +1179,11 @@ function html_connectivity_extra($state){
 		if(!empty($defgw[6])) {
 			echo "Gateway6 {$defgw[6][0]['gateway']}</br>\n";
 		}
+		if(!empty($state['internet']['isp'])) {
+			echo "Wan IP {$state['internet']['wanip']}</br>\n";
+			echo "AS Number {$state['internet']['isp']['asnum']}</br>\n";
+			echo "Descr {$state['internet']['isp']['descr']}</br>\n";
+		}
 	}
 	echo "</td>";
 	echo "</tr>\n";

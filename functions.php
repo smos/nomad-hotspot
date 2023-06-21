@@ -786,6 +786,9 @@ function working_msftconnect($captive) {
 		if($config['openvpn'] === true)
 			start_service("client.ovpn");
 
+		$wanip = file_get_contents("http://ipecho.net/plain");
+		$state['internet']['wanip'] = $wanip;
+		$state['internet']['isp'] = fetch_as_info($state, $wanip);
 	}
 	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
 		msglog("agent.php", "Looks like DNS doesn't work properly yet");
@@ -1695,3 +1698,32 @@ function fetch_lldp_neighbors() {
 
 	return $lldpjson['lldp'];	
 }
+
+function fetch_as_info($state, $ip) {
+	$asinfo = array();
+	if(! preg_match("/([0-9:\.a-f]+)/", $ip, $ipmatch))
+		return false;
+
+	msglog("fetch_as_info", "Looking up AS information with whois for {$ip}");
+	
+	$cmd = "whois -c {$ip}";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		return false;
+
+	foreach($out as $line) {
+		if(preg_match("/^route:[ ]+([0-9a-f.:\/]+)/", $line, $rtmatch))
+			$asinfo['route'] = $rtmatch[1];
+		if(preg_match("/^origin:[ ]+([0-9a-fA-Z.:\/]+)/", $line, $asmatch))
+			$asinfo['asnum'] = $asmatch[1];
+		if(preg_match("/^descr:[ ]+([0-9a-fA-Z.:\/ ]+)/", $line, $orgmatch))
+			$asinfo['descr'] = $orgmatch[1];
+		if(preg_match("/^org-name:[ ]+([0-9a-fA-Z.:\/ ]+)/", $line, $orgmatch))
+			$asinfo['descr'] = $orgmatch[1];
+		
+		
+	}
+
+	return $asinfo;
+}
+
