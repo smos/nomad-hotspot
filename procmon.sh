@@ -3,6 +3,7 @@
 echo "Screen sessions"
 screen -ls
 
+
 echo "Select 1 for Webserver"
 echo "Select 2 for Agent"
 echo "Select 3 for OpenVPN Client log"
@@ -10,7 +11,11 @@ echo "Select 4 for hostapd log"
 echo "Select 5 for dnsmasq log"
 echo "Select 6 for dhcpcd log"
 
-read select
+if [ -n $1 ]; then
+	select=$1;
+else
+	read select
+fi
 if [ "$select" = "1" ]; then
 	echo "exit with ctrl-ad"
 	sleep 3

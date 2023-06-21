@@ -159,7 +159,7 @@ function read_config ($cfgfile){
 function find_wan_interface($state) {
 	//which has the default route?
 	$defgw = fetch_default_route_gw();
-	$iface = $defgw['dev'];
+	$iface = $defgw[4][0]['dev'];
 	if($iface == "")
 		$iface = "wlan1";
 
@@ -218,27 +218,10 @@ function iw_info($ifstate, $ifname) {
 
 			if(!isset($iw_state['level'])) {
 				switch($ele[0]) {
-					case "Rate":
-						$key = strtolower($ele[0]);
-						$value = $ele[1];
-						break;
 					case "level":
-						$ell = preg_split("/\//", $ele[1], 2);
-						$key = strtolower($ele[0]);
-						// Normalize level to 100
-						if($ell[0] < 0) {
-							$ell[0] = round((($ell[0] + 90)/70)*100); // Minimum is -90, max is -30 so add 90. 
-						}
-						$value = $ell[0];
-						break;
 					case "Quality":
 						$ell = preg_split("/\//", $ele[1], 2);
-						if($ell[1] < 100) {
-							$ell[0] = round(($ell[0] / $ell[1])*100);
-						}
 						$key = strtolower($ele[0]);
-						// Normalize level to 100
-						
 						$value = $ell[0];
 						break;
 			
@@ -246,8 +229,7 @@ function iw_info($ifstate, $ifname) {
 
 			}
 
-			if((isset($key)) && (isset($value)))
-				$iw_state[$key] = $value;
+			if((isset($key)) && (isset($value)))				$iw_state[$key] = $value;
 
 		}
 		$i++;
@@ -353,6 +335,9 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		// New interface!
 		msglog("agent.php", "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."");
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
+		restart_service("iptables.v4");
+		restart_service("iptables.v6");
+
 
 		// This interface resets counters when going up/down
 		if(strstr($ifname, "tun"))
@@ -493,6 +478,7 @@ function working_dns($dns) {
 	}
 	if(($gdns === false) && ($dns != "NOK")) {
 		msglog("agent.php", "Looks like we can not resolve Public DNS, stop OpenVPN, reload DNSmasq");
+		$config = read_config($state['cfgfile']);
 		if($config['openvpn'] === true)
 			stop_service("client.ovpn");
 		// restart_service("dnsmasq.conf");
@@ -593,17 +579,18 @@ function config_write_supplicant($settings) {
 							$values['priority'] = "-9";
 							$values['ssid'] = "";
 							//$values['freq_list'] = implode(" ", $freq);
-							
 							//echo print_r($settings['network'][$index], true);
 						}
 
-							
 						foreach($values as $name => $value) {
 							$var = "{$index}{$name}";
 							switch($name) {
 								case "bssid":
-									if($values[$name] != "")
+									if($values[$name] != "") {
 										$conf_a[] = "    {$name}={$values[$name]}";
+										$conf_a[] = "    freq_list=". implode(" ", $freq);
+										$conf_a[] = "    scan_freq=". implode(" ", $freq);
+									}
 									break;
 								case "freq_list":
 									if($values[$name] != "")
@@ -624,8 +611,6 @@ function config_write_supplicant($settings) {
 									break;
 							}
 						}
-																		$conf_a[] = "    freq_list=". implode(" ", $freq);
-																		$conf_a[] = "    scan_freq=". implode(" ", $freq);
 						$conf_a[] = "}";
 						$conf_a[] = "";
 						$i++;
@@ -1090,7 +1075,7 @@ function ping($address = ""){
 		$defgw = fetch_default_route_gw();
 		if($defgw === false)
 			return false;
-		$address = $defgw['gateway'];
+		$address = $defgw[4][0]['gateway'];
 	}
 	$latency = 0;
 
@@ -1150,22 +1135,34 @@ function fetch_freq_list($iface, $band = "25") {
 }
 
 function fetch_default_route_gw() {
-	// Fetch the default gateway
+	// Fetch the default gateway 4
+	$defgw = array();
 	$cmd = "ip -j route show default";
-	exec($cmd, $out, $ret);
-	if ($ret > 0)
+	exec($cmd, $out4, $ret4);
+	if ($ret4 > 0)
 		return false;
 
-	if(empty($out))
+	if(empty($out4))
 		return false;
 
-	$defgw = json_decode($out[0], true);
+	// Fetch the default gateway 4
+	$cmd = "ip -j -6 route show default";
+	exec($cmd, $out6, $ret6);
+	if ($ret6 > 0)
+		return false;
+
+	if(empty($out6))
+		return false;
+
+	$defgw[4] = json_decode($out4[0], true);
+	$defgw[6] = json_decode($out6[0], true);
 
 	if(empty($defgw))
 		return false;
 
-	return ($defgw[0]);
+	return ($defgw);
 }
+
 
 // We only care for adding routes for now
 function route_add($ip, $gwip = ""){
@@ -1175,6 +1172,11 @@ function route_add($ip, $gwip = ""){
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/", $gwip, $gwipmatch);
 
+	if(strstr("$ip", ":"))
+		$ipv6 = true;
+	else
+		$ipv6 = false;
+	
 	// print_r($gwipmatch);
 	// Needs actual ip address check
 
@@ -1193,18 +1195,29 @@ function route_add($ip, $gwip = ""){
 		$defgw['gateway'] = $gwipmatch[1];
 	}
 	
-	if(!isset($defgw['gateway']))
+	if(!isset($defgw[4][0]['gateway']))
 		return false;
+	
+	if($ipv6 === true) {
+		if($defgw[6][0]['gateway'] == "")
+			return false;	
+	} else {
+		if($defgw[4][0]['gateway'] == "")
+			return false;	
 		
-	if($defgw['gateway'] == "")
-		return false;	
-		
+	}
 	// print_r($ipmatch);
-	$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw['gateway']}";
+	if($ipv6 === true)
+		$cmd = "sudo ip -6 route replace {$ipmatch[1]} via {$defgw[6][0]['gateway']}";
+	else
+		$cmd = "sudo ip route replace {$ipmatch[1]} via {$defgw[4][0]['gateway']}";
+
 	//print_r($cmd);
 	if(exec_log($cmd) === false)
-		msglog("agent.php", "Failed to change route for '{$ipmatch[1]}' through '{$defgw['gateway']}'");
-
+		if($ipv6 === true)
+			msglog("agent.php", "Failed to change route for '{$ipmatch[1]}' through '{$defgw[6]['gateway']}'");
+		else
+			msglog("agent.php", "Failed to change route for '{$ipmatch[1]}' through '{$defgw[4]['gateway']}'");
 }
 
 function exec_log($cmd) {
@@ -1460,6 +1473,28 @@ function process_cfg_changes($chglist) {
 	}
 }
 
+function parse_dhcp_nameservers($state) {
+	$ifname = find_wan_interface($state);
+	$file = "/var/run/resolvconf/interfaces/{$ifname}.dhcp";
+	if(is_readable($file))
+		$dfile = file($file);
+
+	// and ipv6 nameservers
+	$file = "/var/run/resolvconf/interfaces/{$ifname}.ra";
+	if(is_readable($file))
+		$rfile = file($file);
+		
+	foreach($dfile as $line)
+		if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches4))
+			$dns['dns4'][] = $matches4[1];
+
+	foreach($rfile as $line)
+		if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches6))
+			$dns['dns6'][] = $matches6[1];
+
+	return $dns;
+}
+
 function parse_dnsmasq_leases() {
 	$file = "/var/lib/misc/dnsmasq.leases";
 	if(is_readable($file))
@@ -1618,4 +1653,15 @@ function move_config($file) {
 	$cmd = "sudo mv -f {$cfgdir}/{$file} {$cfgmap[$file]}";
 	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to move config {$file} to {$cfgmap[$file]}");
+}
+
+function fetch_lldp_neighbors() {
+	$cmd = "lldpcli show neighbors -f json";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		return false;
+	
+	$lldpjson = json_decode(implode($out, "\n"), true);
+
+	return $lldpjson['lldp'];	
 }

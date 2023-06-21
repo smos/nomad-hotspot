@@ -92,6 +92,10 @@ while (true) {
 	// Check if we can reach msft ncsi
 	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
 
+	$state['dns'] = parse_dhcp_nameservers($state);
+
+	$state['lldp'] = fetch_lldp_neighbors();
+	
 	// Store latency
 	if($p > 59 ) {
 		$state['internet']['ping'] = ping();

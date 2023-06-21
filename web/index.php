@@ -15,7 +15,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_head();
 			echo html_jquery();
 			echo html_menu();
-			echo html_status($state);
+			echo html_status_extra($state);
 			echo html_jquery_reload();
 			echo html_foot();	
 			break;
