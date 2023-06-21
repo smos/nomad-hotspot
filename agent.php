@@ -8,7 +8,7 @@ $looptimer = 3;
 
 $changes = array();
 $state = array();
-$state['shmid'] = $shm_id;
+//$state['shmid'] = $shm_id;
 
 // Where the configs live
 $cfgdir = "conf";
@@ -105,7 +105,7 @@ while (true) {
 	$state['clients']= parse_dnsmasq_leases();
 
 	$state['time'] = time();
-	write_shm($shm_id, $state);
+	write_tmpfs($tmpfsurl, $state);
 	sleep ($looptimer);
 	$i++;
 	$p++;

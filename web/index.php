@@ -5,7 +5,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
     return false;    // serve the requested resource as-is.
 } else {
 	include "../functions.php";
-	$state = read_shm($shm_id, $shm_size);
+	$state = read_tmpfs($tmpfsurl);
 
 	switch($_SERVER["REQUEST_URI"]) {
 		case "/":

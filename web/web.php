@@ -1007,8 +1007,8 @@ function html_connectivity_screensaver($state){
 			$img = "images/vpnred.png";
 			$vpncon = "Not connected";
 		}
+		echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
 	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
 	// Internet, ping color
 	$color = "grey";
 	if($state['internet']['ping'] == 999)
@@ -1063,14 +1063,14 @@ function html_connectivity_screensaver($state){
 	if($defif != "") {
 		// check for wireless stats
 		if(isset($state['if'][$defif]['wi'])) {
-			echo "<tr><td>";
-			echo html_wi_link_bar($state['if'][$defif], 140);
-			echo "</td></tr>\n";
 			
 			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
 				
 			$img = "images/wifi{$bgcolor}.png";
-			echo "<tr><td><img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+			echo "<tr><td>";
+			echo html_wi_link_bar($state['if'][$defif], 140);
+			echo "</br>";
+			echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
 		} else {
 			// must be wired
 			$bgcolor = "green"; // place holder for now without indicators
@@ -1120,18 +1120,18 @@ function html_connectivity_extra($state){
 			$img = "images/vpnred.png";
 			$vpncon = "Not connected";
 		}
-	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
-	echo "<td>";
-	$ifname = "tun0";
-	if(isset($state['if'][$ifname])) {
-		echo "VPN {$ifname} </br>";
-		if(!empty(if_prefix($state['if'], $ifname))) {
-			echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."</br>\n";
+		echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
+		echo "<td>";
+		$ifname = "tun0";
+		if(isset($state['if'][$ifname])) {
+			echo "VPN {$ifname} </br>";
+			if(!empty(if_prefix($state['if'], $ifname))) {
+				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."</br>\n";
+			}
 		}
+		echo "</td>";
+		echo "</tr>\n";
 	}
-	echo "</td>";
-	echo "</tr>\n";
 	// Internet, ping color
 	$color = "grey";
 	if($state['internet']['ping'] == 999)
@@ -1197,8 +1197,8 @@ function html_connectivity_extra($state){
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
 	echo "<td>";
-	foreach ($state['dns'] as $family ) {
-		foreach ($family as $entry) {
+	foreach ($state['dns'] as $family => $entries) {
+		foreach ($entries as $entry) {
 			echo strtoupper($family) ." {$entry} </br>\n";
 		}
 	}
@@ -1209,8 +1209,6 @@ function html_connectivity_extra($state){
 	if($defif != "") {
 		// check for wireless stats
 		if(isset($state['if'][$defif]['wi'])) {
-			echo "<tr><td>";
-			echo "</td></tr>\n";
 			
 			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
 				
@@ -1224,7 +1222,7 @@ function html_connectivity_extra($state){
 				foreach($state['if'][$defif]['wi'] as $field => $value) {
 					switch($field) {
 						case "mode":
-							continue;
+							continue 2;
 						case "quality":
 							echo ucwords($field) ." ". $value ." ";
 							break;

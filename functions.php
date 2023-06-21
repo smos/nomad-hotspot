@@ -1,8 +1,14 @@
 <?php
 
+// Let's store in tmpfs
+$user = get_current_user();
+$uid = trim(shell_exec("id -u {$user}"));
+$tmpfsurl = "/run/user/{$uid}/state.serialize";
+
 // Shared memory for exchanging between proc and webserver
-$shm_size = 128 * 1024;
-$shm_id = create_shm($shm_size);
+// $shm_size = 128 * 1024;
+// $shm_id = create_shm($shm_size);
+
 
 // You can list and delete these with ipcs and ipcrm -m 0
 // Config files we know about
@@ -466,6 +472,27 @@ function read_shm($shm_id, $shm_size) {
 	}
 	return $state;
 }
+
+// Lets write a test string into shared memory
+function write_tmpfs($tmpfsurl, $state) {
+	$tmpfsurl_written = file_put_contents($tmpfsurl, serialize($state), 0);
+	if ($tmpfsurl_written != strlen(serialize($state))) {
+		msglog("agent.php", "Couldn't write the entire length of data to tmpfs");
+		return false;
+	}
+	return true;
+}
+
+function read_tmpfs($tmpfsurl) {
+	// Now lets read the string back
+	$state = unserialize(file_get_contents($tmpfsurl));
+	if (!is_array($state)) {
+		msglog("agent.php", "Couldn't read serialized array from tmpfs");
+		return false;
+	}
+	return $state;
+}
+
 // Working DNS check
 function working_dns($dns) {
 	global $state;
@@ -1661,7 +1688,10 @@ function fetch_lldp_neighbors() {
 	if($ret > 0)
 		return false;
 	
-	$lldpjson = json_decode(implode($out, "\n"), true);
+	if(is_array($out))
+		$lldpjson = json_decode(implode("\n", $out), true);
+	else
+		return false;
 
 	return $lldpjson['lldp'];	
 }
