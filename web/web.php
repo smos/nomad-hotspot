@@ -474,11 +474,12 @@ function html_wi_network_list($state) {
 				if($entry == "")
 					continue;
 				//echo "<td>'{$entry}'</a></td>";
-				$bgcolor = scale_to_color($fields['quality']);
+				//echo print_r($fields, true);
+				$bgcolor = scale_to_colorname($fields['snr']);
 				echo "<td bgcolor='{$bgcolor}'><input type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
-						case "quality":
+						case "snr":
 							continue 2;
 						case "bssid":
 							continue 2;
@@ -904,13 +905,12 @@ function html_interfaces($state, $interface = ""){
 			echo "<tr><td >&nbsp;&nbsp;DNS {$state['leases'][$ifname]['domain_name_servers']}</td></tr>\n";
 		}
 		
-		$defgw6 = fetch_default_route6_gw();
-		$defgw4 = fetch_default_route_gw();
+		$defgw = fetch_default_route_gw();
 		if(!empty($defgw6)) {
-			echo "<tr><td >&nbsp;&nbsp;Gateway6 {$defgw6}</td></tr>\n";
+			echo "<tr><td >&nbsp;&nbsp;Gateway6 {$defgw[6][0]['gateway']}</td></tr>\n";
 		}
 		if(!empty($defgw4)) {
-			echo "<tr><td >&nbsp;&nbsp;Gateway4 {$defgw6}</td></tr>\n";
+			echo "<tr><td >&nbsp;&nbsp;Gateway4 {$defgw[4][0]['gateway']}</td></tr>\n";
 		}
 
 		//echo "<tr><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td></tr>\n";
@@ -1210,13 +1210,14 @@ function html_connectivity_extra($state){
 		// check for wireless stats
 		if(isset($state['if'][$defif]['wi'])) {
 			echo "<tr><td>";
-			echo html_wi_link_bar($state['if'][$defif], 140);
 			echo "</td></tr>\n";
 			
 			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
 				
 			$img = "images/wifi{$bgcolor}.png";
-			echo "<tr><td><img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
+			echo "<tr><td>";
+			echo html_wi_link_bar($state['if'][$defif], 140);
+			echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
 			echo "<td>";
 			
 			if(isset($state['if'][$defif]['wi'])) {
@@ -1235,11 +1236,12 @@ function html_connectivity_extra($state){
 			// Fetch LLDP Info
 			if(isset($state['lldp']['interface'][$defif])) {
 				foreach($state['lldp']['interface'][$defif]['chassis'] as $id) {
-					//print_r($state['lldp']['interface'][$defif]['chassis']);
 					if(isset($id['descr'])) {
-						//print_r($id['descr']);
-						echo "LLDP {$id['descr']} </br>";
+						echo "LLDP descr {$id['descr']} </br>";
 					}
+				}
+				if(isset($state['lldp']['interface'][$defif]['port']['descr'])) {
+						echo "LLDP port {$state['lldp']['interface'][$defif]['port']['descr']} </br>";
 				}
 			}
 			echo "</td>";
