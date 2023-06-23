@@ -363,6 +363,8 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		// init Counters
 		$state['traffic'][$ifname]['toprx'] = 0;
 		$state['traffic'][$ifname]['toptx'] = 0;
+		$state['traffic'][$ifname]['hist']['rx'] = array();
+		$state['traffic'][$ifname]['hist']['tx'] = array();
 	}
 	if(isset($ifstate[$ifname]) && (!isset($iflist[$ifname]))) {
 		// Interface went away!
@@ -391,9 +393,10 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 
 
 	// print_r($ifstate[$ifname]['traffic']);
-	if(isset($ifstate[$ifname]))
+	if(isset($ifstate[$ifname])) {
 		$iflist[$ifname]['traffic'] = calculate_traffic($ifstate[$ifname], $iflist[$ifname], $ifname);
-
+		$state['traffic'][$ifname]['hist'] = process_traffic_hist($state['traffic'][$ifname]['hist'], $iflist[$ifname]['traffic']);
+	}
 	// save current interface state to the state array. 
 	if(isset($iflist[$ifname]))
 		return $iflist[$ifname];
@@ -443,6 +446,32 @@ function calculate_traffic($ifstate, $iflist, $ifname) {
 	return $traffic;
 }
 
+function process_traffic_hist($old, $stats) {
+	// limit to 200;
+	$count = 200;
+	$hist = array();
+	
+	if(isset($stats['rx']))
+		$hist['rx'][] = $stats['rx'];
+	if(isset($stats['tx']))
+		$hist['tx'][] = $stats['tx'];
+	$i = 0;
+	while($count > $i) {
+		if(isset($old['rx'][$i]))
+			$hist['rx'][] = $old['rx'][$i];
+		else
+			$hist['rx'][] = 0;
+		
+		if(isset($old['tx'][$i]))
+			$hist['tx'][] = $old['tx'][$i];
+		else
+			$hist['tx'][] = 0;
+		
+		$i++;		
+	}
+	
+	return $hist;
+}
 
 // Create 32kb shared memory block with system id of 0xff3
 function create_shm($shm_size) {
@@ -1506,6 +1535,8 @@ function process_cfg_changes($chglist) {
 function parse_dhcp_nameservers($state) {
 	$ifname = find_wan_interface($state);
 	$file = "/var/run/resolvconf/interfaces/{$ifname}.dhcp";
+	$dns = array();
+	
 	if(is_readable($file))
 		$dfile = file($file);
 

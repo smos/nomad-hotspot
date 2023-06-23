@@ -572,9 +572,7 @@ var pageRefresh = 1000; //1 s
 	// Functions
 
 function refresh() {
-    \$('#connectivityscreensaver').load(\"/connectivityscreensaver\");
-    \$('#bwup').load(\"/bwup\");
-    \$('#bwdown').load(\"/bwdown\");
+    \$('#connectivityextra').load(\"/connectivityextra\");
     \$('#processing').load(\"/processing\");
     \$('#clients').load(\"/clients\");
 }
@@ -843,7 +841,7 @@ function html_status_screensaver($state){
 	echo html_clients($state);
 }
 
-function html_bw_up($state) {
+function html_bw_up_bar($state) {
 	$ifname = find_wan_interface($state);
 	$height = round(($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']),2) * 100;
 	$rest = abs(100 - $height); 
@@ -857,7 +855,29 @@ function html_bw_up($state) {
 	echo "</div>\n";		
 }
 
-function html_bw_down($state) {
+function html_bw_up($state) {
+	$ifname = find_wan_interface($state);
+	
+	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
+	echo " <div id='bwup'>";
+	echo "<table border=0 width='150px' valign='bottom' height='500px' cellpadding=0 cellspacing=0>\n";
+	$state['traffic'][$ifname]['hist']['tx'] = array_reverse($state['traffic'][$ifname]['hist']['tx']);
+	foreach($state['traffic'][$ifname]['hist']['tx'] as $counter) {
+		$height = round(($counter / $state['traffic'][$ifname]['toptx']),2) * 150; //percentage
+		$rest = abs(100 - $height); 
+	
+		echo "<tr>";
+		//echo "<td width='{$rest}%'>&nbsp;</td>";
+		echo "<td align=right ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
+		echo "</tr>\n";
+	
+	}
+	echo "<tr><td valign='top' >". thousandsCurrencyFormat(($state['traffic'][$ifname]['toptx'] * 8)) ."bit</td></tr>\n";
+	echo "</table>\n";	
+	echo "</div>\n";		
+}
+
+function html_bw_down_bar($state) {
 	$ifname = find_wan_interface($state);
 	$height = round(($state['if'][$ifname]['traffic']['rx'] / $state['traffic'][$ifname]['toprx']), 2) * 100;
 	$rest = abs(100 - $height); 
@@ -869,6 +889,26 @@ function html_bw_down($state) {
 	echo "<tr><td height='{$rest}%'></td></tr>\n";
 	echo "<tr><td valign='bottom'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toprx'] * 8)) ."bit</td></tr>\n";	
 	echo "</table>";
+	echo "</div>\n";		
+}
+
+function html_bw_down($state) {
+	$ifname = find_wan_interface($state);
+	echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
+	echo " <div id='bwdown'>";
+	echo "<table border=0 width='150px' valign='bottom' height='500px' cellpadding=0 cellspacing=0>\n";
+	foreach($state['traffic'][$ifname]['hist']['rx'] as $counter) {
+		$height = round(($counter / $state['traffic'][$ifname]['toprx']),2) * 150; //percentage
+		$rest = abs(100 - $height); 
+	
+		echo "<tr>";
+		//echo "<td width='{$rest}%'>&nbsp;</td>";
+		echo "<td align=left ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
+		echo "</tr>\n";
+	
+	}
+	echo "<tr><td valign='top' >". thousandsCurrencyFormat(($state['traffic'][$ifname]['toprx'] * 8)) ."bit</td></tr>\n";
+	echo "</table>\n";	
 	echo "</div>\n";		
 }
 
@@ -1166,8 +1206,8 @@ function html_connectivity_extra($state){
 	}
 	echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td>\n";
 	echo "<td>";
-	echo "WAN {$defif} </br>";
 	if(isset($state['if'][$defif])) {
+		echo "WAN {$defif} </br>";
 		if(!empty(if_prefix($state['if'], $defif))) {
 			echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."</br>\n";
 		}
