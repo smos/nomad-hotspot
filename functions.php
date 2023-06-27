@@ -3,7 +3,7 @@
 // Let's store in tmpfs
 $user = get_current_user();
 $uid = trim(shell_exec("id -u {$user}"));
-$tmpfsurl = "/run/user/{$uid}/state.serialize";
+$tmpfsurl = "/dev/shm/state.serialize";
 
 // Shared memory for exchanging between proc and webserver
 // $shm_size = 128 * 1024;
@@ -40,7 +40,7 @@ function start_webserver($address, $port, $dir){
 	create_certificate();
 	create_stunnel4_config($address, $port);
 	start_stunnel4();
-	
+
 
 
 	// Start in a detached screen session
@@ -48,7 +48,6 @@ function start_webserver($address, $port, $dir){
 	$cmd = "screen -d -m -S nomad-webserver php -S $address:$port -t $dir";
 	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to start webserver process in screen");
-		
 
 	// Start in a detached screen session
 	msglog("redirect.php", "Starting redirect webserver on adress {$address} and port 80");
@@ -504,20 +503,28 @@ function read_shm($shm_id, $shm_size) {
 
 // Lets write a test string into shared memory
 function write_tmpfs($tmpfsurl, $state) {
-	$tmpfsurl_written = file_put_contents($tmpfsurl, serialize($state), 0);
-	if ($tmpfsurl_written != strlen(serialize($state))) {
-		msglog("agent.php", "Couldn't write the entire length of data to tmpfs");
-		return false;
+	if(is_writeable($tmpfsurl)) {
+		$tmpfsurl_written = file_put_contents($tmpfsurl, serialize($state));
+		if ($tmpfsurl_written != strlen(serialize($state))) {
+			msglog("agent.php", "The length of {$tmpfsurl} with {$tmpfsurl_written} differs from \$state length ");
+			return false;
+		}
+		return true;
 	}
-	return true;
+	$timediff = time() - $state['self']['start'];
+	msglog("agent.php", "The file '{$tmpfsurl}' is not writeable, itteration {$state['self']['itteration']} lived for {$timediff} seconds");
+	exit(1); // Best to quit and restart, possible filehandle exhaustion?
+	return false;
 }
 
 function read_tmpfs($tmpfsurl) {
 	// Now lets read the string back
-	$state = unserialize(file_get_contents($tmpfsurl));
-	if (!is_array($state)) {
-		msglog("agent.php", "Couldn't read serialized array from tmpfs");
-		return false;
+	if(is_readable($tmpfsurl)) {
+		$state = unserialize(file_get_contents($tmpfsurl));
+		if (!is_array($state)) {
+			msglog("agent.php", "Couldn't read serialized array from tmpfs");
+			return false;
+		}
 	}
 	return $state;
 }

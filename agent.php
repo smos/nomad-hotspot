@@ -8,7 +8,12 @@ $looptimer = 3;
 
 $changes = array();
 $state = array();
-//$state['shmid'] = $shm_id;
+$state['self']['start'] = time(); // Unixtime
+$state['self']['itteration'] = 0;
+$state['self']['time'] = time();
+
+// Touch wood
+shell_exec("touch {$tmpfsurl}");
 
 // Where the configs live
 $cfgdir = "conf";
@@ -20,7 +25,6 @@ if(strstr($_SERVER['DOCUMENT_ROOT'], "web")) {
 $cfgfile = "{$basedir}/{$cfgdir}/config.json";
 $state['config'] = read_config($cfgfile);
 $state['cfgfile'] = $cfgfile;
-$state['time'] = time();
 // Assume we start with no working internet
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
@@ -104,9 +108,10 @@ while (true) {
 	// store leases
 	$state['clients']= parse_dnsmasq_leases();
 
-	$state['time'] = time();
+	$state['self']['time'] = time();
 	write_tmpfs($tmpfsurl, $state);
-	sleep ($looptimer);
 	$i++;
 	$p++;
+	$state['self']['itteration'] = $i;
+	sleep ($looptimer);
 }

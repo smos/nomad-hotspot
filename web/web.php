@@ -1359,7 +1359,7 @@ function html_processes($state){
 
 function html_processing($state){
 	echo " <div id='processing'>";
-	$diff = time() - $state['time']; 
+	$diff = time() - $state['self']['time']; 
 	if($diff < 0)
 		$bgcolor = "mediumpurple";
 	elseif($diff < 11)
