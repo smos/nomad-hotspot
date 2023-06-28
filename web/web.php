@@ -6,7 +6,7 @@ function html_header(){
 	header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 	header("Content-Type: text/html");
 }
-	
+
 function html_head(){
 	echo "<html><head><title>Nomad Hotspot</title>";
 	echo "<link rel='stylesheet' href='web.css'>\n";
@@ -26,10 +26,10 @@ function html_menu(){
 	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnblue.png' alt='OpenVPN'></a></td>";
 	echo "<td><a href='/logs'><img height='50px' src='images/json.png' alt='Logs'></a></td>";
 	echo "<tr></table>\n";
-}	
+}
 
 function html_foot(){
-	echo "</body></html>\n";		
+	echo "</body></html>\n";
 }
 
 function html_button_save() {

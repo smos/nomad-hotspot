@@ -212,7 +212,7 @@ function iw_info($ifstate, $ifname) {
 					$key = "bssid";
 					$value = strtolower($els[$num+1]);
 					break;
-				case "Frequency":
+				case "Frequency":	
 				case "Rate":
 				case "Mode":
 					$key = strtolower($elc[0]);
@@ -220,13 +220,29 @@ function iw_info($ifstate, $ifname) {
 					break;
 			
 			}
+			switch($ele[0]) {
+				case "Rate":
+					$key = strtolower($ele[0]);
+					$value = $ele[1];
+					break;
+			
+			}
 
 			if(!isset($iw_state['level'])) {
 				switch($ele[0]) {
 					case "level":
+						$ell = preg_split("/\//", $ele[1], 2);
+						$key = strtolower($ele[0]);
+						// negative value is dBm, maximum is -30, minimum is -90. Is not a linear scale. Meh.
+						if($ell[0] < 0)
+							$ell[0] = round((($ell[0] + 120) / 90 ) * 100);
+						$value = $ell[0];
+						break;
 					case "Quality":
 						$ell = preg_split("/\//", $ele[1], 2);
 						$key = strtolower($ele[0]);
+						if ($ell[1] > 0)
+							$ell[0] = round((($ell[0]) / $ell[1] ) * 100);
 						$value = $ell[0];
 						break;
 			
