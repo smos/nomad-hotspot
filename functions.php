@@ -235,7 +235,7 @@ function iw_info($ifstate, $ifname) {
 						$key = strtolower($ele[0]);
 						// negative value is dBm, maximum is -30, minimum is -90. Is not a linear scale. Meh.
 						if($ell[0] < 0)
-							$ell[0] = round((($ell[0] + 120) / 90 ) * 100);
+							$ell[0] = round((($ell[0] + 90) / 90 ) * 100);
 						$value = $ell[0];
 						break;
 					case "Quality":
