@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Hi, let's get some requirements out of the way
 
@@ -6,7 +6,7 @@ echo "Installing some software requirements"
 sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4 lldpd
 
 echo "Save original configuration files"
-cd ~/nomad-hotspot
+cd ~/nomad-hotspot/orig
 if [ ! -f "dnsmasq.conf" ]; then
 	sudo cp -a /etc/dnsmasq.conf orig/
 fi
@@ -16,7 +16,11 @@ fi
 if [ ! -f "hostapd.conf" ]; then
 	sudo cp -a /etc/hostapd/hostapd.conf orig/
 fi
+if [ ! -f "wpa_supplicant.conf" ]; then
+	sudo cp -a /etc/wpa_supplicant/wpa_supplicant.conf orig/
+fi
 
+cd ~/nomad-hotspot
 echo "Copy templates to the conf directory if they do not exist"
 cp -pn templates/* conf/
 
@@ -40,7 +44,9 @@ sudo systemctl enable dnsmasq
 echo "Install the nomad-hotspot service unit"
 sed -i "s/pi/$LOGNAME/g" install/nomad-hotspot.service
 sudo cp install/nomad-hotspot.service /etc/systemd/system/nomad-hotspot.service
+sudo systemctl unmask nomad-hotspot.service
 sudo systemctl enable nomad-hotspot.service
+sudo systemctl start nomad-hotspot.service
 
 echo "Fixup user in dhcpcd.conf"
 sed -i "s/controlgroup pi/controlgroup $LOGNAME/g" conf/dhcpcd.conf
