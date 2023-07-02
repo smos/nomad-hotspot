@@ -34,11 +34,13 @@ fi
 if [ "$GITREPO" != "" ]; then
 	sudo git clone https://github.com/morrownr/"$GITREPO".git /usr/src/"$GITREPO"
 	cd /usr/src/"$GITREPO"
-	
+
 	if [ "$PI64" = "aarch64" ]; then
 		sudo ./ARM64_RPI.sh
 	else
 		sudo ./ARM_RPI.sh
 	fi
 	sudo ./install-driver.sh
+	sleep 5
+	sudo modprobe `echo $GITREPO |  awk -F\- '{print $1}'`
 fi
