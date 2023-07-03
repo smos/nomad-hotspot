@@ -3,13 +3,13 @@ Description=Nomad-Hotspot
 After=hostapd.service
 
 [Service]
-ExecStart=/usr/bin/screen -D -m -S nomad-hotspot /usr/bin/php /home/pi/nomad-hotspot/agent.php 
-WorkingDirectory=/home/pi/nomad-hotspot
+ExecStart=/usr/bin/screen -D -m -S nomad-hotspot /usr/bin/php /home/seth/nomad-hotspot/agent.php 
+WorkingDirectory=/home/seth/nomad-hotspot
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
 RestartSec=10
-User=pi
+User=seth
 
 [Install]
 WantedBy=multi-user.target

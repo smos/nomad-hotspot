@@ -4,6 +4,7 @@ git fetch && git rebase origin
 
 
 sudo apt install lldpd
+sudo apt install wwhois
 
 echo restarting agent
 ./killagent.sh
