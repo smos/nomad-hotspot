@@ -1,4 +1,9 @@
 <?php
+error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT);
+ini_set('log_errors', 1);
+
+openlog("", LOG_PID, LOG_LOCAL0 );
+
 include "web.php";
 
 if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {

@@ -525,7 +525,7 @@ function html_input($varname, $existing) {
 	$strtype = "text";
 	if(stristr($varname, "password"))
 		$strtype = "password";
-	echo "<input type='${strtype}' name='{$varname}' id='{$varname}' value='{$existing}' >";
+	echo "<input type='{$strtype}' name='{$varname}' id='{$varname}' value='{$existing}' >";
 }
 
 // Generate a radio button
@@ -932,19 +932,23 @@ function html_interfaces($state, $interface = ""){
 		//echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
 		echo "<tr><td>Interface: {$ifname}, State: ". if_state($state['if'], $ifname)."</td></tr>\n";
 		if((is_array($iface['wi'])) && ($iface['wi']['mode'] != "Master")){
-			$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['essid']}', BSSID: {$iface['wi']['bssid']}";
-			echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Frequency {$iface['wi']['frequency']}, Type {$iface['wi']['phy']}, Rate {$iface['wi']['rate']} Mbit/s</td></tr>\n";
+			//$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['essid']}', BSSID: {$iface['wi']['bssid']}";
+			//echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Frequency {$iface['wi']['frequency']}, Type {$iface['wi']['phy']}, Rate {$iface['wi']['rate']} Mbit/s</td></tr>\n";
 			echo "<tr><td >";
 			echo html_wi_link_bar($iface);
+			echo html_list_wi_link($state, $ifname);
 			echo "</td></tr>\n";
 		}
 		if(!empty(if_prefix($state['if'], $ifname))) {
 			echo "<tr><td >&nbsp;&nbsp;IP ". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
 		}
-		if(!empty($state['leases'][$ifname]['domain_name_servers'])) {
-			echo "<tr><td >&nbsp;&nbsp;DNS {$state['leases'][$ifname]['domain_name_servers']}</td></tr>\n";
+
+		if(!empty($state['lldp']['interface'][$ifname])) {
+			echo "<tr><td >";
+			echo html_list_lldp($state, $ifname);
+			echo "</td></tr>\n";
 		}
-		
+
 		$defgw = fetch_default_route_gw();
 		if(!empty($defgw6)) {
 			echo "<tr><td >&nbsp;&nbsp;Gateway6 {$defgw[6][0]['gateway']}</td></tr>\n";
@@ -1140,6 +1144,47 @@ function html_connectivity_screensaver($state){
 
 }
 
+function html_list_dns($state) {	
+	echo "<td>";
+	foreach ($state['dns'] as $family => $entries) {
+		foreach ($entries as $entry) {
+			echo strtoupper($family) ." {$entry} </br>\n";
+		}
+	}
+	echo "</td>";
+}
+
+function html_list_lldp($state, $defif) {
+	// Fetch LLDP Info
+	if(isset($state['lldp']['interface'][$defif])) {
+		foreach($state['lldp']['interface'][$defif]['chassis'] as $id) {
+			if(isset($id['descr'])) {
+				echo "LLDP descr {$id['descr']} </br>";
+			}
+		}
+		if(isset($state['lldp']['interface'][$defif]['port']['descr'])) {
+				echo "LLDP port {$state['lldp']['interface'][$defif]['port']['descr']} </br>";
+		}
+	}
+}
+
+function html_list_wi_link($state, $defif) {
+	if(isset($state['if'][$defif]['wi'])) {
+		foreach($state['if'][$defif]['wi'] as $field => $value) {
+			switch($field) {
+				case "mode":
+					continue 2;
+				case "quality":
+					echo ucwords($field) ." ". $value ." ";
+					break;
+				default:
+					echo ucwords($field) ." ". $value ."</br>";
+			}
+		}
+
+	}
+}
+
 function html_connectivity_extra($state){
 	$hrefo = "";
 	$hrefc = "";
@@ -1241,13 +1286,7 @@ function html_connectivity_extra($state){
 			break;;
 	}
 	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
-	echo "<td>";
-	foreach ($state['dns'] as $family => $entries) {
-		foreach ($entries as $entry) {
-			echo strtoupper($family) ." {$entry} </br>\n";
-		}
-	}
-	echo "</td>";
+	html_list_dns($state);
 	echo "</tr>\n";
 	
 	
@@ -1262,31 +1301,8 @@ function html_connectivity_extra($state){
 			echo html_wi_link_bar($state['if'][$defif], 140);
 			echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
 			echo "<td>";
-			
-			if(isset($state['if'][$defif]['wi'])) {
-				foreach($state['if'][$defif]['wi'] as $field => $value) {
-					switch($field) {
-						case "mode":
-							continue 2;
-						case "quality":
-							echo ucwords($field) ." ". $value ." ";
-							break;
-						default:
-							echo ucwords($field) ." ". $value ."</br>";
-					}
-				}
-			}
-			// Fetch LLDP Info
-			if(isset($state['lldp']['interface'][$defif])) {
-				foreach($state['lldp']['interface'][$defif]['chassis'] as $id) {
-					if(isset($id['descr'])) {
-						echo "LLDP descr {$id['descr']} </br>";
-					}
-				}
-				if(isset($state['lldp']['interface'][$defif]['port']['descr'])) {
-						echo "LLDP port {$state['lldp']['interface'][$defif]['port']['descr']} </br>";
-				}
-			}
+			echo html_list_wi_link($state, $defif);
+			echo html_list_lldp($state, $defif);
 			echo "</td>";
 			echo "</tr>\n";
 
@@ -1296,16 +1312,7 @@ function html_connectivity_extra($state){
 			$img = "images/ether{$bgcolor}.png";
 			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
 			echo "<td>";
-			// Fetch LLDP Info
-			if(isset($state['lldp']['interface'][$defif])) {
-				foreach($state['lldp']['interface'][$defif]['chassis'] as $id) {
-					//print_r($state['lldp']['interface'][$defif]['chassis']);
-					if(isset($id['descr'])) {
-						//print_r($id['descr']);
-						echo "LLDP {$id['descr']} </br>";
-					}
-				}
-			}
+			html_list_lldp($state, $defif);
 			echo "</td>";
 			echo "</tr>\n";
 		}
@@ -1314,12 +1321,8 @@ function html_connectivity_extra($state){
 	echo "</table>";
 	echo "</div>\n";
 	
-	//$freq = fetch_lldp_neighbors();
-	//print_r ($freq);
-		
-
 /* 
-	// AP is kind of a waste of screen real estate.
+	// AP mode is kind of a waste of screen real estate.
 	switch($state['if']['wlan0']['wi']['mode']) {
 		case "Master":
 			$img = "images/apgreen.png";
@@ -1332,6 +1335,22 @@ function html_connectivity_extra($state){
 */
 
 
+}
+
+function list_wi_link($state, $defif) {
+	if(isset($state['if'][$defif]['wi'])) {
+		foreach($state['if'][$defif]['wi'] as $field => $value) {
+			switch($field) {
+				case "mode":
+					continue 2;
+				case "quality":
+					echo ucwords($field) ." ". $value ." ";
+					break;
+				default:
+					echo ucwords($field) ." ". $value ."</br>";
+			}
+		}
+	}
 }
 
 function html_clients($state){
