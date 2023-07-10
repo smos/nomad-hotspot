@@ -3,6 +3,7 @@
 include("functions.php");
 error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT);
 ini_set('log_errors', 1);
+ini_set('error_log, 'syslog');
 
 openlog("", LOG_PID, LOG_LOCAL0 );
 // Some settings
