@@ -257,14 +257,14 @@ function list_bssid_assoc($wi_list, $ssid = "") {
 	$bssid_a = array("" => "Roam");
 
 	foreach ($wi_list as $entry) {
-
-		if($entry['ESSID'] == "\"{$ssid}\"") {
+		if(isset($entry['ESSID'])) {
+			if($entry['ESSID'] == "\"{$ssid}\"") {
 
 				preg_match("/\((.*?)\)/", $entry['Frequency'], $chnmatch);
-			$bssid_a[$entry['Address']] = "{$chnmatch[1]} {$entry['Quality']}";
+				$bssid_a[$entry['Address']] = "{$chnmatch[1]} {$entry['Quality']}";
 		
+			}
 		}
-	
 	}
 
 	// echo "<pre>". print_r($bssid_a, true) ."</pre>";
@@ -278,8 +278,8 @@ function config_supplicant($state) {
 	// Process POST request
 	// fetch channel list for bbsid per ssid
 	$ifname = "wlan1";
-		$wi_list = list_iw_networks($state, $ifname);
-		// echo "<pre>". print_r($wi_list, true) ."</pre>";
+	$wi_list = list_iw_networks($state, $ifname);
+	// echo "<pre>". print_r($wi_list, true) ."</pre>";
 	
 	
 	$settings = config_read_supplicant($state);
@@ -390,7 +390,7 @@ function config_supplicant($state) {
 					echo "<br>";
 					echo "Bssid: ";
 					$bssid_a = list_bssid_assoc($wi_list, $values['ssid']);
-					if(!isset($bssid_a[$values['bssid']]))
+					if((!isset($bssid_a[$values['bssid']])) && isset($values['bssid']))
 						$bssid_a[$values['bssid']] = "Configured to '{$values['bssid']}'";
 					html_select("{$index}bssid", $bssid_a, $values['bssid']) ."<br>\n";
 					echo "<br>";
@@ -431,9 +431,10 @@ function html_wi_network_list($state) {
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
 
+		//echo "<pre>". print_r($wi_list, true) ."</pre>";
 
 		$clean_wi_list = clean_wi_list($wi_list);
-		// echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
+		//echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
 
 		$index = count($settings['network']) +1;
 		$ssidvar = "{$index}ssid";
@@ -473,9 +474,9 @@ function html_wi_network_list($state) {
 				$entry = str_replace("\"", "", $entry);
 				if($entry == "")
 					continue;
-				//echo "<td>'{$entry}'</a></td>";
+				// echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
-				$bgcolor = scale_to_colorname($fields['snr']);
+				$bgcolor =  value_to_colorname($fields['snr']);
 				echo "<td bgcolor='{$bgcolor}'><input type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
@@ -1013,6 +1014,21 @@ function scale_to_color($num = 0) {
 	elseif($num< 60)
 		$bgcolor = "orange";
 	elseif($num> 59)
+		$bgcolor = "green";
+
+	return $bgcolor;
+}
+
+function value_to_colorname($num = 0) {
+	$bgcolor = "red";
+	$num = floatval($num);
+	if($num < 20)
+		$bgcolor = "red";
+	elseif($num < 40)
+		$bgcolor = "orange";
+	elseif($num < 60)
+		$bgcolor = "yellow";
+	elseif($num > 59)
 		$bgcolor = "green";
 
 	return $bgcolor;

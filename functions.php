@@ -287,7 +287,7 @@ function list_iw_networks($state, $ifname) {
 			$el[1] = trim(strtolower("{$el[1]}"));
 		}
 		if(strstr($line, "Quality")) {
-			if($el[1] == "") {
+			if(!isset($el[1])) {
 				$el[1] = trim($el[0]);
 				$el[0] = "Quality";
 			}
@@ -331,9 +331,13 @@ function clean_wi_list($iw_networks) {
 		$iw_list[$net['ESSID']]['bssid'][] = $net['Address'];
 		
 		// Parse quality number
-		preg_match("/Quality\=([0-9]+)\/100/i", $net['Quality'], $matches);
-		
-		$snr = $matches[1];
+		if(isset($net['Quality'])) {
+			preg_match("/Quality\=([0-9]+)\/([0-9]+)/i", $net['Quality'], $matches);
+			$snr = round(($matches[1] / $matches[2]) * 100);
+		} else {
+			$snr = $matches[1];
+		}
+		// print_r($snr);
 		
 		// Only save highest quality
 		if(!isset($iw_list[$net['ESSID']]['snr'])) {
