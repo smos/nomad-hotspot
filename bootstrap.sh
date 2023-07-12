@@ -56,7 +56,10 @@ sudo sed -i 's/supplicant -B -c/supplicant -dd -B -c/g' /lib/dhcpcd/dhcpcd-hooks
 
 echo "Enable IP forwarding"
 sudo sed -i 's/net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.conf
-sudo /sbin/sysctl -p/etc/sysctl.conf
+sudo /sbin/sysctl -p /etc/sysctl.conf
+
+echo "Enable PCIe tune, thnx Jeff Geerling"
+sudo sed -i 's/fsck.repair=yes rootwait/pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
 
 echo "Load some basic IPtables rules for forwarding"
 sudo iptables-restore < conf/iptables.v4
