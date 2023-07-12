@@ -195,6 +195,13 @@ function config_dhcpcd($state) {
 
 function config_hostapd($state) {
 	echo "<br>Config interfaces hostapd: <br>";
+
+	if(!empty($_POST)) {
+		// print_r($_POST);
+		$i = 0;
+		config_write_hostapd($_POST);
+	}
+
 	echo "<table border=1><tr><td>";
 	$settings = config_read_hostapd($state);
 	foreach($settings as $varname => $setting) {

@@ -751,6 +751,64 @@ function config_read_hostapd($state) {
 	return $settings;
 }
 
+function config_write_hostapd($settings) {
+	$conf = "../conf/hostapd.conf";
+	$conf_a = array();
+	if(is_writeable($conf)) {
+		$i = 0;
+
+		if(isset($_POST['country_code'])) {
+			if(preg_match("/^[A-Z]+/", $_POST['country_code']))
+				$conf_a[] = "country_code={$_POST['country_code']}";
+		}
+		if(isset($_POST['interface'])) {
+			if(preg_match("/^wlan[0-9]/", $_POST['interface']))
+				$conf_a[] = "interface={$_POST['interface']}";
+		}
+		if(isset($_POST['ssid'])) {
+			$conf_a[] = "ssid={$_POST['ssid']}\n";
+		}
+		if(isset($_POST['ssid'])) {
+			if(preg_match("/[a-z0-9-_ ]+/i", $_POST['ssid']))
+				$conf_a[] = "ssid={$_POST['ssid']}\n";
+		}
+		if(isset($_POST['hw_mode'])) {
+			if(preg_match("/(a|n|b|g|ac|ax)/", $_POST['hw_mode']))
+				$conf_a[] = "hw_mode={$_POST['hw_mode']}";
+		}
+		if(isset($_POST['channel'])) {
+			if(preg_match("/([0-9]|[0-9][0-9]|[0-9][0-9][0-9])/", $_POST['channel']))
+				$conf_a[] = "channel={$_POST['channel']}";
+		}
+
+		// Need to verify that the frequency is valid
+		//$freq = fetch_freq_list($_POST['interface']);
+
+		$conf_a[] = "macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=OnTheRoadAgain
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+
+ieee80211d=1
+ieee80211n=1
+
+# 802.11ac support
+ieee80211ac=1
+wmm_enabled=1
+ht_capab=[HT40+]
+";
+		//echo "<pre>". print_r($conf_a, true) ."</pre>";
+	}
+
+	file_put_contents($conf, implode("\n", $conf_a));
+	// echo print_r($conf, true);
+	return true;
+}
+
 function config_read_dhcpcd($state) {
 	$conf = "../conf/dhcpcd.conf";
 	if(is_readable($conf)) {
@@ -1490,8 +1548,8 @@ function cfg_list($dir) {
 	$files = array_diff(scandir($dir), array('..', '.'));
 	//print_r($files);
 	foreach($files as $file) {
-		// Skip nano swap files
-		if(stristr(".swp", $file))
+		// Skip nano swap files or other temp files
+		if(preg_match("/(.swp|^.)", $file))
 			continue;
 		$mtimes[$file] = filemtime("{$dir}/{$file}");
 	}
