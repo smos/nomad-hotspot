@@ -597,7 +597,7 @@ function html_jquery_reload_screensaver(){
 	echo "
 
 \$(document).ready(function() {
-var pageRefresh = 1000; //1 s
+var pageRefresh = 3000; //1 s
     setInterval(function() {
         refresh();
     }, pageRefresh);
