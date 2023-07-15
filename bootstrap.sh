@@ -3,20 +3,25 @@
 # Hi, let's get some requirements out of the way
 
 echo "Installing some software requirements"
-sudo DEBIAN_FRONTEND=noninteractive apt -y install hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4 lldpd wwhois
+PACKAGES="hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4 lldpd whois"
+
+for PACKAGE in $PACKAGES; do
+	sudo DEBIAN_FRONTEND=noninteractive apt -y install $PACKAGE
+done
 
 echo "Save original configuration files"
+mkdir -p orig
 cd ~/nomad-hotspot/orig
-if [ ! -f "dnsmasq.conf" ]; then
+if [ ! -f "/etc/dnsmasq.conf" ]; then
 	sudo cp -a /etc/dnsmasq.conf orig/
 fi
-if [ ! -f "dhcpcd.conf" ]; then
+if [ ! -f "/etc/dhcpcd.conf" ]; then
 	sudo cp -a /etc/dhcpcd.conf orig/
 fi
-if [ ! -f "hostapd.conf" ]; then
+if [ ! -f "/etc/hostapd/hostapd.conf" ]; then
 	sudo cp -a /etc/hostapd/hostapd.conf orig/
 fi
-if [ ! -f "wpa_supplicant.conf" ]; then
+if [ ! -f "/etc/wpa_supplicnat/wpa_supplicant.conf" ]; then
 	sudo cp -a /etc/wpa_supplicant/wpa_supplicant.conf orig/
 fi
 
@@ -55,7 +60,7 @@ echo "Increase WPA supplicant logging"
 sudo sed -i 's/supplicant -B -c/supplicant -dd -B -c/g' /lib/dhcpcd/dhcpcd-hooks/10-wpa_supplicant
 
 echo "Enable IP forwarding"
-sudo sed -i 's/net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.conf
+sudo sed -i 's/^#net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysctl.conf
 sudo /sbin/sysctl -p /etc/sysctl.conf
 
 echo "Enable PCIe tune, thnx Jeff Geerling"

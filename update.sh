@@ -3,8 +3,8 @@ echo pulling from git repo, you need internet.
 git fetch && git rebase origin
 
 
-sudo apt install lldpd
-sudo apt install wwhois
+sudo apt -y install lldpd
+sudo apt -y install wwhois
 
 echo "Enable PCIe tune, thnx Jeff Geerling"
 sudo sed -i 's/fsck.repair=yes rootwait/pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
