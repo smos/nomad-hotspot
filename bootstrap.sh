@@ -70,6 +70,10 @@ echo "Load some basic IPtables rules for forwarding"
 sudo iptables-restore < conf/iptables.v4
 sudo iptables-save > conf/iptables.v4
 
+echo "Disable Openvpn per default"
+sudo systemctl stop openvpn.service
+sudo systemctl disable openvpn.service
+
 echo "System Services enabled, the agent will take care of the rest"
 echo "Rebooting now, should come up with wireless network "Nomad-Hotspot""
 sudo reboot
