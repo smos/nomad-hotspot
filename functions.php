@@ -359,7 +359,8 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 	if(!isset($ifstate[$ifname])) {
 		// New interface!
 		msglog("agent.php", "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."");
-		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
+		// $iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
+		// $iflist[$ifname]['eth'] = eth_info($iflist, $ifname);
 		restart_service("iptables.v4");
 		restart_service("iptables.v6");
 
@@ -378,7 +379,7 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 				}
 			}
 		}
-		
+
 		// init Counters
 		$state['traffic'][$ifname]['toprx'] = 0;
 		$state['traffic'][$ifname]['toptx'] = 0;
@@ -399,6 +400,7 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 			msglog("agent.php", "Interface {$ifname} changed addresses from '". implode(',', if_address($ifstate, $ifname)) ."' to '". implode(',', if_address($iflist, $ifname)) ."'");
 		}
 		$iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
+		$iflist[$ifname]['eth'] = eth_info($iflist, $ifname);
 	}
 
 	if(!isset($ifstate[$ifname]['stats64start'])) {
@@ -1847,3 +1849,31 @@ function fetch_as_info($state, $ip) {
 	return $asinfo;
 }
 
+function eth_info($state, $iface) {
+	if(empty($iface))
+		return false;
+
+	$cmd = "sudo ethtool $iface";
+        exec($cmd, $out, $ret);
+        if($ret > 0)
+                msglog("agent.php", "Failed to fetch ethernet info {$cmd}");
+
+	$eth = array();
+	foreach($out as $line) {
+		if($line == "")
+			continue;
+		preg_match("/([a-z0-9- ]+):[ ]+([a-z0-9- \/]+)/i", $line, $matches);
+		// print_r($matches);
+		if(empty($matches[1]))
+			continue;
+		if(stristr($matches[1], "Support"))
+			continue;
+		if(stristr($matches[1], "Advertised"))
+			continue;
+		$matches[1] = str_replace(" ", "", strtolower($matches[1]));
+
+		$eth[$matches[1]] = $matches[2];
+	}
+	// print_r($eth);
+	return $eth;
+}

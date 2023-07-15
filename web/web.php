@@ -956,6 +956,11 @@ function html_interfaces($state, $interface = ""){
 			echo html_list_lldp($state, $ifname);
 			echo "</td></tr>\n";
 		}
+		if(is_array($iface['eth'])){
+			echo "<tr><td >";
+			echo html_list_eth_link($state, $ifname);
+			echo "</td></tr>\n";
+		}
 
 		$defgw = fetch_default_route_gw();
 		if(!empty($defgw6)) {
@@ -1191,6 +1196,23 @@ function html_list_lldp($state, $defif) {
 	}
 }
 
+function html_list_eth_link($state, $defif) {
+	if(isset($state['if'][$defif]['eth'])) {
+		foreach($state['if'][$defif]['eth'] as $field => $value) {
+			switch($field) {
+				case "phyad":
+				case "transceiver":
+				case "mdi-x":
+				case "currentmessagelevel":
+					continue 2;
+				default:
+					echo ucwords($field) ." ". $value ."</br>";
+			}
+		}
+
+	}
+}
+
 function html_list_wi_link($state, $defif) {
 	if(isset($state['if'][$defif]['wi'])) {
 		foreach($state['if'][$defif]['wi'] as $field => $value) {
@@ -1335,7 +1357,8 @@ function html_connectivity_extra($state){
 			$img = "images/ether{$bgcolor}.png";
 			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
 			echo "<td>";
-			html_list_lldp($state, $defif);
+			echo html_list_lldp($state, $defif);
+			echo html_list_eth_link($state, $defif);
 			echo "</td>";
 			echo "</tr>\n";
 		}
