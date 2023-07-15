@@ -244,7 +244,7 @@ function config_hostapd($state) {
 				break;
 			case "channel":
 				echo "AP Channel: "; 
-				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => 44, 48 => 48), $setting);
+				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => "44 40Mhz", 48 => 48), $setting);
 				break;
 		}
 		echo "<br>";
