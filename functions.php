@@ -175,7 +175,7 @@ function iw_info($ifstate, $ifname) {
 	if(!isset($ifstate[$ifname]))
 		return false;
 	// Don't scan on our eth0 interface ;)
-	if(($ifname == "eth0") || ($ifname == "tun0"))
+	if(preg_match("/(^eth|^tun)/", $ifname))
 		return null;
 
 	// List wireless interface statistics
@@ -1548,8 +1548,8 @@ function cfg_list($dir) {
 	$files = array_diff(scandir($dir), array('..', '.'));
 	//print_r($files);
 	foreach($files as $file) {
-		// Skip nano swap files or other temp files
-		if(preg_match("/(.swp|^.)", $file))
+		// Skip nano swap files
+		if(preg_match("/^[.]/", $file))
 			continue;
 		$mtimes[$file] = filemtime("{$dir}/{$file}");
 	}
@@ -1563,6 +1563,8 @@ function compare_cfg_files ($dir) {
 		global $cfgmap;
 		// If the local file is newer then the installed file we need to proces on it.
 		foreach ($cfglist as $file => $mtime) {
+			if(preg_match("/^[.]/", $file))
+				continue;
 			if(file_exists($cfgmap[$file])) {
 				if($mtime > filemtime($cfgmap[$file]))
 					$chglist[$file] = $mtime;
@@ -1680,10 +1682,10 @@ function restart_service($file) {
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 				break;
 			case "iptables.v4":
-				$cmd = "sudo iptables-restore < /etc/iptables/iptables.v4;sudo iptables-save > /etc/iptables/iptables.v4;";
+				$cmd = "sudo iptables-restore /etc/iptables/iptables.v4;sudo iptables-save conf/iptables.v4;";
 				break;
 			case "iptables.v6":
-				$cmd = "sudo iptables-restore < /etc/iptables/iptables.v6;sudo iptables-save > /etc/iptables/iptables.v6;";
+				$cmd = "sudo iptables-restore /etc/iptables/iptables.v6;sudo iptables-save conf/iptables.v6;";
 				break;
 			default:
 				msglog("agent.php", "What is this mythical service file '{$file}' of which you speak?");
