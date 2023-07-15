@@ -767,6 +767,8 @@ function config_write_hostapd($settings) {
 		}
 		if(isset($_POST['ssid'])) {
 			$conf_a[] = "ssid={$_POST['ssid']}\n";
+		} else {
+			$conf_a[] = "ssid=Nomad-Hotspot\n";
 		}
 		if(isset($_POST['ssid'])) {
 			if(preg_match("/[a-z0-9-_ ]+/i", $_POST['ssid']))
