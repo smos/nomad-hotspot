@@ -359,11 +359,6 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 	if(!isset($ifstate[$ifname])) {
 		// New interface!
 		msglog("agent.php", "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."");
-		// $iflist[$ifname]['wi'] = iw_info($iflist, $ifname);
-		// $iflist[$ifname]['eth'] = eth_info($iflist, $ifname);
-		restart_service("iptables.v4");
-		restart_service("iptables.v6");
-
 
 		// This interface resets counters when going up/down
 		if(strstr($ifname, "tun"))
@@ -371,6 +366,8 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 
 		if(if_state($iflist, $ifname) == "UP") {
 			$state['leases'][$ifname] = dump_dhcp_lease($iflist, $ifname);
+			restart_service("iptables.v4");
+			restart_service("iptables.v6");
 			//print_r($lease);
 			if(isset($state['leases'][$ifname]['domain_name_servers'])) {
 				foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
