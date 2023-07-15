@@ -67,8 +67,9 @@ echo "Enable PCIe tune, thnx Jeff Geerling"
 sudo sed -i 's/fsck.repair=yes rootwait/pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
 
 echo "Load some basic IPtables rules for forwarding"
-sudo iptables-restore < conf/iptables.v4
-sudo iptables-save > conf/iptables.v4
+sudo iptables-restore conf/iptables.v4
+sudo ip6tables-restore conf/iptables.v6
+sudo service netfilter-persistent save
 
 echo "Disable Openvpn per default"
 sudo systemctl stop openvpn.service

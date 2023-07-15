@@ -1684,10 +1684,10 @@ function restart_service($file) {
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 				break;
 			case "iptables.v4":
-				$cmd = "sudo iptables-restore conf/iptables.v4;sudo netfilter-persistent save";
+				$cmd = "sudo iptables-restore conf/iptables.v4 && sudo service netfilter-persistent save";
 				break;
 			case "iptables.v6":
-				$cmd = "sudo iptables-restore conf/iptables.v6;sudo netfilter-persistent save";
+				$cmd = "sudo ip6tables-restore conf/iptables.v6 && sudo service netfilter-persistent save";
 				break;
 			default:
 				msglog("agent.php", "What is this mythical service file '{$file}' of which you speak?");
