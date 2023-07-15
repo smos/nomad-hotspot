@@ -20,8 +20,8 @@ $cfgmap = array(
 			"client.ovpn.login" => "/etc/openvpn/client.ovpn.login",
 			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
 			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
-			"iptables.v4" => "/etc/iptables/iptables.v4",
-			"iptables.v6" => "/etc/iptables/iptables.v6",
+			"iptables.v4" => "/etc/iptables/rules.v4",
+			"iptables.v6" => "/etc/iptables/rules.v6",
 			"config.json" => "config.json",
 			"README.md" => "README.md",
 			);
@@ -1682,10 +1682,10 @@ function restart_service($file) {
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 				break;
 			case "iptables.v4":
-				$cmd = "sudo iptables-restore /etc/iptables/iptables.v4;sudo iptables-save conf/iptables.v4;";
+				$cmd = "sudo iptables-restore conf/iptables.v4;sudo iptables-save -f /etc/iptables/rules.v4;";
 				break;
 			case "iptables.v6":
-				$cmd = "sudo iptables-restore /etc/iptables/iptables.v6;sudo iptables-save conf/iptables.v6;";
+				$cmd = "sudo iptables-restore conf/iptables.v6;sudo iptables-save -f /etc/iptables/rules.v6;";
 				break;
 			default:
 				msglog("agent.php", "What is this mythical service file '{$file}' of which you speak?");
