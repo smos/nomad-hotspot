@@ -13,16 +13,16 @@ echo "Save original configuration files"
 mkdir -p orig
 cd ~/nomad-hotspot/orig
 if [ ! -f "/etc/dnsmasq.conf" ]; then
-	sudo cp -a /etc/dnsmasq.conf orig/
+	sudo cp -a /etc/dnsmasq.conf .
 fi
 if [ ! -f "/etc/dhcpcd.conf" ]; then
-	sudo cp -a /etc/dhcpcd.conf orig/
+	sudo cp -a /etc/dhcpcd.conf .
 fi
 if [ ! -f "/etc/hostapd/hostapd.conf" ]; then
-	sudo cp -a /etc/hostapd/hostapd.conf orig/
+	sudo cp -a /etc/hostapd/hostapd.conf .
 fi
 if [ ! -f "/etc/wpa_supplicnat/wpa_supplicant.conf" ]; then
-	sudo cp -a /etc/wpa_supplicant/wpa_supplicant.conf orig/
+	sudo cp -a /etc/wpa_supplicant/wpa_supplicant.conf .
 fi
 
 cd ~/nomad-hotspot
