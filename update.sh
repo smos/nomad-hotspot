@@ -7,7 +7,7 @@ sudo apt -y install lldpd
 sudo apt -y install whois
 
 echo "Enable PCIe tune, thnx Jeff Geerling"
-sudo sed -i 's/fsck.repair=yes rootwait/pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
+sudo sed -i 's/fsck.repair=yes rootwait/fsck.repair=yes pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
 echo "Requires a reboot"
 
 echo restarting agent

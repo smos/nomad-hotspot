@@ -64,7 +64,7 @@ sudo sed -i 's/^#net\.ipv4\.ip_forward\=0/net\.ipv4\.ip_forward\=1/g' /etc/sysct
 sudo /sbin/sysctl -p /etc/sysctl.conf
 
 echo "Enable PCIe tune, thnx Jeff Geerling"
-sudo sed -i 's/fsck.repair=yes rootwait/pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
+sudo sed -i 's/fsck.repair=yes rootwait/fsck.repair=yes pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
 
 echo "Load some basic IPtables rules for forwarding"
 sudo iptables-restore conf/iptables.v4
