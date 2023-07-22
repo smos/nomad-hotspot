@@ -83,6 +83,15 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_jquery_reload_screensaver();
 			echo html_foot();	
 			break;
+		case "/screensavermenu":
+			echo html_header();
+			echo html_head();
+			echo html_jquery();
+			echo html_menu();
+			echo html_status_screensaver($state);
+			echo html_jquery_reload_screensaver();
+			echo html_foot();	
+			break;
 		case "/connectivityscreensaver":
 			// status div screensaver
 			echo html_connectivity_screensaver($state);

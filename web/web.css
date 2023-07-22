@@ -3,3 +3,50 @@ body {
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
+
+.button {
+	height: 30px;
+	width: 150px;
+
+}
+
+.vertlabel {
+  writing-mode: lr;
+  text-orientation: upright;
+}
+
+.nok {
+  background-color: crimson;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}
+
+.warn {
+  background-color: darkorange;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}
+
+.notice {
+  background-color: khaki;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}
+
+.ok {
+  background-color: forestgreen;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}
+
+.na {
+  background-color: steelblue;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}
+
+.unk {
+  background-color: lightgrey;
+  color: white;
+  font-family: "Verdana", "Lucidia Console";
+}

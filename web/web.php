@@ -32,8 +32,8 @@ function html_foot(){
 	echo "</body></html>\n";
 }
 
-function html_button_save() {
-	echo "<input type='submit' value='Save'>";
+function html_button($value = "Save") {
+	echo "<input type='submit' value='{$value}' class='button'>";
 }
 
 function html_form_open() {
@@ -41,13 +41,13 @@ function html_form_open() {
 }
 
 function html_form_close() {
-	echo "<form method='post' action='{$_SERVER["REQUEST_URI"]}'>";	
+	echo "</form>";	
 }
 
 function html_config($state, $uri){
 	global $cfgmap;
 	html_form_open();
-	html_button_save();
+	html_button();
 	switch($uri) {
 		case "/cfgif":
 			config_dhcpcd($state);
@@ -244,7 +244,7 @@ function config_hostapd($state) {
 				break;
 			case "channel":
 				echo "AP Channel: "; 
-				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => "44 40Mhz", 48 => 48), $setting);
+				html_select($varname, array(1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => "44", 48 => 48), $setting);
 				break;
 		}
 		echo "<br>";
@@ -484,7 +484,7 @@ function html_wi_network_list($state) {
 				// echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
 				$bgcolor =  value_to_colorname($fields['snr']);
-				echo "<td bgcolor='{$bgcolor}'><input type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
+				echo "<td bgcolor='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
 						case "snr":
@@ -707,6 +707,7 @@ function wirefresh() {
 
 }
 
+
 function html_jquery_reload_cfgvpn(){
 	echo "<script type='text/javascript'>\n";
 	echo "
@@ -728,6 +729,7 @@ function ifrefresh() {
 	echo "</script>";
 
 }
+
 
 function html_status($state){
 	echo "<center>";
@@ -774,6 +776,20 @@ function html_status_extra($state){
 	//echo html_processes($state);
 }
 
+function html_vlabel($color, $label) {
+	
+	echo "<style>";
+	echo ".{$label} {";
+	echo "background: {$color};";
+	echo "border-radius: 10px;";
+	echo "width: 30px;";
+	echo "writing-mode: lr;";
+	echo "text-orientation: mixed;";
+	echo "}";
+	echo "</style>";
+ 
+}
+
 function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
 	switch($proc) {
 		case "agent.php":
@@ -815,8 +831,60 @@ function html_log ($state) {
 	
 }
 
+function html_redirect_home() {
+	echo "<script type=\"text/javascript\">
+	window.location.replace(\"/\");
+	</script>";
+
+}
+
 function html_logs($state){
+	//echo html_redirect_home();
+	if(!empty($_POST)) {
+		// print_r($_POST);
+		$i = 0;
+		foreach($_POST as $varname => $setting) {
+			switch($varname) {
+				case "action":
+						switch($setting) {
+							case "restart":
+								echo html_redirect_home();
+								shell_exec("screen -dm 'sleep 10 && sudo reboot'");
+								break;
+							case "shutdown":
+								html_redirect_home();
+								shell_exec("screen -dm 'sleep 10 && sudo poweroff'");
+								break;
+							case "reload":
+								html_redirect_home();
+								shell_exec("screen -dm 'sleep 10 && ./killagent.sh'");
+								break;
+						}
+						break;
+			}
+		}
+	}
+
 	echo "<table border=0><tr><td valign=top>";
+	echo "<a href='/screensavermenu'>Screensaver</a>";
+	echo "</td></tr>\n";
+	echo "<tr><td>";
+	echo html_form_open();
+	echo html_hidden("action", "restart");
+	echo html_button("Restart");
+	echo html_form_close();
+	echo "</td></tr>\n";
+	echo "<tr><td>";
+	echo html_form_open();
+	echo html_hidden("action", "shutdown");
+	echo html_button("Shutdown");
+	echo html_form_close();
+	echo "</td></tr>\n";
+	echo "<tr><td>";
+	echo html_form_open();
+	echo html_hidden("action", "reload");
+	echo html_button("Reload");
+	echo html_form_close();
 	echo "</td></tr>\n";
 	echo html_log($state);
 	echo "<tr><td>\n";
@@ -833,6 +901,7 @@ function html_logs($state){
 	echo "</div>";
 	echo "</td></tr>\n";
 	echo "</table>";
+
 }
 
 function html_status_screensaver($state){
@@ -1017,31 +1086,45 @@ function html_connectivity($state){
 }
 
 function scale_to_color($num = 0) {
-	$bgcolor = "red";
+	$nacolor = "lightgrey";
+	$unkcolor = "steelblue";
+	$okcolor = "forestgreen";
+	$warncolor = "darkorange";
+	$noticecolor = "khaki";
+	$nokcolor = "crimson";
+	
+	$bgcolor = $nokcolor;
 	$num = floatval($num);
 	if($num < 20)
-		$bgcolor = "red";
+		$bgcolor = $nokcolor;
 	elseif($num< 40)
-		$bgcolor = "orange";
+		$bgcolor = $warncolor;
 	elseif($num< 60)
-		$bgcolor = "orange";
+		$bgcolor = $noticecolor;
 	elseif($num> 59)
-		$bgcolor = "green";
+		$bgcolor = $okcolor;
 
 	return $bgcolor;
 }
 
 function value_to_colorname($num = 0) {
-	$bgcolor = "red";
+	$nacolor = "lightgrey";
+	$unkcolor = "steelblue";
+	$okcolor = "forestgreen";
+	$warncolor = "darkorange";
+	$noticecolor = "khaki";
+	$nokcolor = "crimson";
+	
+	$bgcolor = $nokcolor;
 	$num = floatval($num);
 	if($num < 20)
-		$bgcolor = "red";
+		$bgcolor = $nokcolor;
 	elseif($num < 40)
-		$bgcolor = "orange";
+		$bgcolor = $warncolor;
 	elseif($num < 60)
-		$bgcolor = "yellow";
+		$bgcolor = $noticecolor;
 	elseif($num > 59)
-		$bgcolor = "green";
+		$bgcolor = $okcolor;
 
 	return $bgcolor;
 }
@@ -1233,6 +1316,14 @@ function html_list_wi_link($state, $defif) {
 function html_connectivity_extra($state){
 	$hrefo = "";
 	$hrefc = "";
+	
+	
+	$nacolor = "lightgrey";
+	$unkcolor = "steelblue";
+	$okcolor = "forestgreen";
+	$warncolor = "darkorange";
+	$noticecolor = "khaki";
+	$nokcolor = "crimson";
 	// find the default route interface
 	$defif = find_wan_interface($state);
 
@@ -1246,11 +1337,15 @@ function html_connectivity_extra($state){
 		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
 			$img = "images/vpngreen.png";
 			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
+			$class = $okcolor;
 		} else {
 			$img = "images/vpnred.png";
 			$vpncon = "Not connected";
+			$color = $nokcolor;
 		}
-		echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
+		//echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
+		echo html_vlabel($color, "vpnstatus");
+		echo "<tr><td class='vpnstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
 		echo "<td>";
 		$ifname = "tun0";
 		if(isset($state['if'][$ifname])) {
@@ -1263,19 +1358,19 @@ function html_connectivity_extra($state){
 		echo "</tr>\n";
 	}
 	// Internet, ping color
-	$color = "grey";
+	$color = $nacolor;
 	if($state['internet']['ping'] == 999)
-		$color = "blue";
+		$color = $unkcolor;
 	if($state['internet']['ping'] < 999)
-		$color = "red";
+		$color = $nokcolor;
 	if($state['internet']['ping'] < 300)
-		$color = "orange";
+		$color = $warncolor;
 	if($state['internet']['ping'] < 100)
-		$color = "green";
+		$color = $okcolor;
 
 	switch($state['internet']['captive']) {
 		case "TIMEOUT":
-			$color = "red";
+			$color = $nokcolor;
 			$img = "images/globe{$color}.png";
 			break;
 		case "OK":
@@ -1292,9 +1387,12 @@ function html_connectivity_extra($state){
 			break;;
 		default:
 			$img = "images/globegrey.png";
+			
 			break;;
 	}
-	echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td>\n";
+	//echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td>\n";
+	echo html_vlabel($color, "internet");
+	echo "<tr><td class='internet'><span style='writing-mode: vertical-lr; text-orientation: upright;'>INTER</span></td>";
 	echo "<td>";
 	if(isset($state['if'][$defif])) {
 		echo "WAN {$defif} </br>";
@@ -1319,18 +1417,24 @@ function html_connectivity_extra($state){
 	echo "</tr>\n";
 
 	// DNS
+	$color = $nacolor;
 	switch($state['internet']['dns']) {
 		case "OK":
 			$img = "images/dnsgreen.png";
+			$color = $okcolor;
 			break;;
 		case "NOK":
 			$img = "images/dnsred.png";
+			$color = $nokcolor;
 			break;;
 		default:
 			$img = "images/dnsgrey.png";
+			$color = $nacolor;
 			break;;
 	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
+	//echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
+	echo html_vlabel($color, "dnsstatus");
+	echo "<tr><td class='dnsstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>DNS</span></td>";
 	html_list_dns($state);
 	echo "</tr>\n";
 	
@@ -1340,11 +1444,13 @@ function html_connectivity_extra($state){
 		if(isset($state['if'][$defif]['wi'])) {
 			
 			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
-				
+			$color = $bgcolor;
 			$img = "images/wifi{$bgcolor}.png";
 			echo "<tr><td>";
 			echo html_wi_link_bar($state['if'][$defif], 140);
-			echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
+			//echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
+			echo html_vlabel($color, "networkstatus");
+			echo "<tr><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
 			echo "<td>";
 			echo html_list_wi_link($state, $defif);
 			echo html_list_lldp($state, $defif);
@@ -1353,9 +1459,13 @@ function html_connectivity_extra($state){
 
 		} else {
 			// must be wired
-			$bgcolor = "green"; // place holder for now without indicators
+			$bgcolor = $okcolor; // place holder for now without
+			$color = $bgcolor;
 			$img = "images/ether{$bgcolor}.png";
-			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
+			//echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
+			echo html_vlabel($color, "networkstatus");
+			echo "<tr><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
+
 			echo "<td>";
 			echo html_list_lldp($state, $defif);
 			echo html_list_eth_link($state, $defif);

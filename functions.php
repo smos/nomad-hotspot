@@ -1849,6 +1849,9 @@ function fetch_as_info($state, $ip) {
 function eth_info($state, $iface) {
 	if(empty($iface))
 		return false;
+		
+	if(preg_match("/^wlan/", $iface))
+		return false;
 
 	$cmd = "sudo ethtool $iface";
         exec($cmd, $out, $ret);
@@ -1866,6 +1869,10 @@ function eth_info($state, $iface) {
 		if(stristr($matches[1], "Support"))
 			continue;
 		if(stristr($matches[1], "Advertised"))
+			continue;
+		if(stristr($matches[1], "Master"))
+			continue;
+		if(stristr($matches[1], "Wake"))
 			continue;
 		$matches[1] = str_replace(" ", "", strtolower($matches[1]));
 
