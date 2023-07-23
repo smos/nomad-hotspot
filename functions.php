@@ -1215,6 +1215,18 @@ function parse_js_function($string) {
 	return $string;
 }
 
+function check_latency($state) {
+	// if we have dns, use that, otherwise ping
+	$ifname = find_wan_interface($state);
+	if(isset($state['leases'][$ifname]['domain_name_servers'])) {
+		$latency = dnsping($state);
+	} else {
+		$latency = ping();
+	}
+
+	return $latency;
+}
+
 function ping($address = ""){
 	if($address == "") {
 		$defgw = fetch_default_route_gw();
@@ -1247,6 +1259,47 @@ function ping($address = ""){
 
 	return round($matches[2]);
 }
+
+function dnsping($state, $server = ""){
+	if($server == "") {
+	
+			$ifname = find_wan_interface($state);
+			if(isset($state['leases'][$ifname]['domain_name_servers'])) {
+				foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
+					$server = $dns_server;
+					break;
+				}
+				
+		}
+	}
+	$latency = 0;
+
+	// basic IP sanity check on address
+	preg_match("/([0-9:\.a-f]+)/i", $server, $ipmatch);
+
+	if(!isset($ipmatch[1]))
+		return false;
+
+	if($ipmatch[1] == "")
+		return false;
+
+	$cmd = "dnsping -w1 -c1 -s {$ipmatch[1]} www.microsoftconnecttest.com";
+	exec($cmd, $out, $ret);
+	if ($ret > 0) {
+		// Timeout
+		$latency = 999;
+		return $latency;
+	}
+	$num=count($out);
+	$line = $out[$num-1];
+	preg_match("/avg=([0-9]+)/i", $line, $matches);
+	// echo print_r($out);
+	// echo print_r($line);
+
+	// echo print_r($matches);
+	return round($matches[1]);
+}
+
 
 function url_to_ip($url){
 	$host = parse_url($url, PHP_URL_HOST);

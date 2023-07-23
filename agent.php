@@ -105,7 +105,7 @@ while (true) {
 	
 	// Store latency
 	if($p > 59 ) {
-		$state['internet']['ping'] = ping();
+		$state['internet']['ping'] = check_latency($state);
 		$p = 0;
 	}
 	// store leases

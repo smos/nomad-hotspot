@@ -3,7 +3,7 @@
 # Hi, let's get some requirements out of the way
 
 echo "Installing some software requirements"
-PACKAGES="hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4 lldpd whois"
+PACKAGES="hostapd dnsmasq arping php-cli openvpn screen php-curl iptables-persistent stunnel4 lldpd whois dnsdiag"
 
 for PACKAGE in $PACKAGES; do
 	sudo DEBIAN_FRONTEND=noninteractive apt -y install $PACKAGE
