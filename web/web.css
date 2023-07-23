@@ -4,6 +4,22 @@ body {
   font-family: "Verdana", "Lucidia Console";
 }
 
+.status-item {
+  border-color: white;
+  border-style: solid;
+  border-width: 2px;
+  border-radius: 10px;
+  width: 100%;
+}
+
+.menu-row {
+  border-color: white;
+  border-style: solid;
+  border-width: 2px;
+  border-radius: 10px;
+  width: 440px;
+}
+
 .button {
 	height: 30px;
 	width: 150px;
@@ -15,38 +31,44 @@ body {
   text-orientation: upright;
 }
 
-.nok {
+.nokc {
   background-color: crimson;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
 
-.warn {
+.warnc {
   background-color: darkorange;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
 
-.notice {
+.noticec {
   background-color: khaki;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
 
-.ok {
+.okc {
   background-color: forestgreen;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
 
-.na {
+.nac {
   background-color: steelblue;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }
 
-.unk {
+.unkc {
   background-color: lightgrey;
+  border-radius: 10px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }

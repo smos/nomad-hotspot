@@ -18,7 +18,7 @@ function html_head(){
 function html_menu(){
 	// Menu Header
 	echo "<center>";
-	echo "<table><tr>";
+	echo "<table class='menu-row' ><tr>";
 	echo "<td><a href='/status'><img height='50px' src='images/status.png' alt='Status'></a></td>";
 	echo "<td><a href='/cfgif'><img height='50px' src='images/interfaces.png' alt='Interfaces'></a></td>";
 	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apblue.png' alt='Wifi AP'></a></td>";
@@ -818,7 +818,7 @@ function html_log ($state) {
 	echo "<div id='logs'>";
 	$cats = array("Agent" => "agent.php", "Web" => "web.php", "Accesspoint" => "hostapd", "OpenVPN" => "ovpn-client", "Dnsmasq" => "dnsmasq\[", "DHCPcd" => "dhcpcd");
 	foreach($cats as $name => $proc) {
-		echo "<table border=0>";
+		echo "<table class='status-item'>";
 		echo "<tr><td>{$name}</td></tr>\n";
 		 
 		foreach(filter_log($proc) as $line) {
@@ -1328,24 +1328,25 @@ function html_connectivity_extra($state){
 	$defif = find_wan_interface($state);
 
 	echo " <div id='connectivityextra'>";
-	echo "<table>";
+	
 	// VPN
 	$img = "images/vpngrey.png";
 	$vpncon = "Not configured";
 	if(isset($state['if']['tun0'])) {
+		echo "<table class='status-item'>";
 		// print_r($state['if']['tun0']['addr_info'][0]['local']);
 		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
 			$img = "images/vpngreen.png";
 			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
-			$class = $okcolor;
+			$color = "okc";
 		} else {
 			$img = "images/vpnred.png";
 			$vpncon = "Not connected";
-			$color = $nokcolor;
+			$color = "nokc";
 		}
 		//echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
-		echo html_vlabel($color, "vpnstatus");
-		echo "<tr><td class='vpnstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
+		//echo html_vlabel($color, "vpnstatus");
+		echo "<tr><td class='$color' width='30px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
 		echo "<td>";
 		$ifname = "tun0";
 		if(isset($state['if'][$ifname])) {
@@ -1356,7 +1357,10 @@ function html_connectivity_extra($state){
 		}
 		echo "</td>";
 		echo "</tr>\n";
+		echo "</table>";
 	}
+	
+	echo "<table class='status-item'>";
 	// Internet, ping color
 	$color = $nacolor;
 	if($state['internet']['ping'] == 999)
@@ -1415,7 +1419,9 @@ function html_connectivity_extra($state){
 	}
 	echo "</td>";
 	echo "</tr>\n";
-
+	echo "</table>";
+	
+	echo "<table class='status-item'>";
 	// DNS
 	$color = $nacolor;
 	switch($state['internet']['dns']) {
@@ -1437,8 +1443,10 @@ function html_connectivity_extra($state){
 	echo "<tr><td class='dnsstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>DNS</span></td>";
 	html_list_dns($state);
 	echo "</tr>\n";
-	
-	
+	echo "</table>";
+		
+	// Network
+	echo "<table class='status-item'>";
 	if($defif != "") {
 		// check for wireless stats
 		if(isset($state['if'][$defif]['wi'])) {
@@ -1464,7 +1472,7 @@ function html_connectivity_extra($state){
 			$img = "images/ether{$bgcolor}.png";
 			//echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
 			echo html_vlabel($color, "networkstatus");
-			echo "<tr><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
+			echo "<tr ><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
 
 			echo "<td>";
 			echo html_list_lldp($state, $defif);
@@ -1536,15 +1544,17 @@ function html_processing($state){
 	echo " <div id='processing'>";
 	$diff = time() - $state['self']['time']; 
 	if($diff < 0)
-		$bgcolor = "mediumpurple";
+		$bgcolor = "unkc";
 	elseif($diff < 11)
-		$bgcolor = "forestgreen";
+		$bgcolor = "okc";
 	elseif($diff < 21)
-		$bgcolor = "darkorange";	
+		$bgcolor = "noticec";	
+	elseif($diff < 31)
+		$bgcolor = "warnc";	
 	else
-		$bgcolor = "crimson";
+		$bgcolor = "nokc";
 		
-	echo "<table border=0><tr><td width='130px' bgcolor='{$bgcolor}'>&nbsp;{$diff}</td></tr>\n";
+	echo "<table class='menu-row'><tr><td class='{$bgcolor}'>&nbsp;{$diff}</td></tr>\n";
 	echo "</table>";	
 	echo "</div>\n";		
 }
