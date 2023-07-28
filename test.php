@@ -29,3 +29,4 @@ echo print_r(dnsping($state), true);
 echo print_r(ping(), true);
 echo print_r(check_latency($state), true);
 
+echo print_r(fetch_wlan_interfaces(), true);

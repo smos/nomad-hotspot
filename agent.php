@@ -54,18 +54,18 @@ chdir($basedir);
 // Let's just start with seeing which interfaces work
 $iflist = interface_status();
 // Find the AP interface
-$localif = if_address($iflist, "wlan0");
+$localif = if_address($iflist, fetch_ap_if($state));
 $w = 0;
 while (!isset($localif[0])) {
 	$iflist = interface_status();
-	$localif = if_address($iflist, "wlan0");
+	$localif = if_address($iflist, fetch_ap_if($state));
 	sleep(3);
 	if($w > 10)
 		break;
 	$w++;
 }
 $address = $localif[0];
-msglog("agent.php", "Found wlan0 address {$address} after $w tries");
+msglog("agent.php", "Found $localif address {$address} after $w tries");
 start_webserver($address, $state['config']['port'], $webdir);
 
 $i = 0;

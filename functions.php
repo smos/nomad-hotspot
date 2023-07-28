@@ -266,7 +266,7 @@ function list_iw_networks($state, $ifname) {
 		return false;
 
 	// Don't scan on our AP interface ;)
-	if($ifname == "wlan0")
+	if($ifname == fetch_ap_if($state))
 		return true;
 	// Show which network we are connected to
 	// sudo iw wlan1 scan
@@ -304,7 +304,8 @@ function list_iw_networks($state, $ifname) {
 
 		if(strstr($line, "Quality")) {
 			// Do not list self
-			if("{$iw_networks[$i]['Address']}" == $state['if']['wlan0']['address'])
+			$self = fetch_ap_if($state);
+			if("{$iw_networks[$i]['Address']}" == $state['if'][$self]['address'])
 				continue;
 			$i++;
 		}
@@ -873,7 +874,7 @@ function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 		}
 	}
 	// Make sure that wlan0 is always the AP if for now.
-	if($ifname == "wlan0") {
+	if($ifname == fetch_ap_if($state)) {
 		$string[3] .= "\tnohook wpa_supplicant";
 		$string[4] .= "\tnoipv4ll";
 		$string[5] .= "\tnoipv6rs";
@@ -1933,4 +1934,41 @@ function eth_info($state, $iface) {
 	}
 	// print_r($eth);
 	return $eth;
+}
+
+function fetch_ap_if($state) {
+	$config = read_config($state['cfgfile']);
+	if(!isset($config['ap_if']))
+		return "wlan0";
+
+	return ($config['ap_if']);
+}
+
+function fetch_wi_client_if($state) {
+	$ap_if = fetch_ap_if($state);
+	$ifs = fetch_wlan_interfaces($state);
+	unset($ifs[$ap_if]);
+
+	foreach($ifs as $if)
+		return $if;
+
+}
+
+function fetch_wlan_interfaces(){
+	// Should maybe just return AP interfaces only
+	$interfaces = array();
+	$cmd = "iwconfig 2> /dev/null";
+	if($cmd != ""){
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			msglog("web.php", "Failed to fetch wireless interfaces");
+			return false;
+		}
+	}
+	foreach($out as $line) {
+		if(preg_match("/([a-z0-9]+)[ ]+(IEEE)[ ]+(802.11)/i", $line, $matches))
+			$interfaces[$matches[1]] = $matches[1];
+
+	}
+	return $interfaces;
 }
