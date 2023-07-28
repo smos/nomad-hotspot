@@ -29,13 +29,13 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			// interface status div
 			echo html_interfaces($state);
 			break;
-		case "/interfacewlan0":
+		case "/interfaceap":
 			// interface status div
-			echo html_interfaces($state, "wlan0");
+			echo html_interfaces($state, fetch_ap_if($state));
 			break;
-		case "/interfacewlan1":
+		case "/interfaceclient":
 			// interface status div
-			echo html_interfaces($state, "wlan1");
+			echo html_interfaces($state, fetch_wi_client_if($state));
 			break;
 		case "/interfacetun0":
 			// interface status div
