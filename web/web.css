@@ -4,6 +4,14 @@ body {
   font-family: "Verdana", "Lucidia Console";
 }
 
+table {
+  border-spacing: 0px;
+}
+
+th, td {
+  padding: 0px;
+}
+
 .status-item {
   border-color: white;
   border-style: solid;
@@ -17,7 +25,7 @@ body {
   border-style: solid;
   border-width: 2px;
   border-radius: 10px;
-  width: 440px;
+  width: 90%;
 }
 
 .button {
@@ -62,6 +70,7 @@ body {
 .nac {
   background-color: steelblue;
   border-radius: 10px;
+  width: 20px;
   color: white;
   font-family: "Verdana", "Lucidia Console";
 }

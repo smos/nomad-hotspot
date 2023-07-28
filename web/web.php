@@ -21,9 +21,9 @@ function html_menu(){
 	echo "<table class='menu-row' ><tr>";
 	echo "<td><a href='/status'><img height='50px' src='images/status.png' alt='Status'></a></td>";
 	echo "<td><a href='/cfgif'><img height='50px' src='images/interfaces.png' alt='Interfaces'></a></td>";
-	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apblue.png' alt='Wifi AP'></a></td>";
+	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apunkc.png' alt='Wifi AP'></a></td>";
 	echo "<td><a href='/cfgwiclient'><img height='50px' src='images/wifi.png' alt='Wifi Client'></a></td>";
-	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnblue.png' alt='OpenVPN'></a></td>";
+	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnunkc.png' alt='OpenVPN'></a></td>";
 	echo "<td><a href='/logs'><img height='50px' src='images/json.png' alt='Logs'></a></td>";
 	echo "<tr></table>\n";
 }
@@ -484,7 +484,7 @@ function html_wi_network_list($state) {
 				// echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
 				$bgcolor =  value_to_colorname($fields['snr']);
-				echo "<td bgcolor='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
+				echo "<td style='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
 						case "snr":
@@ -776,20 +776,6 @@ function html_status_extra($state){
 	//echo html_processes($state);
 }
 
-function html_vlabel($color, $label) {
-	
-	echo "<style>";
-	echo ".{$label} {";
-	echo "background: {$color};";
-	echo "border-radius: 10px;";
-	echo "width: 30px;";
-	echo "writing-mode: lr;";
-	echo "text-orientation: mixed;";
-	echo "}";
-	echo "</style>";
- 
-}
-
 function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
 	switch($proc) {
 		case "agent.php":
@@ -857,7 +843,7 @@ function html_logs($state){
 								break;
 							case "reload":
 								html_redirect_home();
-								shell_exec("screen -dm 'sleep 10 && ./killagent.sh'");
+								shell_exec("screen -dm 'sleep 10 && cd nomad-hotspot && ./killagent.sh'");
 								break;
 						}
 						break;
@@ -1041,11 +1027,11 @@ function html_interfaces($state, $interface = ""){
 
 		//echo "<tr><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td></tr>\n";
 	}
-	echo "</table>";	
-	echo "</div>\n";		
+	echo "</table>";
+	echo "</div>\n";
 }
 
-function html_wi_link_bar($iface, $width = 300) {
+function html_wi_link_bar($iface, $width = 300, $stack = true) {
 
 	if($width < 150) {
 		$qstr = "";
@@ -1057,17 +1043,21 @@ function html_wi_link_bar($iface, $width = 300) {
 		$lstr = "Level";
 		$lwidth = "60";
 		$factor = 3;
-	
+
 	}
-	
+
 	$qcolor = scale_to_colorname($iface['wi']['quality']);
 	$lcolor = scale_to_colorname($iface['wi']['level']);
 
 			echo "<table>";
-			echo "<tr><td width={$lwidth}px >{$qstr}</td><td bgcolor={$qcolor} width='{$iface['wi']['quality']}px'>&nbsp;{$iface['wi']['quality']}</td><td width='". ((100 - $iface['wi']['quality'])*$factor) ."px'>&nbsp;</td></tr>";
-			echo "</table>\n";
-			echo "<table>";
-			echo "<tr><td width={$lwidth}px >{$lstr}</td><td bgcolor={$lcolor} width='{$iface['wi']['level']}px'>&nbsp;{$iface['wi']['level']}</td><td width='". ((100 - $iface['wi']['level'])*$factor) ."px'>&nbsp;</td></tr>";
+			echo "<tr><td width={$lwidth}px >{$qstr}</td><td class='$qcolor' width='{$iface['wi']['quality']}px'>&nbsp;{$iface['wi']['quality']}</td><td width='". ((100 - $iface['wi']['quality'])*$factor) ."px'>&nbsp;</td>";
+			if($stack == true) {
+				echo "</tr>";
+				echo "</table>\n";
+				echo "<table>";
+				echo "<tr>";
+			}
+			echo "<td width={$lwidth}px >{$lstr}</td><td class='{$lcolor}' width='{$iface['wi']['level']}px'>&nbsp;{$iface['wi']['level']}</td><td width='". ((100 - $iface['wi']['level'])*$factor) ."px'>&nbsp;</td></tr>";
 			echo "</table>\n";
 
 }
@@ -1086,98 +1076,108 @@ function html_connectivity($state){
 }
 
 function scale_to_color($num = 0) {
-	$nacolor = "lightgrey";
-	$unkcolor = "steelblue";
-	$okcolor = "forestgreen";
-	$warncolor = "darkorange";
-	$noticecolor = "khaki";
-	$nokcolor = "crimson";
-	
-	$bgcolor = $nokcolor;
+
+	$bgcolor = "nokc";
 	$num = floatval($num);
 	if($num < 20)
-		$bgcolor = $nokcolor;
+		$bgcolor = "nokc";
 	elseif($num< 40)
-		$bgcolor = $warncolor;
+		$bgcolor = "warnc";
 	elseif($num< 60)
-		$bgcolor = $noticecolor;
+		$bgcolor = "noticec";
 	elseif($num> 59)
-		$bgcolor = $okcolor;
+		$bgcolor = "okc";
 
 	return $bgcolor;
 }
 
 function value_to_colorname($num = 0) {
-	$nacolor = "lightgrey";
-	$unkcolor = "steelblue";
-	$okcolor = "forestgreen";
-	$warncolor = "darkorange";
-	$noticecolor = "khaki";
-	$nokcolor = "crimson";
-	
-	$bgcolor = $nokcolor;
+
+	$bgcolor = "nokc";
 	$num = floatval($num);
 	if($num < 20)
-		$bgcolor = $nokcolor;
+		$bgcolor = "nokc";
 	elseif($num < 40)
-		$bgcolor = $warncolor;
+		$bgcolor = "warnc";
 	elseif($num < 60)
-		$bgcolor = $noticecolor;
+		$bgcolor = "noticec";
 	elseif($num > 59)
-		$bgcolor = $okcolor;
+		$bgcolor = "okc";
 
 	return $bgcolor;
 }
 
 function scale_to_colorname($num = 0) {
-	$bgcolor = "crimson";
+	$bgcolor = "nokc";
 	$num = floatval($num);
 	if($num < 20)
-		$bgcolor = "crimson";
+		$bgcolor = "nokc";
 	elseif($num< 40)
-		$bgcolor = "darkorange";
+		$bgcolor = "warnc";
 	elseif($num< 60)
-		$bgcolor = "yellow";
+		$bgcolor = "noticec";
 	elseif($num> 59)
-		$bgcolor = "forestgreen";
+		$bgcolor = "okc";
 
 	return $bgcolor;
 }
 
-
-function html_connectivity_screensaver($state){
-	$hrefo = "";
-	$hrefc = "";
-	echo " <div id='connectivityscreensaver'>";
-	echo "<table>";
-	// VPN
-	$img = "images/vpngrey.png";
+function html_status_vpn($state, $icon = true) {
+	$color = "nac";
 	$vpncon = "Not configured";
 	if(isset($state['if']['tun0'])) {
 		// print_r($state['if']['tun0']['addr_info'][0]['local']);
+
 		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
-			$img = "images/vpngreen.png";
+			$color = "okc";
 			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
 		} else {
-			$img = "images/vpnred.png";
-			$vpncon = "Not connected";
+			$color = "nokc";			$vpncon = "Not connected";
 		}
-		echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
+		$img = "images/vpn{$color}.png";
+		if($icon === true)
+			echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
+		
+		if($icon === false) {
+			echo "<table class='status-item'>";
+			echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
+			echo "<td>";
+			$ifname = "tun0";
+			if(isset($state['if'][$ifname])) {
+				echo "VPN {$ifname} </br>";
+				if(!empty(if_prefix($state['if'], $ifname))) {
+					echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."</br>\n";
+				}
+			}
+			echo "</td>";
+			echo "</tr>\n";
+			echo "</table>";
+			echo "<table height=2px><tr><td></td></tr></table>\n";
+		}
 	}
-	// Internet, ping color
-	$color = "grey";
+	
+	
+	if(isset($state['if']['tun0'])) {
+		// print_r($state['if']['tun0']['addr_info'][0]['local']);
+		//echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
+	}
+
+}
+
+function html_status_internet($state, $defif, $icon = true) {
+	$color = "nac";
 	if($state['internet']['ping'] == 999)
-		$color = "blue";
+		$color = "unkc";
 	if($state['internet']['ping'] < 999)
-		$color = "red";
+		$color = "nokc";
 	if($state['internet']['ping'] < 300)
-		$color = "orange";
+		$color = "warnc";
 	if($state['internet']['ping'] < 100)
-		$color = "green";
+		$color = "okc";
 
 	switch($state['internet']['captive']) {
 		case "TIMEOUT":
-			$color = "red";
+			$color = "nokc";
 			$img = "images/globe{$color}.png";
 			break;
 		case "OK":
@@ -1193,77 +1193,124 @@ function html_connectivity_screensaver($state){
 			$img = "images/nogo.png";
 			break;;
 		default:
-			$img = "images/globegrey.png";
+			$img = "images/globenac.png";
 			break;;
 	}
-	echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td></tr>\n";
+	if($icon === true)
+		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td></tr>\n";
 
-	// DNS
+	if($icon === false) {
+		echo "<table class='status-item'>";
+
+		echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>INTER</span></td>";
+		echo "<td>";
+		if(isset($state['if'][$defif])) {
+			echo "WAN {$defif} </br>";
+			if(!empty(if_prefix($state['if'], $defif))) {
+				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."</br>\n";
+			}
+			$defgw = fetch_default_route_gw();
+			//print_r($defgw);
+			if(!empty($defgw[4])) {
+				echo "Gateway4 {$defgw[4][0]['gateway']}</br>\n";
+			}
+			if(!empty($defgw[6])) {
+				echo "Gateway6 {$defgw[6][0]['gateway']}</br>\n";
+			}
+			if(!empty($state['internet']['isp'])) {
+				echo "Wan IP {$state['internet']['wanip']}</br>\n";
+				echo "AS Number {$state['internet']['isp']['asnum']}</br>\n";
+				echo "Descr {$state['internet']['isp']['descr']}</br>\n";
+			}
+		}
+		echo "</td>";
+		echo "</tr>\n";
+		echo "</table>";
+	}
+}
+
+function html_status_dns($state, $icon = true) {
+	$color = "nac";
 	switch($state['internet']['dns']) {
 		case "OK":
-			$img = "images/dnsgreen.png";
+			$color = "okc";
 			break;;
 		case "NOK":
-			$img = "images/dnsred.png";
+			$color = "nokc";
 			break;;
 		default:
-			$img = "images/dnsgrey.png";
 			break;;
 	}
-	echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";
-	
-	// find the default route interface
-	$defif = find_wan_interface($state);
+	$img = "images/dns{$color}.png";
+	if($icon === true)
+		echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td></tr>\n";	
+
+	if($icon === false) {
+		echo "<table class='status-item'>";
+
+		//echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
+		echo "<tr><td class='$color' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>DNS</span></td>";
+		html_list_dns($state);
+		echo "</tr>\n";
+		echo "</table>";
+	}
+}
+
+function html_status_uplink($state, $defif, $icon = true){
 	
 	if($defif != "") {
 		// check for wireless stats
 		if(isset($state['if'][$defif]['wi'])) {
 			
-			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
+			$color = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
 				
-			$img = "images/wifi{$bgcolor}.png";
-			echo "<tr><td>";
-			echo html_wi_link_bar($state['if'][$defif], 140);
-			echo "</br>";
-			echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+			$img = "images/wifi{$color}.png";
+			if($icon === true) {
+				echo "<tr><td>";
+				echo html_wi_link_bar($state['if'][$defif], 140);
+				echo "</br>";
+				echo "<img height='125px' src='{$img}' alt='WAN: wireless {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+			}
+			
+			if($icon === false) {
+				echo "<table class='status-item'>";
+
+				echo "<tr><td class='$color' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
+				echo "<td>";
+				echo html_wi_link_bar($state['if'][$defif], 200, false);
+				echo html_list_wi_link($state, $defif);
+				echo html_list_lldp($state, $defif);
+				echo "</td>";
+				echo "</tr>\n";
+				echo "</table>";	
+			}
+
+
 		} else {
 			// must be wired
-			$bgcolor = "green"; // place holder for now without indicators
-			$img = "images/ether{$bgcolor}.png";
-			echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td></tr>\n";
+			$color = "green"; // place holder for now without indicators
+			$img = "images/ether{$color}.png";
+			if($icon === true)
+				echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+
+			if($icon === false) {
+				echo "<table class='status-item'>";
+				
+				echo "<tr ><td class='$color' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
+				echo "<td>";
+				echo html_list_lldp($state, $defif);
+				echo html_list_eth_link($state, $defif);
+				echo "</td>";
+				echo "</tr>\n";
+				echo "</table>";				
+			}
+
 		}
 		
-	}
-	
-	echo "</table>";
-	echo "</div>\n";		
-		
-
-/* 
-	// AP is kind of a waste of screen real estate.
-	switch($state['if']['wlan0']['wi']['mode']) {
-		case "Master":
-			$img = "images/apgreen.png";
-			break;;
-		default:
-			$img = "images/apgrey.png";
-			break;;		
-	}
-	// echo "<tr><td><img height='125px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
-*/
-
+	}	
 
 }
 
-function html_list_dns($state) {	
-	echo "<td>";
-	foreach ($state['dns'] as $family => $entries) {
-		foreach ($entries as $entry) {
-			echo strtoupper($family) ." {$entry} </br>\n";
-		}
-	}
-	echo "</td>";
-}
 
 function html_list_lldp($state, $defif) {
 	// Fetch LLDP Info
@@ -1313,193 +1360,92 @@ function html_list_wi_link($state, $defif) {
 	}
 }
 
+function html_list_dns($state) {	
+	echo "<td>";
+	foreach ($state['dns'] as $family => $entries) {
+		foreach ($entries as $entry) {
+			echo strtoupper($family) ." {$entry} </br>\n";
+		}
+	}
+	echo "</td>";
+}
+
+function html_connectivity_screensaver($state){
+	$hrefo = "";
+	$hrefc = "";
+	echo " <div id='connectivityscreensaver'>";
+	echo "<table>";
+
+	// find the default route interface
+	$defif = find_wan_interface($state);	
+
+	// VPN
+	html_status_vpn($state, true);
+	
+	// Internet, ping color
+	html_status_internet($state, $defif, true);
+
+	// DNS
+	html_status_dns($state, true);
+	
+	// Uplink
+	html_status_uplink($state, $defif, true);
+	
+	echo "</table>";
+	echo "</div>\n";		
+	
+}
+
 function html_connectivity_extra($state){
 	$hrefo = "";
 	$hrefc = "";
 	
-	
-	$nacolor = "lightgrey";
-	$unkcolor = "steelblue";
-	$okcolor = "forestgreen";
-	$warncolor = "darkorange";
-	$noticecolor = "khaki";
-	$nokcolor = "crimson";
 	// find the default route interface
 	$defif = find_wan_interface($state);
 
 	echo " <div id='connectivityextra'>";
-	
+
+	echo "<table height=2px><tr><td></td></tr></table>\n";
 	// VPN
-	$img = "images/vpngrey.png";
-	$vpncon = "Not configured";
-	if(isset($state['if']['tun0'])) {
-		echo "<table class='status-item'>";
-		// print_r($state['if']['tun0']['addr_info'][0]['local']);
-		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
-			$img = "images/vpngreen.png";
-			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
-			$color = "okc";
-		} else {
-			$img = "images/vpnred.png";
-			$vpncon = "Not connected";
-			$color = "nokc";
-		}
-		//echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
-		//echo html_vlabel($color, "vpnstatus");
-		echo "<tr><td class='$color' width='30px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
-		echo "<td>";
-		$ifname = "tun0";
-		if(isset($state['if'][$ifname])) {
-			echo "VPN {$ifname} </br>";
-			if(!empty(if_prefix($state['if'], $ifname))) {
-				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."</br>\n";
-			}
-		}
-		echo "</td>";
-		echo "</tr>\n";
-		echo "</table>";
-	}
-	
-	echo "<table class='status-item'>";
-	// Internet, ping color
-	$color = $nacolor;
-	if($state['internet']['ping'] == 999)
-		$color = $unkcolor;
-	if($state['internet']['ping'] < 999)
-		$color = $nokcolor;
-	if($state['internet']['ping'] < 300)
-		$color = $warncolor;
-	if($state['internet']['ping'] < 100)
-		$color = $okcolor;
+	echo html_status_vpn($state, false);
 
-	switch($state['internet']['captive']) {
-		case "TIMEOUT":
-			$color = $nokcolor;
-			$img = "images/globe{$color}.png";
-			break;
-		case "OK":
-			$img = "images/globe{$color}.png";
-			break;;
-		case "PORTAL":
-		case "NOK":
-			$img = "images/nogo.png";
-			$hrefo = "<a target='_parent' href='http://www.msftconnecttest.com/connecttest.txt' >";
-			$hrefc = "</a>";
-			break;;
-		case "DNSERR":
-			$img = "images/nogo.png";
-			break;;
-		default:
-			$img = "images/globegrey.png";
-			
-			break;;
-	}
-	//echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td>\n";
-	echo html_vlabel($color, "internet");
-	echo "<tr><td class='internet'><span style='writing-mode: vertical-lr; text-orientation: upright;'>INTER</span></td>";
-	echo "<td>";
-	if(isset($state['if'][$defif])) {
-		echo "WAN {$defif} </br>";
-		if(!empty(if_prefix($state['if'], $defif))) {
-			echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."</br>\n";
-		}
-		$defgw = fetch_default_route_gw();
-		//print_r($defgw);
-		if(!empty($defgw[4])) {
-			echo "Gateway4 {$defgw[4][0]['gateway']}</br>\n";
-		}
-		if(!empty($defgw[6])) {
-			echo "Gateway6 {$defgw[6][0]['gateway']}</br>\n";
-		}
-		if(!empty($state['internet']['isp'])) {
-			echo "Wan IP {$state['internet']['wanip']}</br>\n";
-			echo "AS Number {$state['internet']['isp']['asnum']}</br>\n";
-			echo "Descr {$state['internet']['isp']['descr']}</br>\n";
-		}
-	}
-	echo "</td>";
-	echo "</tr>\n";
-	echo "</table>";
+	// Internet
+	echo html_status_internet($state, $defif, false);
 	
-	echo "<table class='status-item'>";
+	echo "<table height=2px><tr><td></td></tr></table>\n";
+
 	// DNS
-	$color = $nacolor;
-	switch($state['internet']['dns']) {
-		case "OK":
-			$img = "images/dnsgreen.png";
-			$color = $okcolor;
-			break;;
-		case "NOK":
-			$img = "images/dnsred.png";
-			$color = $nokcolor;
-			break;;
-		default:
-			$img = "images/dnsgrey.png";
-			$color = $nacolor;
-			break;;
-	}
-	//echo "<tr><td><img height='125px' src='{$img}' alt='DNS: {$state['internet']['captive']}'></td>";
-	echo html_vlabel($color, "dnsstatus");
-	echo "<tr><td class='dnsstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>DNS</span></td>";
-	html_list_dns($state);
-	echo "</tr>\n";
-	echo "</table>";
-		
+	html_status_dns($state, false);
+	
+	echo "<table height=2px><tr><td></td></tr></table>\n";
+
+	// Uplink
+	html_status_uplink($state, $defif, false);
+
 	// Network
-	echo "<table class='status-item'>";
-	if($defif != "") {
-		// check for wireless stats
-		if(isset($state['if'][$defif]['wi'])) {
-			
-			$bgcolor = scale_to_color(round(($state['if'][$defif]['wi']['quality'] + $state['if'][$defif]['wi']['level']) / 2));
-			$color = $bgcolor;
-			$img = "images/wifi{$bgcolor}.png";
-			echo "<tr><td>";
-			echo html_wi_link_bar($state['if'][$defif], 140);
-			//echo "<img height='125px' src='{$img}' alt='WAN: {$state['if'][$defif]['wi']['quality']}'></td>\n";
-			echo html_vlabel($color, "networkstatus");
-			echo "<tr><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
-			echo "<td>";
-			echo html_list_wi_link($state, $defif);
-			echo html_list_lldp($state, $defif);
-			echo "</td>";
-			echo "</tr>\n";
 
-		} else {
-			// must be wired
-			$bgcolor = $okcolor; // place holder for now without
-			$color = $bgcolor;
-			$img = "images/ether{$bgcolor}.png";
-			//echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet'></td>";
-			echo html_vlabel($color, "networkstatus");
-			echo "<tr ><td class='networkstatus'><span style='writing-mode: vertical-lr; text-orientation: upright;'>NETWORK</span></td>";
-
-			echo "<td>";
-			echo html_list_lldp($state, $defif);
-			echo html_list_eth_link($state, $defif);
-			echo "</td>";
-			echo "</tr>\n";
-		}
-	}
-	
-	echo "</table>";
+	echo "<table height=2px><tr><td></td></tr></table>\n";
 	echo "</div>\n";
-	
-/* 
-	// AP mode is kind of a waste of screen real estate.
-	switch($state['if']['wlan0']['wi']['mode']) {
-		case "Master":
-			$img = "images/apgreen.png";
-			break;;
-		default:
-			$img = "images/apgrey.png";
-			break;;		
-	}
-	// echo "<tr><td><img height='125px' src='{$img}' alt='AP: {$state['if']['wlan0']['wi']['type']}'></td></tr>\n";
-*/
+}
 
+function css_color_to_image($cssc) {
+	switch($cssc) {
+		case "okc":
+			return "green";
+		case "nokc":
+			return "red";
+		case "noticec":
+			return "yellow";
+		case "warnc":
+			return "orange";
+		case "unkc":
+			return "blue";
+		default:
+			return "grey";
+	}
 
 }
+
 
 function list_wi_link($state, $defif) {
 	if(isset($state['if'][$defif]['wi'])) {
