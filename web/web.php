@@ -55,12 +55,12 @@ function html_config($state, $uri){
 			echo html_interfaces($state);
 			break;
 		case "/cfgwiap":
-			echo html_interfaces($state, "wlan0");
+			echo html_interfaces($state, fetch_ap_if($state));
 			echo html_jquery_reload_cfgap();
 			config_hostapd($state);
 			break;
 		case "/cfgwiclient":
-			echo html_interfaces($state, "wlan1");
+			echo html_interfaces($state, fetch_wi_client_if($state));
 			echo html_jquery_reload_cfgwi();
 			config_supplicant($state);
 			echo html_jquery_reload_wilist();
@@ -202,6 +202,8 @@ function config_hostapd($state) {
 		config_write_hostapd($_POST);
 	}
 
+	$wi_ifs = fetch_wlan_interfaces();
+
 	echo "<table border=1><tr><td>";
 	$settings = config_read_hostapd($state);
 	foreach($settings as $varname => $setting) {
@@ -212,7 +214,8 @@ function config_hostapd($state) {
 				break;
 			case "interface":
 				echo "AP Interface: ";
-				html_select($varname, array("wlan0" => "wlan0"), $setting);
+
+				html_select($varname, $wi_ifs, $setting);
 				break;
 			case "interface":
 				echo "AP SSID: "; 
@@ -425,7 +428,7 @@ function html_wi_network_list($state) {
 
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
-		if($ifname == "wlan0")
+		if($ifname == fetch_ap_if($state))
 			continue;
 
 		if(empty($state['if'][$ifname]['wi']))
@@ -655,7 +658,7 @@ var pageifRefresh = 1000; //1 s
 	// Functions
 
 function ifrefresh() {
-    \$('#interfaces').load(\"/interfacewlan1\");
+    \$('#interfaces').load(\"/interfaceclient\");
 }
 
 ";
@@ -677,7 +680,7 @@ var pageifRefresh = 1000; //1 s
 	// Functions
 
 function ifrefresh() {
-    \$('#interfaces').load(\"/interfacewlan0\");
+    \$('#interfaces').load(\"/interfaceapif\");
 }
 
 ";
