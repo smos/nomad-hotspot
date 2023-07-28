@@ -827,6 +827,18 @@ function html_redirect_home() {
 
 }
 
+function restart(){
+	shell_exec("screen -dm bash -c 'sleep 10 && sudo reboot'");
+}
+
+function poweroff(){
+	shell_exec("screen -dm bash -c 'sleep 10 && sudo poweroff'");
+}
+
+function reload(){
+	shell_exec("screen -dm bash -c 'sleep 10 && cd nomad-hotspot && ./killagent.sh'");
+}
+
 function html_logs($state){
 	//echo html_redirect_home();
 	if(!empty($_POST)) {
@@ -838,15 +850,15 @@ function html_logs($state){
 						switch($setting) {
 							case "restart":
 								echo html_redirect_home();
-								shell_exec("screen -dm 'sleep 10 && sudo reboot'");
+								restart();
 								break;
 							case "shutdown":
 								html_redirect_home();
-								shell_exec("screen -dm 'sleep 10 && sudo poweroff'");
+								poweroff();
 								break;
 							case "reload":
 								html_redirect_home();
-								shell_exec("screen -dm 'sleep 10 && cd nomad-hotspot && ./killagent.sh'");
+								reload();
 								break;
 						}
 						break;
