@@ -1731,7 +1731,7 @@ function restart_service($file) {
 				$cmd = "sudo service hostapd reload";
 				break;
 			case "dhcpcd.conf":
-				$cmd = "sudo service dhcpcd reload";
+				$cmd = "sudo service dhcpcd restart";
 				break;
 			case "wpa_supplicant.conf":
 				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
