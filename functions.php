@@ -801,7 +801,7 @@ ieee80211n=1
 # 802.11ac support
 ieee80211ac=1
 wmm_enabled=1
-ht_capab=[HT40+]
+#ht_capab=[HT40+]
 ";
 		//echo "<pre>". print_r($conf_a, true) ."</pre>";
 	}
