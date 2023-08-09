@@ -1678,23 +1678,23 @@ function parse_dhcp_nameservers($state) {
 	$ifname = find_wan_interface($state);
 	$file = "/var/run/resolvconf/interfaces/{$ifname}.dhcp";
 	$dns = array();
+	$dns['dns4'] = array();
+	$dns['dns6'] = array();
 	
-	if(is_readable($file))
+	if(is_readable($file)) {
 		$dfile = file($file);
-
+		foreach($dfile as $line)
+			if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches4))
+				$dns['dns4'][] = $matches4[1];
+	}
 	// and ipv6 nameservers
 	$file = "/var/run/resolvconf/interfaces/{$ifname}.ra";
-	if(is_readable($file))
+	if(is_readable($file)) {
 		$rfile = file($file);
-		
-	foreach($dfile as $line)
-		if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches4))
-			$dns['dns4'][] = $matches4[1];
-
-	foreach($rfile as $line)
-		if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches6))
-			$dns['dns6'][] = $matches6[1];
-
+		foreach($rfile as $line)
+			if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches6))
+				$dns['dns6'][] = $matches6[1];
+	}
 	return $dns;
 }
 
