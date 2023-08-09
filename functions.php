@@ -4,6 +4,7 @@
 $user = get_current_user();
 $uid = trim(shell_exec("id -u {$user}"));
 $tmpfsurl = "/dev/shm/state.serialize";
+$cfgdir = "conf";
 
 // Shared memory for exchanging between proc and webserver
 // $shm_size = 128 * 1024;

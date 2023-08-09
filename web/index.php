@@ -4,7 +4,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', 'syslog');
 
 openlog("", LOG_PID, LOG_LOCAL0 );
-
+$cfgdir = "conf";
 include "web.php";
 
 if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {

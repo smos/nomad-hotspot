@@ -165,8 +165,9 @@ function config_openvpn($state) {
 }
 
 function config_dhcpcd($state) {
+	global $cfgdir;
+
 	echo "<br>Config interfaces dhcpcd<br>";
-	
 	$state['config'] = read_config($state['cfgfile']);
 	// echo print_r($state['config']);
 	// If no config exists, default to "wlan0"
@@ -177,6 +178,8 @@ function config_dhcpcd($state) {
 
 	$wlan_ifs = fetch_wlan_interfaces();
 
+	chdir('..');
+	//echo getcwd();
 	if(!empty($_POST)) {
 		//print_r($_POST);
 		$i = 0;
@@ -184,31 +187,48 @@ function config_dhcpcd($state) {
 		// rename interface in hostapd config file to new interface
 		if((in_array($_POST['ap_if'], $wlan_ifs)) && ($_POST['ap_if'] != $state['config']['ap_if'])) {
 			// preg replace old interface with new interface in dhcpcd, dnsmasq iptables 4 and 6, hostapd.conf
-			$mut_files = array("dhcpcd.conf", "dnsmasq.conf", "hostapd.conf", "iptables.v4", "iptables.v6");
+			$mut_files = array("dhcpcd.conf", "dnsmasq.conf", "iptables.v4", "iptables.v6", "hostapd.conf");
 			foreach($mut_files as $mfile) {
 				// rename to intermediate name as to ot clobber everything to one value
 				// pass one
-				$oldcfg = file_get_contents("../conf/{$mfile}");
+				if(!is_readable("{$cfgdir}/{$mfile}")) {
+					echo "Can not read file {$cfgdir}/{$mfile}</br>";
+					continue;
+				}
+
+				$oldcfg = file_get_contents("$cfgdir/{$mfile}");
+				// echo "{$oldcfg}\n";
 
 				$search = array("/({$state['config']['ap_if']})/", "/({$_POST['ap_if']})/");
-				$replace = array("if_wan", "if_lan");
+				$replace = array("if_lan", "if_wan");
 				$newcfg = preg_replace($search, $replace, $oldcfg);
 
 				// pass two
 				$search = array("/(if_lan)/", "/(if_wan)/");
 				$replace = array("{$_POST['ap_if']}", "{$state['config']['ap_if']}");
-				$newcfg = preg_replace($search, $replace, $oldcfg);
+				$newcfg = preg_replace($search, $replace, $newcfg);
 
-				file_put_contents("../conf/{$mfile}" , $newcfg);
-				//echo "{$newcfg}\n";
+				// echo "{$newcfg}\n";
 
+				file_put_contents("{$cfgdir}/{$mfile}" , $newcfg);
+
+				// Copy the file but do not restart services, we really need to restart
+				//echo "Changing AP interface to {$_POST['ap_if']} in {$mfile} and copy to base</br>";
+				copy_config($mfile);
+				// restart_service($mfile);
 			}
 			// All changes done make sure to save
 			$state['config']['ap_if'] = $_POST['ap_if'];
 			save_config($state['cfgfile'], $state['config']);
+			echo "Saving setting to json</br>";
+			// we reboot after changing the files
+			restart();
+			echo "Restart, then exit</br>";
+			//exit(0);
 		}
 		//config_write_hostapd($_POST);
 	}
+	chdir('web');
 
 	echo "<table border=1><tr><td>";
 	$settings = config_read_dhcpcd($state);
@@ -261,9 +281,8 @@ function config_hostapd($state) {
 				html_select($varname, array("NL" => "NL", "US" => "US", "JP" => "JP"), $setting);
 				break;
 			case "interface":
-				echo "AP Interface: ";
-
-				html_select($varname, $wi_ifs, $setting);
+				// echo "AP Interface: ";
+				html_hidden($varname, $setting);
 				break;
 			case "interface":
 				echo "AP SSID: "; 
