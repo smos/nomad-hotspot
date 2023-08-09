@@ -362,6 +362,9 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 		// New interface!
 		msglog("agent.php", "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."");
 
+		// Add device information
+		$state['devices'][$ifname] = fetch_device_info($ifname);
+
 		// This interface resets counters when going up/down
 		if(strstr($ifname, "tun"))
 			$ifstate[$ifname]['stats64start'] = $iflist[$ifname]['stats64'];
@@ -1972,4 +1975,33 @@ function fetch_wlan_interfaces(){
 
 	}
 	return $interfaces;
+}
+
+function fetch_device_info($iface){
+	$device = array();
+	$device['model'] = "unknown";
+	$device['vendor'] = "unknown";
+	$cmd = "udevadm info /sys/class/net/{$iface} 2> /dev/null";
+	if($cmd != ""){
+		exec($cmd, $out, $ret);
+		if($ret > 0) {
+			msglog("web.php", "Failed to fetch interface info");
+			return false;
+		}
+	}
+	foreach($out as $line) {
+		if(preg_match("/ID_MODEL_FROM_DATABASE=([a-z0-9: .,-_]+)/i", $line, $matches))
+			$device['model'] = $matches[1];
+
+		if($device['model'] == "unknown")
+			if(preg_match("/ID_MODEL=([a-z0-9: .,-_]+)/i", $line, $matches))
+				$device['model'] = $matches[1];
+
+		if(preg_match("/ID_VENDOR_FROM_DATABASE=([a-z0-9: .,-_]+)/i", $line, $matches))
+			$device['vendor'] = $matches[1];
+		if(preg_match("/ID_NET_DRIVER=([a-z0-9: .,-_]+)/i", $line, $matches))
+			$device['driver'] = $matches[1];
+
+	}
+	return $device;
 }
