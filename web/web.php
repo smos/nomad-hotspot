@@ -265,6 +265,8 @@ function validate_select($array, $item){
 
 function list_bssid_assoc($wi_list, $ssid = "") {
 	$bssid_a = array("" => "Roam");
+	if(!is_array($wi_list))
+		return $bssid_a;
 
 	foreach ($wi_list as $entry) {
 		if(isset($entry['ESSID'])) {
@@ -284,7 +286,7 @@ function list_bssid_assoc($wi_list, $ssid = "") {
 
 function config_supplicant($state) {
 	echo "<br>Config wireless client networks<br>";
-	echo "<table border=1><tr><td>\n";
+	echo "<table class='menu-row'><tr><td>\n";
 	// Process POST request
 	// fetch channel list for bbsid per ssid
 	$ifname = "wlan1";
@@ -382,28 +384,32 @@ function config_supplicant($state) {
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
 			case "country":
-				echo "Country setting for Wireless adapter: ";
+				echo "Country setting for Wireless: ";
 				html_select($varname, $countries, $setting);
 				echo "<br>\n";
 				break;
 			case "network":
 				//echo "Client networks to connect to:<br/>";
 				foreach($setting as $index => $values){
+					echo "<table class='status_item'><tr><td colspan=2>\n";
 					// echo "<pre>". print_r($values, true) ."</pre>";
-					echo "Index {$index} <br>\n";
+					echo "Index {$index} <br>\n";	
 					echo "SSID: ";
-					html_input("{$index}ssid", $values['ssid']) ."<br>\n";
-					echo "Pre Shared Key: ";
-					html_input("{$index}psk", $values['psk']) ."<br>\n";
+					echo html_input("{$index}ssid", $values['ssid']);
+					echo "</br>\n";
+					echo "Password: ";
+					echo html_input("{$index}psk", $values['psk']);
+					echo "</br>\n";
 					echo "Type: ";
-					html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']) ."<br>\n";
-					echo "<br>";
+					echo html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']);
+					echo "</br>\n";
 					echo "Bssid: ";
 					$bssid_a = list_bssid_assoc($wi_list, $values['ssid']);
 					if((!isset($bssid_a[$values['bssid']])) && isset($values['bssid']))
 						$bssid_a[$values['bssid']] = "Configured to '{$values['bssid']}'";
-					html_select("{$index}bssid", $bssid_a, $values['bssid']) ."<br>\n";
-					echo "<br>";
+					echo html_select("{$index}bssid", $bssid_a, $values['bssid']);
+					echo "</br>\n";
+					echo "</td></tr></table>\n";
 				}
 		}
 	}
@@ -423,7 +429,7 @@ function config_supplicant($state) {
 
 function html_wi_network_list($state) {
 	echo " <div id='wilist'>";
-	echo "<table border=1><tr><td>";
+	echo "<table ><tr><td>";
 	$settings = config_read_supplicant($state);
 
 	foreach ($state['if'] as $ifname => $iface) {
@@ -436,7 +442,6 @@ function html_wi_network_list($state) {
 
 		echo "<strong>Wireless network list {$ifname}</strong><br>";
 		//echo "<table border=1><tr><td>ssid</td><td>encryption</td><td>Quality</td></tr>\n";
-		echo "<table border=1><tr><td>ssid</td></tr>\n";
 		//print_r($iface['wi']);
 		if(is_array($iface['wi']))
 			$wi_list = list_iw_networks($state, $ifname);
@@ -477,6 +482,7 @@ function html_wi_network_list($state) {
 		echo "</script>\n";
 		
 		
+		echo "<table class='status-item' >\n";
 		if(is_array($clean_wi_list)) {
 			foreach($clean_wi_list as $entry => $fields) {
 
@@ -487,7 +493,7 @@ function html_wi_network_list($state) {
 				// echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
 				$bgcolor =  value_to_colorname($fields['snr']);
-				echo "<td style='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
+				echo "<td class='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
 						case "snr":
@@ -523,11 +529,13 @@ echo "<textarea name='{$varname}' rows='{$rows}' cols='{$cols}'>{$value}</textar
 // Generate a drop down
 function html_select($varname, $options, $selected) {
 	echo "<select name='{$varname}' id='{$varname}' >";
-	foreach($options as $option => $name) {
-		$sel = '';
-		if($option == $selected)
-			$sel = "selected";
-		echo "<option value='{$option}' {$sel} >{$name}</option>";
+	if(is_array($options)) {
+		foreach($options as $option => $name) {
+			$sel = '';
+			if($option == $selected)
+				$sel = "selected";
+			echo "<option value='{$option}' {$sel} >{$name}</option>";
+		}
 	}
 	echo "</select>";
 }
@@ -680,7 +688,7 @@ var pageifRefresh = 1000; //1 s
 	// Functions
 
 function ifrefresh() {
-    \$('#interfaces').load(\"/interfaceapif\");
+    \$('#interfaces').load(\"/interfaceap\");
 }
 
 ";
