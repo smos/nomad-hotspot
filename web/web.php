@@ -166,14 +166,62 @@ function config_openvpn($state) {
 
 function config_dhcpcd($state) {
 	echo "<br>Config interfaces dhcpcd<br>";
+	
+	$state['config'] = read_config($state['cfgfile']);
+	// echo print_r($state['config']);
+	// If no config exists, default to "wlan0"
+	if(!isset($state['config']['ap_if'])) {
+		$state['config']['ap_if'] = "wlan0";
+		save_config($state['cfgfile'], $state['config']);
+	}
+
+	$wlan_ifs = fetch_wlan_interfaces();
+
+	if(!empty($_POST)) {
+		//print_r($_POST);
+		$i = 0;
+		// if saved AP interface differs from POST go into change
+		// rename interface in hostapd config file to new interface
+		if((in_array($_POST['ap_if'], $wlan_ifs)) && ($_POST['ap_if'] != $state['config']['ap_if'])) {
+			// preg replace old interface with new interface in dhcpcd, dnsmasq iptables 4 and 6, hostapd.conf
+			$mut_files = array("dhcpcd.conf", "dnsmasq.conf", "hostapd.conf", "iptables.v4", "iptables.v6");
+			foreach($mut_files as $mfile) {
+				// rename to intermediate name as to ot clobber everything to one value
+				// pass one
+				$oldcfg = file_get_contents("../conf/{$mfile}");
+
+				$search = array("/({$state['config']['ap_if']})/", "/({$_POST['ap_if']})/");
+				$replace = array("if_wan", "if_lan");
+				$newcfg = preg_replace($search, $replace, $oldcfg);
+
+				// pass two
+				$search = array("/(if_lan)/", "/(if_wan)/");
+				$replace = array("{$_POST['ap_if']}", "{$state['config']['ap_if']}");
+				$newcfg = preg_replace($search, $replace, $oldcfg);
+
+				file_put_contents("../conf/{$mfile}" , $newcfg);
+				//echo "{$newcfg}\n";
+
+			}
+			// All changes done make sure to save
+			$state['config']['ap_if'] = $_POST['ap_if'];
+			save_config($state['cfgfile'], $state['config']);
+		}
+		//config_write_hostapd($_POST);
+	}
+
 	echo "<table border=1><tr><td>";
 	$settings = config_read_dhcpcd($state);
 	echo "<form >";
+	// select AP interface
+	echo "Accesspoint Interface: ";
+	echo html_select("ap_if", $wlan_ifs, $state['config']['ap_if']);
+	echo "<br/>";
 	foreach($settings as $ifname => $setting) {
 		echo "Interface {$ifname}:";
 		echo "<br>";
 		//print_r($setting);
-		html_hidden("interface", $ifname);
+		//html_hidden("interface", $ifname);
 		echo "Mode: ";
 		html_radio("{$ifname}mode", array("dhcp" => "dhcp", "static" => "static"), $setting['mode']);
 		echo "<br>";
@@ -480,8 +528,7 @@ function html_wi_network_list($state) {
 //		echo "  	  txt= newpsk; \n";
 		echo "    } \n";
 		echo "</script>\n";
-		
-		
+
 		echo "<table class='status-item' >\n";
 		if(is_array($clean_wi_list)) {
 			foreach($clean_wi_list as $entry => $fields) {
@@ -817,7 +864,7 @@ function html_log ($state) {
 	foreach($cats as $name => $proc) {
 		echo "<table class='status-item'>";
 		echo "<tr><td>{$name}</td></tr>\n";
-		 
+
 		foreach(filter_log($proc) as $line) {
 			$line = preg_replace("/nomad-hotspot/", "", $line);
 			echo "<tr><td>{$line}</td></tr>\n";
@@ -825,7 +872,6 @@ function html_log ($state) {
 		echo "</table>\n";
 	}
 	echo "</div>";
-	
 }
 
 function html_redirect_home() {
@@ -836,15 +882,15 @@ function html_redirect_home() {
 }
 
 function restart(){
-	shell_exec("screen -dm bash -c 'sleep 10 && sudo reboot'");
+	exec("screen -dm bash -c 'sleep 10 && sudo reboot'");
 }
 
 function poweroff(){
-	shell_exec("screen -dm bash -c 'sleep 10 && sudo poweroff'");
+	exec("screen -dm bash -c 'sleep 10 && sudo poweroff'");
 }
 
 function reload(){
-	shell_exec("screen -dm bash -c 'sleep 10 && cd nomad-hotspot && ./killagent.sh'");
+	exec("screen -dm bash -c 'sleep 10 && cd nomad-hotspot && ./killagent.sh'");
 }
 
 function html_logs($state){
@@ -874,7 +920,8 @@ function html_logs($state){
 		}
 	}
 
-	echo "<table border=0><tr><td valign=top>";
+	echo "<table border=0>";
+	echo "<tr><td>";
 	echo "<a href='/screensavermenu'>Screensaver</a>";
 	echo "</td></tr>\n";
 	echo "<tr><td>";
