@@ -1725,7 +1725,7 @@ function restart_service($file) {
 				$cmd = "sudo service openvpn reload";
 				break;
 			case "dnsmasq.conf":
-				$cmd = "sudo service dnsmasq reload";
+				$cmd = "sudo service dnsmasq restart";
 				break;
 			case "hostapd.conf":
 				$cmd = "sudo service hostapd reload";
