@@ -230,7 +230,7 @@ function config_dhcpcd($state) {
 	}
 	chdir('web');
 
-	echo "<table border=1><tr><td>";
+	echo "<table class='status-item'><tr><td>";
 	$settings = config_read_dhcpcd($state);
 	echo "<form >";
 	// select AP interface
@@ -272,7 +272,7 @@ function config_hostapd($state) {
 
 	$wi_ifs = fetch_wlan_interfaces();
 
-	echo "<table border=1><tr><td>";
+	echo "<table class='status-item'><tr><td>";
 	$settings = config_read_hostapd($state);
 	foreach($settings as $varname => $setting) {
 		switch($varname) {
@@ -353,7 +353,7 @@ function list_bssid_assoc($wi_list, $ssid = "") {
 
 function config_supplicant($state) {
 	echo "<br>Config wireless client networks<br>";
-	echo "<table class='menu-row'><tr><td>\n";
+	echo "<table class='status-item'><tr><td>\n";
 	// Process POST request
 	// fetch channel list for bbsid per ssid
 	$ifname = "wlan1";
@@ -1068,7 +1068,6 @@ function html_bw_down($state) {
 function html_interfaces($state, $interface = ""){
 
 	echo " <div id='interfaces'>";
-	echo "<table border=0>\n";
 	//echo "<pre>".  print_r($state['if'][$interface]['wi'], true) ."</h>";
 	//<tr><td>Interface</td><td>State</td></tr>\n";
 	//echo "<tr><td>Adresses</td><td>Traffic</td><td>Totals</td><td>Info</td></tr>\n";
@@ -1077,6 +1076,7 @@ function html_interfaces($state, $interface = ""){
 		if(!preg_match("/{$interface}/i", $ifname)) {
 			continue;
 		}
+		echo "<table class='status-item'>\n";
 		
 		$wireless = "&nbsp;";
 		//print_r($iface['wi']);
@@ -1094,7 +1094,11 @@ function html_interfaces($state, $interface = ""){
 		if(!empty(if_prefix($state['if'], $ifname))) {
 			echo "<tr><td >&nbsp;&nbsp;IP ". implode('<br />&nbsp;&nbsp;', if_prefix($state['if'], $ifname)) ."</td></tr>\n";
 		}
-
+		if(!empty($state['devices'][$ifname])) {
+			echo "<tr><td >";
+			echo html_list_device($state, $ifname);
+			echo "</td></tr>";
+		}
 		if(!empty($state['lldp']['interface'][$ifname])) {
 			echo "<tr><td >";
 			echo html_list_lldp($state, $ifname);
@@ -1115,9 +1119,22 @@ function html_interfaces($state, $interface = ""){
 		}
 
 		//echo "<tr><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td></tr>\n";
+		echo "</table>";
 	}
-	echo "</table>";
 	echo "</div>\n";
+}
+
+function html_list_device($state, $ifname) {
+	// echo print_r($state['devices'][$ifname], true);
+	if(!is_array($state['devices'][$ifname]))
+		return false;
+	
+	foreach($state['devices'][$ifname] as $key => $value) {
+		//echo "{$key}: {$value} </br>";
+		echo "{$value} </br>";
+		
+	}
+	
 }
 
 function html_wi_link_bar($iface, $width = 300, $stack = true) {
