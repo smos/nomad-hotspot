@@ -12,6 +12,7 @@ echo 2 8821au-20210708
 echo 3 8814au
 echo 4 8821cu-20210118
 echo 5 88x2bu-20210702
+echo 6 rtl8852bu
 
 read option
 
@@ -30,17 +31,16 @@ fi
 if [ "$option" = "5" ]; then
 	GITREPO="88x2bu-20210702"
 fi
+if [ "$option" = "6" ]; then
+	GITREPO="rtl8852bu"
+fi
 
 if [ "$GITREPO" != "" ]; then
 	sudo git clone https://github.com/morrownr/"$GITREPO".git /usr/src/"$GITREPO"
 	cd /usr/src/"$GITREPO"
+	git pull
 
-	if [ "$PI64" = "aarch64" ]; then
-		sudo ./ARM64_RPI.sh
-	else
-		sudo ./ARM_RPI.sh
-	fi
-	sudo ./install-driver.sh
+	sudo ./install-driver.sh NoPrompt
 	sleep 5
 	sudo modprobe `echo $GITREPO |  awk -F\- '{print $1}'`
 fi
