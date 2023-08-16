@@ -356,7 +356,7 @@ function config_supplicant($state) {
 	echo "<table class='status-item'><tr><td>\n";
 	// Process POST request
 	// fetch channel list for bbsid per ssid
-	$ifname = "wlan1";
+	$ifname = fetch_wi_client_if($state);
 	$wi_list = list_iw_networks($state, $ifname);
 	// echo "<pre>". print_r($wi_list, true) ."</pre>";
 	
@@ -366,11 +366,18 @@ function config_supplicant($state) {
 	//$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "priority" => "-1");
 	//echo "<pre>". print_r($settings, true);
 	$countries = array("NL" => "NL", "US" => "US", "JP" => "JP");
+	$bands = array("2.4" => "band2", "5" => "band5", "6" => "band6");
 	$key_mgmt = array("WPA-PSK" => "WPA-PSK", "NONE" => "NONE");
 	$priorities = array("-1" => "-1", "0" => "0", "1" => "1", "2" => "2", "3" => "3");
 	// Compare 
 	if(!empty($_POST)) {
 		// echo "<pre>". print_r($_POST, true);
+		foreach($bands as $name => $varname) {
+			if(isset($_POST[$varname]))
+				$settings[$varname] =  $_POST[$varname];
+			else 
+				unset($settings[$varname]);
+		}
 		$i = 0;
 		foreach($settings as $varname => $setting) {
 			switch($varname) {
@@ -440,12 +447,20 @@ function config_supplicant($state) {
 				}
 			}
 		}
-
+	// echo "<pre>".  print_r($settings, true) ."</h>";
 		config_write_supplicant($settings);
 		$settings = config_read_supplicant($state);
 	}
 	// echo "<pre>".  print_r($settings, true) ."</h>";
 	// Empty item at the end for adding new entry
+	echo "Frequency bands: ";
+	foreach($bands as $name => $band) {
+				// parse freq list out to independent vars
+				echo " {$name} Ghz: ";
+				html_checkbox($band, "on", $settings[$band]);
+	}
+	echo "<br>\n";
+				
 	$settings['network'][] = array("ssid" => "", "psk" => "", "key_mgmt" => "NONE", "bssid" => "");
 
 	foreach($settings as $varname => $setting) {

@@ -613,6 +613,14 @@ function config_read_supplicant($state) {
 				case "country":
 					$settings[$matches[1][0]] = $matches[2][0];
 					break;
+				case "freq_list":
+					if(preg_match("/(2[4-9][0-9][0-9])/", $matches[2][0]))
+						$settings['band2'] = "on";
+					if(preg_match("/(5[0-9][0-9][0-9])/", $matches[2][0]))
+						$settings['band5'] = "on";
+					if(preg_match("/([67][0-9][0-9][0-9])/", $matches[2][0]))
+						$settings['band6'] = "on";
+					break;
 				case "network":
 					$i++;
 					break;
@@ -640,13 +648,26 @@ function config_read_supplicant($state) {
 
 function config_write_supplicant($settings) {
 
-	$freq = fetch_freq_list("wlan1", 5);
-	// print_r($freq);
+
+	// echo print_r($settings, true);
 	$conf = "../conf/wpa_supplicant.conf";
 	$conf_a = array();
 	$conf_a[] = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev";
 	$conf_a[] = "update_config=1";
 	$conf_a[] = "bgscan=\"learn:30:-70:3600\"";
+	
+	$bands = array();
+	if((isset($settings['band2'])) && ($settings['band2'] == "on") )
+		$bands[] = 2;
+	if((isset($settings['band5'])) && ($settings['band5'] == "on") )
+		$bands[] = 5;
+	if((isset($settings['band6'])) && ($settings['band6'] == "on") )
+		$bands[] = 6;
+
+	// echo print_r($bands, true);
+	$freq = fetch_freq_list(fetch_wi_client_if($state), $bands);
+		
+	$conf_a[] = "freq_list=". implode(" ", $freq);
 	$conf_a[] = "";
 	if(is_writeable($conf)) {
 		$i = 0;
@@ -665,7 +686,7 @@ function config_write_supplicant($settings) {
 						if($values['ssid'] == "any") {
 							$values['priority'] = "-9";
 							$values['ssid'] = "";
-							//$values['freq_list'] = implode(" ", $freq);
+
 							//echo print_r($settings['network'][$index], true);
 						}
 
@@ -675,7 +696,7 @@ function config_write_supplicant($settings) {
 								case "bssid":
 									if($values[$name] != "") {
 										$conf_a[] = "    {$name}={$values[$name]}";
-										$conf_a[] = "    freq_list=". implode(" ", $freq);
+										//$conf_a[] = "    freq_list=". implode(" ", $freq);
 										$conf_a[] = "    scan_freq=". implode(" ", $freq);
 									}
 									break;
@@ -686,6 +707,7 @@ function config_write_supplicant($settings) {
 								case "ssid":
 									// Override the any setting to ""
 									$conf_a[] = "    {$name}=\"{$values[$name]}\"";
+									$conf_a[] = "    scan_freq=". implode(" ", $freq);
 									break;
 								case "psk":
 									// Don't leave empty PSK fields, that is illegal config.
@@ -1312,11 +1334,14 @@ function url_to_ip($url){
 	return $ip;
 }
 
-function fetch_freq_list($iface, $band = "25") {
+function fetch_freq_list($iface, $band = array(2,5,6)) {
 	if($iface == "")
 		return false;
 	
-	$band = strval($band);
+	$band = implode("", $band);
+	if(strstr("6", $band))
+		$band = $band . "7";
+		
 	$freq = array();
 	$cmd = "iwlist {$iface} freq";
 	exec($cmd, $out, $ret);
