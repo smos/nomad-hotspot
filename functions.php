@@ -1334,9 +1334,13 @@ function dnsping($state, $server = ""){
 		$res[$ipmatch[1]] = 999;
 		return $res;
 	}
+	
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/avg=([0-9]+)/i", $line, $matches);
+	// catch packet loss returned as 0
+	if($matches[1] == 0)
+		$res[$ipmatch[1]] = 999;
 	// echo print_r($out);
 	// echo print_r($line);
 

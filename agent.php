@@ -76,6 +76,9 @@ msglog("agent.php", "Loading firewall rules");
 restart_service("iptables.v4");
 restart_service("iptables.v6");
 
+exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/gc_stale_time");
+exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/base_reachable_time");
+
 while (true) {
 	foreach ($iflist as $ifname => $iface) {
 		// Skip Loopback
