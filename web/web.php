@@ -1196,6 +1196,27 @@ function html_connectivity($state){
 		
 }
 
+
+function latency_to_color($num = 0) {
+
+	$bgcolor = "unkc";
+	$num = floatval($num);
+	if($num == 0)
+		$bgcolor = "nac";
+	elseif($num < 100)
+		$bgcolor = "okc";
+	elseif($num< 200)
+		$bgcolor = "noticec";
+	elseif($num< 300)
+		$bgcolor = "warnc";
+	elseif($num> 500)
+		$bgcolor = "nokc";
+	elseif($num == 999)
+		$bgcolor = "unkc";
+
+	return $bgcolor;
+}
+
 function scale_to_color($num = 0) {
 
 	$bgcolor = "nokc";
@@ -1297,18 +1318,7 @@ function html_status_internet($state, $defif, $icon = true) {
 		$avgicmp = round(($state['internet']['latency']['ping'][$gw4] + $state['internet']['latency']['ping'][$gw6])/ 2);
 		
 
-	
-	$color = "nac";
-	if($avgicmp == 999)
-		$color = "unkc";
-	if($avgicmp < 999)
-		$color = "nokc";
-	if($avgicmp < 300)
-		$color = "warnc";
-	if($avgicmp < 200)
-		$color = "noticec";
-	if($avgicmp < 100)
-		$color = "okc";
+	$color = latency_to_color($avgicmp);
 		
 	$hrefo = "<a target='_parent' href='http://www.msftconnecttest.com/connecttest.txt' >";
 	$hrefc = "</a>";
@@ -1492,8 +1502,10 @@ function html_list_wi_link($state, $defif) {
 			switch($field) {
 				case "mode":
 					continue 2;
+				case "bssid":
+					echo ucwords($field) ." ". $value ." ". lookup_oui($value) ."</br>";
 				case "quality":
-					echo ucwords($field) ." ". $value ." ";
+					// echo ucwords($field) ." ". $value ." ";
 					break;
 				default:
 					echo ucwords($field) ." ". $value ."</br>";
@@ -1504,14 +1516,15 @@ function html_list_wi_link($state, $defif) {
 }
 
 function html_list_dns($state) {	
-	echo "<td>";
+	echo "<td><table>";
 	
 	foreach ($state['dns'] as $family => $entries) {
 		foreach ($entries as $entry) {
-			echo strtoupper($family) ." {$entry}, {$state['internet']['latency']['dnsping'][$entry]} ms</br>\n";
+			$color = latency_to_color($state['internet']['latency']['dnsping'][$entry]);
+			echo "<tr><td>". strtoupper($family) ." {$entry} &nbsp;</td><td class='{$color}'>&nbsp; {$state['internet']['latency']['dnsping'][$entry]} ms &nbsp;</td></tr>\n";
 		}
 	}
-	echo "</td>";
+	echo "</table></td>";
 }
 
 function html_connectivity_screensaver($state){
@@ -1669,6 +1682,28 @@ function send_json($state){
 	header("Content-Type: application/json");
 	echo json_encode($state, JSON_PRETTY_PRINT);
 	
+}
+
+function lookup_oui($mac) {
+ 	if(empty($mac))
+		return false;
+	
+	if(!is_string($mac))
+		return false;
+
+	$mac = str_replace(":", "", $mac);
+	$mac = str_replace("-", "", $mac);
+	$mac = strtoupper(substr($mac, 0, 6));
+	$ieee = "/usr/share/ieee-data/oui.csv";
+	if(is_readable($ieee)) {
+		$cmd = "grep $mac $ieee";
+		exec($cmd, $out, $ret);
+		foreach($out as $line) {
+			$el = explode(",", $line);
+				return $el[2];
+		}
+	}
+	return false;
 }
 
 /* Below is Copyright RafaSashi on StackOverflow
