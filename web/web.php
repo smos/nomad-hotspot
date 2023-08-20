@@ -1286,15 +1286,32 @@ function html_status_vpn($state, $icon = true) {
 }
 
 function html_status_internet($state, $defif, $icon = true) {
+
+	$defgw = fetch_default_route_gw();
+	$gw4 = $defgw[4][0]['gateway'];
+	$gw6 = $defgw[6][0]['gateway'];
+	
+	$avgicmp = $state['internet']['latency']['ping'][$gw4];
+
+	if(isset($state['internet']['latency']['ping'][$gw6]))
+		$avgicmp = round(($state['internet']['latency']['ping'][$gw4] + $state['internet']['latency']['ping'][$gw6])/ 2);
+		
+
+	
 	$color = "nac";
-	if($state['internet']['ping'] == 999)
+	if($avgicmp == 999)
 		$color = "unkc";
-	if($state['internet']['ping'] < 999)
+	if($avgicmp < 999)
 		$color = "nokc";
-	if($state['internet']['ping'] < 300)
+	if($avgicmp < 300)
 		$color = "warnc";
-	if($state['internet']['ping'] < 100)
+	if($avgicmp < 200)
+		$color = "noticec";
+	if($avgicmp < 100)
 		$color = "okc";
+		
+	$hrefo = "<a target='_parent' href='http://www.msftconnecttest.com/connecttest.txt' >";
+	$hrefc = "</a>";
 
 	switch($state['internet']['captive']) {
 		case "TIMEOUT":
@@ -1306,9 +1323,7 @@ function html_status_internet($state, $defif, $icon = true) {
 			break;;
 		case "PORTAL":
 		case "NOK":
-			$img = "images/nogo.png";
-			$hrefo = "<a target='_parent' href='http://www.msftconnecttest.com/connecttest.txt' >";
-			$hrefc = "</a>";
+			$img = "images/nogo.png";			
 			break;;
 		case "DNSERR":
 			$img = "images/nogo.png";
@@ -1317,12 +1332,19 @@ function html_status_internet($state, $defif, $icon = true) {
 			$img = "images/globenac.png";
 			break;;
 	}
-	if($icon === true)
-		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['ping']}'>{$hrefc}</td></tr>\n";
+	if($icon === true) {
+		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['latency']}'>{$hrefc}</td></tr>\n";
+	}
 
 	if($icon === false) {
 		echo "<table class='status-item'>";
-
+		
+	//echo "<tr><td colspan=2>debug $avgicmp <pre>.";
+		//echo print_r($state['internet']['latency']['ping'], true);
+				//echo print_r($defgw[4][0], true);
+								//echo print_r($avgicmp, true);
+	//echo ".</td></tr>";
+	
 		echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>INTER</span></td>";
 		echo "<td>";
 		if(isset($state['if'][$defif])) {
@@ -1330,13 +1352,13 @@ function html_status_internet($state, $defif, $icon = true) {
 			if(!empty(if_prefix($state['if'], $defif))) {
 				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."</br>\n";
 			}
-			$defgw = fetch_default_route_gw();
+			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
 			if(!empty($defgw[4])) {
-				echo "Gateway4 {$defgw[4][0]['gateway']}</br>\n";
+				echo "Gateway4 {$defgw[4][0]['gateway']}, {$state['internet']['latency']['ping'][$gw4]} ms</br>\n";
 			}
 			if(!empty($defgw[6])) {
-				echo "Gateway6 {$defgw[6][0]['gateway']}</br>\n";
+				echo "Gateway6 {$defgw[6][0]['gateway']}, {$state['internet']['latency']['ping'][$gw6]} ms</br>\n";
 			}
 			if(!empty($state['internet']['isp'])) {
 				echo "Wan IP {$state['internet']['wanip']}</br>\n";
@@ -1483,9 +1505,10 @@ function html_list_wi_link($state, $defif) {
 
 function html_list_dns($state) {	
 	echo "<td>";
+	
 	foreach ($state['dns'] as $family => $entries) {
 		foreach ($entries as $entry) {
-			echo strtoupper($family) ." {$entry} </br>\n";
+			echo strtoupper($family) ." {$entry}, {$state['internet']['latency']['dnsping'][$entry]} ms</br>\n";
 		}
 	}
 	echo "</td>";

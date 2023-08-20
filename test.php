@@ -22,7 +22,7 @@ $defif = find_wan_interface($state);
 
 
 $defgw = fetch_default_route_gw();
-echo print_r($defgw, true);
+//echo print_r($defgw, true);
 
 //echo print_r(iw_info($state['if'], $defif), true);
 //echo print_r(iw_info($state['if'], "wlan1"), true);
@@ -37,24 +37,13 @@ echo print_r($defgw, true);
 //echo print_r(dnsping($state), true);
 
 //echo print_r(ping(), true);
-//echo print_r(check_latency($state), true);
+echo print_r(check_latency($state), true);
 
-echo print_r(fetch_wlan_interfaces(), true);
-echo print_r(fetch_ap_if($state), true);
+//echo print_r(fetch_wlan_interfaces(), true);
+//echo print_r(fetch_ap_if($state), true);
 
-$iflist = interface_status();
+//print_r(parse_dhcp_nameservers($state));
+echo print_r(dnsping($state, "8.8.8.8"));
 
-$localif = if_address($iflist, fetch_ap_if($state));
+echo print_r(ping("8.8.8.8"));
 
-echo print_r($localif, true);
-
-$w = 0;
-while (!isset($localif[0])) {
-        $iflist = interface_status();
-        $localif = if_address($iflist, fetch_ap_if($state));
-
-        sleep(3);
-        if($w > 10)
-                break;
-        $w++;
-}

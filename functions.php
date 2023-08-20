@@ -1243,13 +1243,17 @@ function parse_js_function($string) {
 }
 
 function check_latency($state) {
-	// if we have dns, use that, otherwise ping
+	// fetch gateway latency
+	$latency = array();
 	$ifname = find_wan_interface($state);
-	if(isset($state['leases'][$ifname]['domain_name_servers'])) {
-		$latency = dnsping($state);
-	} else {
-		$latency = ping();
+	$latency['ping'] = ping();
+	$dnsres = array();
+	foreach(parse_dhcp_nameservers($state) as $ipfam) {
+		foreach($ipfam as $dns) {
+			$dnsres = array_replace_recursive($dnsres, dnsping($state, $dns));
+		}
 	}
+	$latency['dnsping'] = $dnsres;
 
 	return $latency;
 }
@@ -1261,7 +1265,6 @@ function ping($address = ""){
 			return false;
 		$address = $defgw[4][0]['gateway'];
 	}
-	$latency = 0;
 
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/i", $address, $ipmatch);
@@ -1272,34 +1275,47 @@ function ping($address = ""){
 	if($ipmatch[1] == "")
 		return false;
 
+	$res[$ipmatch[1]] = 0;
 	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}";
 	exec($cmd, $out, $ret);
 	if ($ret > 0) {
 		// Timeout
-		$latency = 999;
-		return $latency;
+		$res[$ipmatch[1]] = 999;
+		return $res;
 	}
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/([0-9\.]+)\/([0-9\.]+)\/([0-9\.]+)\//i", $line, $matches);
 
+	$res = array();
+	$res[$ipmatch[1]] = round($matches[2]);
 
-	return round($matches[2]);
+	return ($res);
+}
+
+function return_dns_servers($state) {
+	$dnsservers = array();
+	$ifname = find_wan_interface($state);
+	if(isset($state['leases'][$ifname]['domain_name_servers'])) {
+		foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
+			$dnsservers[] = $dns_server;
+			
+		}
+	
+	}
+	array_unique($dnsservers);
+	return $dnsservers;
+
 }
 
 function dnsping($state, $server = ""){
 	if($server == "") {
-	
-			$ifname = find_wan_interface($state);
-			if(isset($state['leases'][$ifname]['domain_name_servers'])) {
-				foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
-					$server = $dns_server;
-					break;
-				}
-				
+		$dns = return_dns_servers($state);
+		foreach ($dnsservers as $dns_server) {
+			$server = $dns_server;
+			break;
 		}
 	}
-	$latency = 0;
 
 	// basic IP sanity check on address
 	preg_match("/([0-9:\.a-f]+)/i", $server, $ipmatch);
@@ -1310,12 +1326,13 @@ function dnsping($state, $server = ""){
 	if($ipmatch[1] == "")
 		return false;
 
+	$res[$ipmatch[1]] = 0;
 	$cmd = "dnsping -w1 -c1 -s {$ipmatch[1]} www.microsoftconnecttest.com";
 	exec($cmd, $out, $ret);
 	if ($ret > 0) {
 		// Timeout
-		$latency = 999;
-		return $latency;
+		$res[$ipmatch[1]] = 999;
+		return $res;
 	}
 	$num=count($out);
 	$line = $out[$num-1];
@@ -1323,8 +1340,11 @@ function dnsping($state, $server = ""){
 	// echo print_r($out);
 	// echo print_r($line);
 
-	// echo print_r($matches);
-	return round($matches[1]);
+	$res = array();
+	$res[$ipmatch[1]] = round($matches[1]);
+
+	return $res;
+
 }
 
 
@@ -1337,11 +1357,11 @@ function url_to_ip($url){
 function fetch_freq_list($iface, $band = array(2,5,6)) {
 	if($iface == "")
 		return false;
-	
+
 	$band = implode("", $band);
 	if(strstr("6", $band))
 		$band = $band . "7";
-		
+
 	$freq = array();
 	$cmd = "iwlist {$iface} freq";
 	exec($cmd, $out, $ret);

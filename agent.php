@@ -31,7 +31,7 @@ $state['cfgfile'] = $cfgfile;
 // Assume we start with no working internet
 $state['internet']['dns'] = null;
 $state['internet']['captive'] = null;
-$state['internet']['ping'] = false;
+$state['internet']['latency'] = array();
 $state['leases'] = array();
 $state['clients'] = array();
 
@@ -102,10 +102,10 @@ while (true) {
 	$state['dns'] = parse_dhcp_nameservers($state);
 
 	$state['lldp'] = fetch_lldp_neighbors();
-	
+
 	// Store latency
-	if($p > 59 ) {
-		$state['internet']['ping'] = check_latency($state);
+	if($p > 15 ) {
+		$state['internet']['latency'] = check_latency($state);
 		$p = 0;
 	}
 	// store leases
