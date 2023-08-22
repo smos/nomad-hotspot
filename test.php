@@ -45,5 +45,6 @@ echo print_r(check_latency($state), true);
 //print_r(parse_dhcp_nameservers($state));
 echo print_r(dnsping($state, "8.8.8.8"));
 
-echo print_r(ping("8.8.8.8"));
+// echo print_r(ping("8.8.8.8"));
 
+// echo lookup_mac_address("172.17.88.1");

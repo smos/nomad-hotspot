@@ -1365,7 +1365,7 @@ function html_status_internet($state, $defif, $icon = true) {
 			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
 			if(!empty($defgw[4])) {
-				echo "Gateway4 {$defgw[4][0]['gateway']}, {$state['internet']['latency']['ping'][$gw4]} ms</br>\n";
+				echo "Gateway4 {$defgw[4][0]['gateway']}, {$state['internet']['latency']['ping'][$gw4]} ms, ". lookup_oui(lookup_mac_address($defgw[4][0]['gateway']))."</br>\n";
 			}
 			if(!empty($defgw[6])) {
 				echo "Gateway6 {$defgw[6][0]['gateway']}, {$state['internet']['latency']['ping'][$gw6]} ms</br>\n";
@@ -1505,6 +1505,7 @@ function html_list_wi_link($state, $defif) {
 				case "bssid":
 					echo ucwords($field) ." ". $value ." ". lookup_oui($value) ."</br>";
 				case "quality":
+				case "level":
 					// echo ucwords($field) ." ". $value ." ";
 					break;
 				default:
@@ -1704,6 +1705,22 @@ function lookup_oui($mac) {
 		}
 	}
 	return false;
+}
+
+function lookup_mac_address($ip) {
+	if(!preg_match("/([0-9a-z.:]+)/i", $ip))
+		return false;
+
+	$cmd = "arp -na";
+	exec($cmd, $out, $ret);
+	foreach($out as $line) {
+		if(preg_match("/\($ip\)/i", $line)) {
+			$el = explode(" ", $line);
+			return $el[3];
+		}
+
+	}
+
 }
 
 /* Below is Copyright RafaSashi on StackOverflow

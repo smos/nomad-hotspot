@@ -1293,24 +1293,10 @@ function ping($address = ""){
 	return ($res);
 }
 
-function return_dns_servers($state) {
-	$dnsservers = array();
-	$ifname = find_wan_interface($state);
-	if(isset($state['leases'][$ifname]['domain_name_servers'])) {
-		foreach(explode(" ", $state['leases'][$ifname]['domain_name_servers']) as $dns_server) {
-			$dnsservers[] = $dns_server;
-			
-		}
-	
-	}
-	array_unique($dnsservers);
-	return $dnsservers;
-
-}
 
 function dnsping($state, $server = ""){
 	if($server == "") {
-		$dns = return_dns_servers($state);
+		$dns = parse_dhcp_nameservers($state);
 		foreach ($dnsservers as $dns_server) {
 			$server = $dns_server;
 			break;
@@ -1338,8 +1324,9 @@ function dnsping($state, $server = ""){
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/avg=([0-9]+)/i", $line, $matches);
+	
 	// catch packet loss returned as 0
-	if($matches[1] == 0)
+	if(round($matches[1]) == 0)
 		$res[$ipmatch[1]] = 999;
 	// echo print_r($out);
 	// echo print_r($line);
