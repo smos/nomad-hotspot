@@ -1126,10 +1126,10 @@ function html_interfaces($state, $interface = ""){
 		}
 
 		$defgw = fetch_default_route_gw();
-		if(!empty($defgw6)) {
+		if(!empty($defgw[6])) {
 			echo "<tr><td >&nbsp;&nbsp;Gateway6 {$defgw[6][0]['gateway']}</td></tr>\n";
 		}
-		if(!empty($defgw4)) {
+		if(!empty($defgw[4])) {
 			echo "<tr><td >&nbsp;&nbsp;Gateway4 {$defgw[4][0]['gateway']}</td></tr>\n";
 		}
 
@@ -1364,7 +1364,7 @@ function html_status_internet($state, $defif, $icon = true) {
 			}
 			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
-			if(!empty($gw6)) {
+			if(!empty($gw4)) {
 				echo "<table><tr><td>GW4 {$gw4} &nbsp;</td><td
 				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw4]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw4))."</td></tr></table>\n";
 			}
