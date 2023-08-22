@@ -10,6 +10,7 @@ echo "Select 3 for OpenVPN Client log"
 echo "Select 4 for hostapd log"
 echo "Select 5 for dnsmasq log"
 echo "Select 6 for dhcpcd log"
+echo "Select 7 for php log"
 
 if [ -n $1 ]; then
 	select=$1;
@@ -32,6 +33,8 @@ elif [ "$select" = "5" ]; then
 	sudo grep -a dnsmasq /var/log/syslog |grep -v dhcp |tail -n20
 elif [ "$select" = "6" ]; then
 	sudo grep -a dhcpcd /var/log/syslog |tail -n20
+elif [ "$select" = "7" ]; then
+	sudo grep -a Fatal /var/log/syslog |tail -n20
 else
 	echo Not a valid choice made
 fi

@@ -1364,11 +1364,13 @@ function html_status_internet($state, $defif, $icon = true) {
 			}
 			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
-			if(!empty($defgw[4])) {
-				echo "Gateway4 {$defgw[4][0]['gateway']}, {$state['internet']['latency']['ping'][$gw4]} ms, ". lookup_oui(lookup_mac_address($defgw[4][0]['gateway']))."</br>\n";
+			if(!empty($gw6)) {
+				echo "<table><tr><td>GW4 {$gw4} &nbsp;</td><td
+				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw4]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw4))."</td></tr></table>\n";
 			}
-			if(!empty($defgw[6])) {
-				echo "Gateway6 {$defgw[6][0]['gateway']}, {$state['internet']['latency']['ping'][$gw6]} ms</br>\n";
+			if(!empty($gw6)) {
+				echo "<table><tr><td>GW6 {$gw6} &nbsp;</td><td
+				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw6]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw6))."</td></tr></table>\n";
 			}
 			if(!empty($state['internet']['isp'])) {
 				echo "Wan IP {$state['internet']['wanip']}</br>\n";

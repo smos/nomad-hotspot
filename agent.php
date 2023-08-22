@@ -34,7 +34,7 @@ $state['internet']['captive'] = null;
 $state['internet']['latency'] = array();
 $state['leases'] = array();
 $state['clients'] = array();
-
+$state['captive'] = array();
 
 $state['log']['agent.php'] = array();
 $state['if'] = array();
@@ -100,7 +100,7 @@ while (true) {
 	$state['internet']['dns'] = working_dns($state['internet']['dns']);
 
 	// Check if we can reach msft ncsi
-	$state['internet']['captive'] = working_msftconnect($state['internet']['captive']);
+	$state['internet']['captive'] = working_captive($state['internet']['captive']);
 
 	$state['dns'] = parse_dhcp_nameservers($state);
 

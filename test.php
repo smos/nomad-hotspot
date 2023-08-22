@@ -48,3 +48,9 @@ echo print_r(dnsping($state, "8.8.8.8"));
 // echo print_r(ping("8.8.8.8"));
 
 // echo lookup_mac_address("172.17.88.1");
+
+echo print_r(fetch_last_captive_test($state));
+
+echo key(fetch_last_captive_test($state));
+echo current(fetch_last_captive_test($state));
+

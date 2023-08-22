@@ -496,6 +496,31 @@ function process_traffic_hist($old, $stats) {
 	return $hist;
 }
 
+function process_captive_hist($old, $item) {
+	// limit to 5;
+	$count = 5;
+	$hist = array();
+	
+	print_r($old);
+	
+	$key = key($item);
+	$value = current($item);
+
+	$hist[$key] = $value;
+
+	$i = 1;
+	
+	foreach($old  as $key => $value) {
+		$hist[$key] = $value;
+		if($i == $count)
+			break;
+		
+		$i++;		
+	}
+		print_r($hist);
+	return $hist;
+}
+
 // Create 32kb shared memory block with system id of 0xff3
 function create_shm($shm_size) {
 	$shm_id = shmop_open(0xff3, "c", 0644, $shm_size);
@@ -910,19 +935,39 @@ function config_write_dhcpcd_interface($iflist, $ifname, $settings) {
 	return $conf;
 }
 
-// Working internet check
-function working_msftconnect($captive) {
-	global $state;
-	$i = 0;
-	while($i < 3) {
-		$msftconnect = check_msft_connect();
-		if($msftconnect !== false)
-			break;
-		$i++;
+function fetch_last_captive_test($state) {
+	foreach($state['captive'] as $key => $value) {
+		$item[$key]= $value;
+		return $item;
 	}
+	$ttime = time();
+	$item[0] = "PORTAL";
+	return $item;
+}
+
+// Working internet check
+function working_captive($captive) {
+	global $state;
+	$ttime = time();
+	$i = 2;
+	while($i < 3) {
+		$last = fetch_last_captive_test($state);
+
+		if((($ttime - key($last)) > 60) || (current($last) != "OK")) {
+				echo "$ttime - ". key($last) ." && ". current($last) ." checking\n";
+			$res = check_msft_connect();
+			if($res !== false)
+				break;
+			$i++;
+		} else {
+			return "OK";
+		}
+	}
+
+	$state['captive'] = process_captive_hist($state['captive'], array($ttime => $res));
 	$config = read_config($state['cfgfile']);
 	//print_r($msftconnect);
-	if(($msftconnect == "OK") && ($captive != "OK")){
+	if(($res == "OK") && ($captive != "OK")){
 		msglog("agent.php", "Captive Portal check succeeded, looks like we have working Internet");
 		// Hook in OpenVPN start here
 		if($config['openvpn'] === true)
@@ -932,13 +977,13 @@ function working_msftconnect($captive) {
 		$state['internet']['wanip'] = $wanip;
 		$state['internet']['isp'] = fetch_as_info($state, $wanip);
 	}
-	if(($msftconnect == "DNSERR") && ($captive != "DNSERR")) {
+	if(($res == "DNSERR") && ($captive != "DNSERR")) {
 		msglog("agent.php", "Looks like DNS doesn't work properly yet");
 		// Hook in OpenVPN start here
 		if($config['openvpn'] === true)
 			stop_service("client.ovpn");
 	}
-	if(($msftconnect == "PORTAL") && ($captive != "PORTAL")) {
+	if(($res == "PORTAL") && ($captive != "PORTAL")) {
 		msglog("agent.php", "Looks like we we are stuck behind a portal, someone needs to log in");
 
 		msglog("agent.php", "Attempting to parse the portal page");
@@ -949,7 +994,7 @@ function working_msftconnect($captive) {
 		else
 			msglog("agent.php", "It actually worked?!");
 	}
-	return $msftconnect;
+	return $res;
 }
 
 function check_msft_connect($url = "") {
