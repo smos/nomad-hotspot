@@ -501,7 +501,7 @@ function process_captive_hist($old, $item) {
 	$count = 5;
 	$hist = array();
 	
-	print_r($old);
+	// print_r($old);
 	
 	$key = key($item);
 	$value = current($item);
@@ -517,7 +517,7 @@ function process_captive_hist($old, $item) {
 		
 		$i++;		
 	}
-		print_r($hist);
+	//print_r($hist);
 	return $hist;
 }
 
@@ -954,7 +954,7 @@ function working_captive($captive) {
 		$last = fetch_last_captive_test($state);
 
 		if((($ttime - key($last)) > 60) || (current($last) != "OK")) {
-				echo "$ttime - ". key($last) ." && ". current($last) ." checking\n";
+				// echo "$ttime - ". key($last) ." && ". current($last) ." checking\n";
 			$res = check_msft_connect();
 			if($res !== false)
 				break;
@@ -1287,18 +1287,22 @@ function parse_js_function($string) {
 	return $string;
 }
 
-function check_latency($state) {
+function check_gw_latency($state) {
 	// fetch gateway latency
 	$latency = array();
-	$ifname = find_wan_interface($state);
-	$latency['ping'] = ping();
+	$latency = ping();
+
+	return $latency;
+}
+
+function check_dns_latency($state) {
 	$dnsres = array();
 	foreach(parse_dhcp_nameservers($state) as $ipfam) {
 		foreach($ipfam as $dns) {
 			$dnsres = array_replace_recursive($dnsres, dnsping($state, $dns));
 		}
 	}
-	$latency['dnsping'] = $dnsres;
+	$latency = $dnsres;
 
 	return $latency;
 }

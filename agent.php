@@ -107,9 +107,14 @@ while (true) {
 	$state['lldp'] = fetch_lldp_neighbors();
 
 	// Store latency
-	if($p > 15 ) {
-		$state['internet']['latency'] = check_latency($state);
-		$p = 0;
+	if($i % 10 == 0) {
+		// alternate between test
+		if($p % 2 == 0) {
+			$state['internet']['latency']['ping']= check_gw_latency($state);
+		} else {
+			$state['internet']['latency']['dnsping']= check_dns_latency($state);
+		}
+		$p++;
 	}
 	// store leases
 	$state['clients']= parse_dnsmasq_leases();
@@ -117,7 +122,7 @@ while (true) {
 	$state['self']['time'] = time();
 	write_tmpfs($tmpfsurl, $state);
 	$i++;
-	$p++;
+
 	$state['self']['itteration'] = $i;
 	sleep ($looptimer);
 }
