@@ -1443,7 +1443,7 @@ function html_status_uplink($state, $defif, $icon = true){
 
 		} else {
 			// must be wired
-			$color = "green"; // place holder for now without indicators
+			$color = "okc"; // place holder for now without indicators
 			$img = "images/ether{$color}.png";
 			if($icon === true)
 				echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
