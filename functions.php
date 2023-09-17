@@ -1289,9 +1289,20 @@ function parse_js_function($string) {
 
 function check_gw_latency($state) {
 	// fetch gateway latency
-	$latency = array();
-	$latency = ping();
+	$res = array();
+	$defgw = fetch_default_route_gw();
+	if(isset($defgw[4][0]['gateway'])) {
+		// $dev = $defgw[4][0]['dev'];
+		$address = $defgw[4][0]['gateway'];
+		$res = array_replace_recursive($res, ping($address));
+	}
+	if(isset($defgw[6][0]['gateway'])) {
+		// $dev = $defgw[6][0]['dev'];
+		$address = $defgw[6][0]['gateway'];
+		$res = array_replace_recursive($res, ping($address));
+	}
 
+	$latency = $res;
 	return $latency;
 }
 
@@ -1307,11 +1318,29 @@ function check_dns_latency($state) {
 	return $latency;
 }
 
+function lookup_neighbor($address) {
+	$res = array();
+	$cmd = "ip -j neigh";
+	exec($cmd, $out, $ret);
+	if ($ret > 0) {
+		return $res;
+	}
+	$arr = json_decode(implode("\n", $out,), true);
+	foreach($arr as $dst) {
+		if(strstr($dst['dst'], $address)) {
+			return $dst;
+		}
+	}
+
+	return $res;
+}
+
 function ping($address = ""){
 	if($address == "") {
 		$defgw = fetch_default_route_gw();
 		if($defgw === false)
 			return false;
+		// $dev = $defgw[4][0]['dev'];
 		$address = $defgw[4][0]['gateway'];
 	}
 
@@ -1324,8 +1353,16 @@ function ping($address = ""){
 	if($ipmatch[1] == "")
 		return false;
 
+	// catch link locals if has no device
+	if((preg_match("/^fe80/i", $ipmatch[1])) && (!strstr($ipmatch[1], "%"))) {
+		// print_r($ipmatch);
+		$neigh = lookup_neighbor($ipmatch[1]);
+		if(@!empty($neigh))
+			$dev = "%{$neigh['dev']}";
+		// $ipmatch[1] = "{$ipmatch[1]}%{$dev}";
+	}
 	$res[$ipmatch[1]] = 0;
-	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}";
+	$cmd = "ping -U -W1 -c1 {$ipmatch[1]}{$dev}";
 	exec($cmd, $out, $ret);
 	if ($ret > 0) {
 		// Timeout
@@ -1369,11 +1406,11 @@ function dnsping($state, $server = ""){
 		$res[$ipmatch[1]] = 999;
 		return $res;
 	}
-	
+
 	$num=count($out);
 	$line = $out[$num-1];
 	preg_match("/avg=([0-9]+)/i", $line, $matches);
-	
+
 	// catch packet loss returned as 0
 	if(round($matches[1]) == 0)
 		$res[$ipmatch[1]] = 999;
