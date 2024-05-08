@@ -511,7 +511,7 @@ function config_supplicant($state) {
 
 function html_wi_network_list($state) {
 	echo " <div id='wilist'>";
-	echo "<table ><tr><td>";
+	echo "<table width=100% ><tr><td>";
 	$settings = config_read_supplicant($state);
 
 	foreach ($state['if'] as $ifname => $iface) {
@@ -574,7 +574,7 @@ function html_wi_network_list($state) {
 				// echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
 				$bgcolor =  value_to_colorname($fields['snr']);
-				echo "<td class='{$bgcolor}'><input class='button' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
+				echo "<td class='{$bgcolor}'><input class='wibutton' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
 				foreach($fields as $fname =>$field) {
 					switch($fname) {
 						case "snr":
@@ -915,6 +915,13 @@ function html_redirect_home() {
 
 }
 
+function html_redirect_screensavermenu() {
+	echo "<script type=\"text/javascript\">
+	window.location.replace(\"/screensavermenu\");
+	</script>";
+
+}
+
 function restart(){
 	exec("screen -dm bash -c 'sleep 10 && sudo reboot'");
 }
@@ -936,6 +943,9 @@ function html_logs($state){
 			switch($varname) {
 				case "action":
 						switch($setting) {
+							case "screensaver":
+								echo html_redirect_screensavermenu();
+								break;
 							case "restart":
 								echo html_redirect_home();
 								restart();
@@ -956,7 +966,10 @@ function html_logs($state){
 
 	echo "<table border=0>";
 	echo "<tr><td>";
-	echo "<a href='/screensavermenu'>Screensaver</a>";
+	echo html_form_open();
+	echo html_hidden("action", "screensaver");
+	echo html_button("Screensaver");
+	echo html_form_close();
 	echo "</td></tr>\n";
 	echo "<tr><td>";
 	echo html_form_open();

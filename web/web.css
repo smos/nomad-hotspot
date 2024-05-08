@@ -34,6 +34,12 @@ th, td {
 
 }
 
+.wibutton {
+	height: 30px;
+	width: 80%;
+	align-content: left;
+}
+
 .vertlabel {
   writing-mode: lr;
   text-orientation: upright;
