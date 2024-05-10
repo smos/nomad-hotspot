@@ -54,4 +54,9 @@ $state = read_tmpfs($tmpfsurl);
 // echo key(fetch_last_captive_test($state));
 // echo current(fetch_last_captive_test($state));
 
-echo print_r(iw_info($state['if'], "wlan1"));
+// echo print_r(iw_info($state['if'], "wlan1"));
+
+echo print_r(lookup_oui("7c:69:f6:2b:8d:3f"));
+$ip = "82.151.32.166";
+
+echo print_r(fetch_as_info($state, $ip) );
