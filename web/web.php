@@ -1723,7 +1723,7 @@ function lookup_oui($mac) {
 	if(is_readable($ieee)) {
 		$cmd = "grep $mac $ieee";
 		exec($cmd, $out, $ret);
-		echo print_r($out, true);
+		// echo print_r($out, true);
 		foreach($out as $line) {
 			// $el = explode(",", $line);
 			preg_match("/\"(.*)\"/", $line, $match);
