@@ -16,12 +16,12 @@ $state['cfgfile'] = $cfgfile;
 $state = read_tmpfs($tmpfsurl);
 
 
-$defif = find_wan_interface($state);
+//$defif = find_wan_interface($state);
 //echo print_r(if_prefix($state['if'], $defif), true);
 
 
 
-$defgw = fetch_default_route_gw();
+//$defgw = fetch_default_route_gw();
 //echo print_r($defgw, true);
 
 //echo print_r(iw_info($state['if'], $defif), true);
@@ -37,20 +37,21 @@ $defgw = fetch_default_route_gw();
 //echo print_r(dnsping($state), true);
 
 //echo print_r(ping(), true);
-echo print_r(check_latency($state), true);
+// echo print_r(check_latency($state), true);
 
 //echo print_r(fetch_wlan_interfaces(), true);
 //echo print_r(fetch_ap_if($state), true);
 
 //print_r(parse_dhcp_nameservers($state));
-echo print_r(dnsping($state, "8.8.8.8"));
+//echo print_r(dnsping($state, "8.8.8.8"));
 
 // echo print_r(ping("8.8.8.8"));
 
 // echo lookup_mac_address("172.17.88.1");
 
-echo print_r(fetch_last_captive_test($state));
+// echo print_r(fetch_last_captive_test($state));
 
-echo key(fetch_last_captive_test($state));
-echo current(fetch_last_captive_test($state));
+// echo key(fetch_last_captive_test($state));
+// echo current(fetch_last_captive_test($state));
 
+echo print_r(iw_info($state['if'], "wlan1"));
