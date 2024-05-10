@@ -2070,18 +2070,21 @@ function fetch_as_info($state, $ip) {
 	
 	$cmd = "whois -c {$ip}";
 	exec($cmd, $out, $ret);
+	// echo print_r($out, true);
 	if($ret > 0)
 		return false;
 
 	foreach($out as $line) {
-		if(preg_match("/^route:[ ]+([0-9a-f.:\/]+)/", $line, $rtmatch))
+		if(preg_match("/^route:[ ]+([0-9a-f.:\/]+)/i", $line, $rtmatch))
 			$asinfo['route'] = $rtmatch[1];
-		if(preg_match("/^origin:[ ]+([0-9a-fA-Z.:\/]+)/", $line, $asmatch))
+		if(preg_match("/^route6:[ ]+([0-9a-f.:\/]+)/i", $line, $rt6match))
+			$asinfo['route6'] = $rt6match[1];
+		if(preg_match("/^origin:[ ]+([0-9A-Z.:\/]+)/i", $line, $asmatch))
 			$asinfo['asnum'] = $asmatch[1];
-		if(preg_match("/^descr:[ ]+([0-9a-fA-Z.:\/ ]+)/", $line, $orgmatch))
-			$asinfo['descr'] = $orgmatch[1];
-		if(preg_match("/^org-name:[ ]+([0-9a-fA-Z.:\/ ]+)/", $line, $orgmatch))
-			$asinfo['descr'] = $orgmatch[1];
+		if(preg_match("/^descr:[ ]+([0-9A-Z.:\/ ]+)/i", $line, $descrmatch))
+			$asinfo['descr'] = $descrmatch[1];
+		if(preg_match("/^org-name:[ ]+([0-9A-Z.:\/ ]+)/i", $line, $orgmatch))
+			$asinfo['org-name'] = $orgmatch[1];
 		
 		
 	}
