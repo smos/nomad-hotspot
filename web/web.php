@@ -1519,13 +1519,18 @@ function html_list_wi_link($state, $defif) {
 	if(isset($state['if'][$defif]['wi'])) {
 		foreach($state['if'][$defif]['wi'] as $field => $value) {
 			switch($field) {
+				case "phy":
 				case "mode":
-					continue 2;
-				case "bssid":
-					echo ucwords($field) ." ". $value ." ". lookup_oui($value) ."</br>";
+				case "frequency":
+				case "width":
 				case "quality":
 				case "level":
-					// echo ucwords($field) ." ". $value ." ";
+					continue 2;
+				case "bssid":
+					echo ucwords($field) ." '". $value ."' ". lookup_oui($value) ."</br>";
+					break;
+				case "channel":
+					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}) Width {$state['if'][$defif]['wi']['width']}Mhz";
 					break;
 				default:
 					echo ucwords($field) ." ". $value ."</br>";
@@ -1718,9 +1723,11 @@ function lookup_oui($mac) {
 	if(is_readable($ieee)) {
 		$cmd = "grep $mac $ieee";
 		exec($cmd, $out, $ret);
+		echo print_r($out, true);
 		foreach($out as $line) {
-			$el = explode(",", $line);
-				return $el[2];
+			// $el = explode(",", $line);
+			preg_match("/\"(.*)\"/", $line, $match);
+				return $match[1];
 		}
 	}
 	return false;
