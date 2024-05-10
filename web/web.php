@@ -1078,7 +1078,9 @@ function html_bw_down($state) {
 	echo " <div id='bwdown'>";
 	echo "<table border=0 width='150px' valign='bottom' height='500px' cellpadding=0 cellspacing=0>\n";
 	foreach($state['traffic'][$ifname]['hist']['rx'] as $counter) {
-		$height = round(($counter / $state['traffic'][$ifname]['toprx']),2) * 150; //percentage
+		$height = 100;
+		if(isset($state['traffic'][$ifname]['toprx']))
+			$height = round(($counter / $state['traffic'][$ifname]['toprx']),2) * 150; //percentage
 		$rest = abs(100 - $height); 
 	
 		echo "<tr>";
@@ -1329,7 +1331,9 @@ function html_status_internet($state, $defif, $icon = true) {
 	if(isset($defgw[6][0]['gateway']))
 		$gw6 = $defgw[6][0]['gateway'];
 	
-	$avgicmp = $state['internet']['latency']['ping'][$gw4];
+	$avgicmp = 999;
+	if(isset($state['internet']['latency']['ping'][$gw4]))
+		$avgicmp = $state['internet']['latency']['ping'][$gw4];
 
 	if(isset($state['internet']['latency']['ping'][$gw6]))
 		$avgicmp = round(($state['internet']['latency']['ping'][$gw4] + $state['internet']['latency']['ping'][$gw6])/ 2);
