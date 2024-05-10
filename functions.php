@@ -181,6 +181,46 @@ function iw_info($ifstate, $ifname) {
 
 	// List wireless interface statistics
 	// iw wlan0 info
+	$cmd = "iw {$ifname} info";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
+		
+	$iwstate = iwconfig_info($ifstate, $ifname);
+		
+	foreach($out as $line) {
+		$line = trim($line);
+		$els = preg_split("/[ ]+/", $line);
+		
+		switch($els[0]) {
+			case "ssid":
+				array_shift($els);
+				$iwstate['essid'] = implode(" ", $els);
+				break;
+			case "channel":
+				$iwstate['channel'] = $els[1];
+				$iwstate['width'] = $els[5];
+				break;				
+			default:
+				//echo print_r($els, true);
+				break;
+		}
+		
+
+	}
+	return $iwstate;
+	
+}
+
+function iwconfig_info($ifstate, $ifname) {
+	if(!isset($ifstate[$ifname]))
+		return false;
+	// Don't scan on our eth0 interface ;)
+	if(preg_match("/(^eth|^tun)/", $ifname))
+		return null;
+
+	// List wireless interface statistics
+	// iw wlan0 info
 	$cmd = "iwconfig {$ifname}";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
@@ -191,7 +231,7 @@ function iw_info($ifstate, $ifname) {
 	foreach($out as $line) {
 		$line = trim($line);
 		$els = preg_split("/[ ]+/", $line);
-
+/*
 		if($i == 0) {
 		 	preg_match("/ESSID\:\"(.*?)\"/", $line, $essidmatch);
 		 	preg_match("/Mode\:([a-zA-Z0-9]+) /", $line, $modematch);
@@ -201,10 +241,11 @@ function iw_info($ifstate, $ifname) {
 			if(!empty($modematch)) {
 				$iw_state['mode'] = "{$modematch[1]}";
 			}
-			$iw_state['phy'] = "{$els[1]}{$els[2]}";
+			// $iw_state['phy'] = "{$els[1]}{$els[2]}";
 			$i++;
 			continue;
 		}
+		*/
 		foreach($els as $num => $val) {
 			$elc = preg_split("/\:/", $val, 2);
 			$ele = preg_split("/\=/", $val, 2);
@@ -1060,38 +1101,47 @@ function parse_portal_page($url = ""){
 	if($url == "")
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
 
-
+	// Hook in OpenVPN stop here
+	if($config['openvpn'] === true)
+		stop_service("client.ovpn");
+			
 	$state['internet']['url'] = $url;
 	// attempt this 3 times
-	$t = 3;
+	$t = 5;	
 	while($t > 0) {
 		// We might want to add the captive portal IP address to the routing table, we should be able to reach it regardless of Openvpn
-		route_add(url_to_ip($url), "");
-
-		$test = simple_web_request($url);
-		// Skip false positives under load, make sure we don't enter parsing stage.
-		if($test == "Microsoft Connect Test")
-			return true;
-		if($test == "")
-			return true;
-
-		// Hook in OpenVPN stop here
-		if($config['openvpn'] === true)
-			stop_service("client.ovpn");
+		
+		// if we have a previous result page, parse that
+		if(!isset($result)) {
+			route_add(url_to_ip($url), "");
+			if(is_readable($url)) {
+				$test = file_get_contents($url);
+			} else {
+				$test = simple_web_request($url);
+			}
+			// Skip false positives under load, make sure we don't enter parsing stage.
+			if($test == "Microsoft Connect Test")
+				return true;
+			if($test == "")
+				return true;
+		} else {
+			$test = $result;
+		}
 
 		// Save the portal page in /tmp for later diagnosis or testing
 		$datestr = date("Ymd-His");
 		file_put_contents("/tmp/portal_page_{$datestr}.html", "{$url}\n{$test}");
 
-		echo "String: {$test}\n";
+		// echo "String: {$test}\n";
 		// Test for javascript redirect
 		preg_match("/window.location=[\'\"](.*?)[\'\"]/i", $test, $jsmatches);
 
 		// test for meta refresh
 		// <meta http-equiv="refresh" content="0; url=https://login.wifi.site.com" />
 		preg_match("/meta http-equiv=[\'\"]refresh[\'\"].*?url=(.*?)[\'\"]/i", $test, $metamatches);
-
+		
 		if(isset($jsmatches[1])) {
+			echo "jsmatches: ". print_r($jsmatches, true) . "\n";
 			if(strstr($jsmatches[1], "http")) {
 				$url = $jsmatches[1];
 				route_add(url_to_ip($url), "");
@@ -1100,8 +1150,10 @@ function parse_portal_page($url = ""){
 				$state['internet']['url'] = $url;
 			}
 		}
+		
 		//print_r($metamatches);
 		if(isset($metamatches[1])) {
+		echo "metamatches: ". print_r($metamatches, true) . "\n";
 			if(strstr($metamatches[1], "http")) {
 				$url = $metamatches[1];
 				route_add(url_to_ip($url), "");
@@ -1110,6 +1162,7 @@ function parse_portal_page($url = ""){
 				$state['internet']['url'] = $url;
 			}
 		}
+		
 		// Does this result have a form we can use?
 		// Collect forms and inputs from page
 		preg_match_all("/<form.*?>/", $test, $forms_a);
@@ -1118,18 +1171,24 @@ function parse_portal_page($url = ""){
 
 		if(!empty($forms_a[0])) {
 			echo "Hey look, this one has forms!\n";
-			// print_r($forms_a);
-			// print_r($inputs_a);
+			echo print_r($forms_a, true);
+			echo print_r($inputs_a, true);
 			// print_r($onclicks_a);
 
 			$request = build_form_request($forms_a, $inputs_a, $onclicks_a);
-			// print_r($request);
+			
+			echo "Attempt request " . print_r($request, true) . "\n";
 
 			// Remember that url we found?, yeah, we need that here, we should strip to base and include form here. Then again, the post can be absolute. meh.
-			//$result = simple_web_request($url, $request['form']['method'], $request['vars']);
-			//print_r($result);
+			$result = simple_web_request($request['form']['action'], $request['form']['method'], $request['vars']);
+			
 			echo "Did it work?\n";
-			return $result;
+			sleep(1);
+			if(check_msft_connect() == "OK") {
+				echo "Yes, yes it did\n";
+				return $result;
+			}
+			// continue using last request $result
 		}
 		$t--;
 	}
@@ -1189,11 +1248,12 @@ function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 	// Transform form into associative array, 1st item only
 	//print_r($forms_a);
 	$form_a = transform_form_to_array($forms_a[0][0]);
-	//print_r($form_a);
+	print_r($form_a);
 	foreach($form_a[1] as $key => $value) {
 		//print_r($value);
 		if($value == "")
 			continue;
+		$value = strtolower($value);
 		switch($value) {
 			case "method":
 			case "action":
@@ -1202,12 +1262,12 @@ function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 				break;
 		}
 	}
-	//print_r($request);
+	print_r($request);
 	// No form? No go.
 	if(!isset($request['form']))
 		return false;
 	// We need atleast 3 elements for a succesful form submission.
-	if(count($request['form']) < 3)
+	if(count($request['form']) < 2)
 		return false;
 
 	// Transform inputs into associative arrays
@@ -1505,6 +1565,9 @@ function route_add($ip, $gwip = ""){
 	// print_r($gwipmatch);
 	// Needs actual ip address check
 
+	if(!isset($ipmatch[1]))
+		return false;
+	
 	if($ipmatch[1] == "")
 		return false;
 	if($ipmatch[1] == ".")
