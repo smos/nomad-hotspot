@@ -1391,8 +1391,8 @@ function html_status_internet($state, $defif, $icon = true) {
 			}
 			if(!empty($state['internet']['isp'])) {
 				echo "Wan IP {$state['internet']['wanip']}</br>\n";
-				echo "AS Number {$state['internet']['isp']['asnum']}</br>\n";
-				echo "Descr {$state['internet']['isp']['descr']}</br>\n";
+				echo "AS '{$state['internet']['isp']['descr']}' ({$state['internet']['isp']['asnum']})</br>\n";
+
 			}
 		}
 		echo "</td>";
@@ -1530,10 +1530,10 @@ function html_list_wi_link($state, $defif) {
 					echo ucwords($field) ." '". $value ."' ". lookup_oui($value) ."</br>";
 					break;
 				case "channel":
-					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}) Width {$state['if'][$defif]['wi']['width']}Mhz";
+					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}) Width {$state['if'][$defif]['wi']['width']}Mhz</br>";
 					break;
 				default:
-					echo ucwords($field) ." ". $value ."</br>";
+					echo ucwords($field) ." '". $value ."'</br>";
 			}
 		}
 
@@ -1636,10 +1636,10 @@ function list_wi_link($state, $defif) {
 				case "mode":
 					continue 2;
 				case "quality":
-					echo ucwords($field) ." ". $value ." ";
+					echo ucwords($field) ." '". $value ."' ";
 					break;
 				default:
-					echo ucwords($field) ." ". $value ."</br>";
+					echo ucwords($field) ." '". $value ."'</br>";
 			}
 		}
 	}
