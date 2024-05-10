@@ -1322,8 +1322,12 @@ function html_status_vpn($state, $icon = true) {
 function html_status_internet($state, $defif, $icon = true) {
 
 	$defgw = fetch_default_route_gw();
-	$gw4 = $defgw[4][0]['gateway'];
-	$gw6 = $defgw[6][0]['gateway'];
+	$gw4 = "";
+	$gw6 = "";
+	if(isset($defgw[4][0]['gateway']))
+		$gw4 = $defgw[4][0]['gateway'];
+	if(isset($defgw[6][0]['gateway']))
+		$gw6 = $defgw[6][0]['gateway'];
 	
 	$avgicmp = $state['internet']['latency']['ping'][$gw4];
 
@@ -1356,7 +1360,7 @@ function html_status_internet($state, $defif, $icon = true) {
 			break;;
 	}
 	if($icon === true) {
-		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']} Latency: {$state['internet']['latency']}'>{$hrefc}</td></tr>\n";
+		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='Internet: {$state['internet']['captive']}'>{$hrefc}</td></tr>\n";
 	}
 
 	if($icon === false) {
