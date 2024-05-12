@@ -192,7 +192,7 @@ function config_dhcpcd($state) {
 				// rename to intermediate name as to ot clobber everything to one value
 				// pass one
 				if(!is_readable("{$cfgdir}/{$mfile}")) {
-					echo "Can not read file {$cfgdir}/{$mfile}</br>";
+					echo "Can not read file {$cfgdir}/{$mfile}<br/>";
 					continue;
 				}
 
@@ -213,17 +213,17 @@ function config_dhcpcd($state) {
 				file_put_contents("{$cfgdir}/{$mfile}" , $newcfg);
 
 				// Copy the file but do not restart services, we really need to restart
-				//echo "Changing AP interface to {$_POST['ap_if']} in {$mfile} and copy to base</br>";
+				//echo "Changing AP interface to {$_POST['ap_if']} in {$mfile} and copy to base<br/>";
 				copy_config($mfile);
 				// restart_service($mfile);
 			}
 			// All changes done make sure to save
 			$state['config']['ap_if'] = $_POST['ap_if'];
 			save_config($state['cfgfile'], $state['config']);
-			echo "Saving setting to json</br>";
+			echo "Saving setting to json<br/>";
 			// we reboot after changing the files
 			restart();
-			echo "Restart, then exit</br>";
+			echo "Restart, then exit<br/>";
 			//exit(0);
 		}
 		//config_write_hostapd($_POST);
@@ -457,6 +457,8 @@ function config_supplicant($state) {
 	foreach($bands as $name => $band) {
 				// parse freq list out to independent vars
 				echo " {$name} Ghz: ";
+				if(!isset($settings[$band]))
+					$settings[$band] = "";
 				html_checkbox($band, "on", $settings[$band]);
 	}
 	echo "<br>\n";
@@ -473,24 +475,28 @@ function config_supplicant($state) {
 			case "network":
 				//echo "Client networks to connect to:<br/>";
 				foreach($setting as $index => $values){
+					if(!isset($values['psk']))
+						$values['psk'] = "";
+					if(!isset($values['bssid']))
+						$values['bssid'] = "";
 					echo "<table class='status_item'><tr><td colspan=2>\n";
 					// echo "<pre>". print_r($values, true) ."</pre>";
 					echo "Index {$index} <br>\n";	
 					echo "SSID: ";
 					echo html_input("{$index}ssid", $values['ssid']);
-					echo "</br>\n";
+					echo "<br/>\n";
 					echo "Password: ";
 					echo html_input("{$index}psk", $values['psk']);
-					echo "</br>\n";
+					echo "<br/>\n";
 					echo "Type: ";
 					echo html_select("{$index}key_mgmt", $key_mgmt, $values['key_mgmt']);
-					echo "</br>\n";
+					echo "<br/>\n";
 					echo "Bssid: ";
 					$bssid_a = list_bssid_assoc($wi_list, $values['ssid']);
 					if((!isset($bssid_a[$values['bssid']])) && isset($values['bssid']))
 						$bssid_a[$values['bssid']] = "Configured to '{$values['bssid']}'";
 					echo html_select("{$index}bssid", $bssid_a, $values['bssid']);
-					echo "</br>\n";
+					echo "<br/>\n";
 					echo "</td></tr></table>\n";
 				}
 		}
@@ -643,7 +649,7 @@ function html_checkbox($varname, $option, $selected) {
 	if($option == $selected)
 		$sel = "checked";
 
-	echo "<input type=checkbox name='{$varname}' value='{$option}' {$sel} >{$name}";
+	echo "<input type=checkbox name='{$varname}' value='{$option}' {$sel} >";
 }
 
 function html_jquery(){
@@ -1163,8 +1169,8 @@ function html_list_device($state, $ifname) {
 		return false;
 	
 	foreach($state['devices'][$ifname] as $key => $value) {
-		//echo "{$key}: {$value} </br>";
-		echo "{$value} </br>";
+		//echo "{$key}: {$value} <br/>";
+		echo "{$value} <br/>";
 		
 	}
 	
@@ -1310,9 +1316,9 @@ function html_status_vpn($state, $icon = true) {
 			echo "<td>";
 			$ifname = "tun0";
 			if(isset($state['if'][$ifname])) {
-				echo "VPN {$ifname} </br>";
+				echo "VPN {$ifname} <br/>";
 				if(!empty(if_prefix($state['if'], $ifname))) {
-					echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."</br>\n";
+					echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."<br/>\n";
 				}
 			}
 			echo "</td>";
@@ -1388,9 +1394,9 @@ function html_status_internet($state, $defif, $icon = true) {
 		echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>INTER</span></td>";
 		echo "<td>";
 		if(isset($state['if'][$defif])) {
-			echo "WAN {$defif} </br>";
+			echo "WAN {$defif} <br/>";
 			if(!empty(if_prefix($state['if'], $defif))) {
-				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."</br>\n";
+				echo "IP ". implode('<br />IP ', if_prefix($state['if'], $defif)) ."<br/>\n";
 			}
 			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
@@ -1403,8 +1409,8 @@ function html_status_internet($state, $defif, $icon = true) {
 				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw6]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw6))."</td></tr></table>\n";
 			}
 			if(!empty($state['internet']['isp'])) {
-				echo "Wan IP {$state['internet']['wanip']}</br>\n";
-				echo "AS '{$state['internet']['isp']['descr']}' ({$state['internet']['isp']['asnum']})</br>\n";
+				echo "Wan IP {$state['internet']['wanip']}<br/>\n";
+				echo "AS '{$state['internet']['isp']['descr']}' ({$state['internet']['isp']['asnum']})<br/>\n";
 
 			}
 		}
@@ -1453,7 +1459,7 @@ function html_status_uplink($state, $defif, $icon = true){
 			if($icon === true) {
 				echo "<tr><td>";
 				echo html_wi_link_bar($state['if'][$defif], 140);
-				echo "</br>";
+				echo "<br/>";
 				echo "<img height='125px' src='{$img}' alt='WAN: wireless '></td></tr>\n";
 			}
 			
@@ -1502,11 +1508,11 @@ function html_list_lldp($state, $defif) {
 	if(isset($state['lldp']['interface'][$defif])) {
 		foreach($state['lldp']['interface'][$defif]['chassis'] as $id) {
 			if(isset($id['descr'])) {
-				echo "LLDP descr {$id['descr']} </br>";
+				echo "LLDP descr {$id['descr']} <br/>";
 			}
 		}
 		if(isset($state['lldp']['interface'][$defif]['port']['descr'])) {
-				echo "LLDP port {$state['lldp']['interface'][$defif]['port']['descr']} </br>";
+				echo "LLDP port {$state['lldp']['interface'][$defif]['port']['descr']} <br/>";
 		}
 	}
 }
@@ -1521,7 +1527,7 @@ function html_list_eth_link($state, $defif) {
 				case "currentmessagelevel":
 					continue 2;
 				default:
-					echo ucwords($field) ." ". $value ."</br>";
+					echo ucwords($field) ." ". $value ."<br/>";
 			}
 		}
 
@@ -1540,13 +1546,13 @@ function html_list_wi_link($state, $defif) {
 				case "level":
 					continue 2;
 				case "bssid":
-					echo ucwords($field) ." '". $value ."' ". lookup_oui($value) ."</br>";
+					echo ucwords($field) ." '". $value ."' ". lookup_oui($value) ."<br/>";
 					break;
 				case "channel":
-					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}) Width {$state['if'][$defif]['wi']['width']}Mhz</br>";
+					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}Ghz) Width {$state['if'][$defif]['wi']['width']}Mhz<br/>";
 					break;
 				default:
-					echo ucwords($field) ." '". $value ."'</br>";
+					echo ucwords($field) ." '". $value ."'<br/>";
 			}
 		}
 
@@ -1655,7 +1661,7 @@ function list_wi_link($state, $defif) {
 					echo ucwords($field) ." '". $value ."' ";
 					break;
 				default:
-					echo ucwords($field) ." '". $value ."'</br>";
+					echo ucwords($field) ." '". $value ."'<br/>";
 			}
 		}
 	}
@@ -1743,6 +1749,7 @@ function lookup_oui($mac) {
 		foreach($out as $line) {
 			// $el = explode(",", $line);
 			preg_match("/\"(.*)\"/", $line, $match);
+			if(isset($match[1]))
 				return $match[1];
 		}
 	}
