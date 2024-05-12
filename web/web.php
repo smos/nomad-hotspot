@@ -1025,7 +1025,7 @@ function html_bw_up_bar($state) {
 	$ifname = find_wan_interface($state);
 	$height = round(($state['if'][$ifname]['traffic']['tx'] / $state['traffic'][$ifname]['toptx']),2) * 100;
 	$rest = abs(100 - $height); 
-	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
+	//echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
 	echo "<table border=0 width='50px' valign='bottom' height='550px'>\n";
 	echo "<tr><td valign='top'>". thousandsCurrencyFormat(($state['traffic'][$ifname]['toptx'] * 8)) ."bit</td></tr>\n";
@@ -1038,18 +1038,20 @@ function html_bw_up_bar($state) {
 function html_bw_up($state) {
 	$ifname = find_wan_interface($state);
 	
-	echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
+	//echo "<!-- current rx {$state['if'][$ifname]['traffic']['tx']} top rx {$state['traffic'][$ifname]['toptx']}-->\n";
 	echo " <div id='bwup'>";
 	echo "<table border=0 width='150px' valign='bottom' height='500px' cellpadding=0 cellspacing=0>\n";
-	$state['traffic'][$ifname]['hist']['tx'] = array_reverse($state['traffic'][$ifname]['hist']['tx']);
-	foreach($state['traffic'][$ifname]['hist']['tx'] as $counter) {
-		$height = round(($counter / $state['traffic'][$ifname]['toptx']),2) * 150; //percentage
-		$rest = abs(100 - $height); 
+	if(isset($state['traffic'][$ifname]['hist']['tx'])) {
+		$state['traffic'][$ifname]['hist']['tx'] = array_reverse($state['traffic'][$ifname]['hist']['tx']);
+		foreach($state['traffic'][$ifname]['hist']['tx'] as $counter) {
+			$height = round(($counter / $state['traffic'][$ifname]['toptx']),2) * 150; //percentage
+			$rest = abs(100 - $height); 
 	
-		echo "<tr>";
-		//echo "<td width='{$rest}%'>&nbsp;</td>";
-		echo "<td align=right ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
-		echo "</tr>\n";
+			echo "<tr>";
+			//echo "<td width='{$rest}%'>&nbsp;</td>";
+			echo "<td align=right ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
+			echo "</tr>\n";
+		}
 	
 	}
 	echo "<tr><td valign='top' >". thousandsCurrencyFormat(($state['traffic'][$ifname]['toptx'] * 8)) ."bit</td></tr>\n";
@@ -1074,20 +1076,21 @@ function html_bw_down_bar($state) {
 
 function html_bw_down($state) {
 	$ifname = find_wan_interface($state);
-	echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
+	//echo "<!-- current rx {$state['if'][$ifname]['traffic']['rx']} top rx {$state['traffic'][$ifname]['toprx']}-->\n";
 	echo " <div id='bwdown'>";
 	echo "<table border=0 width='150px' valign='bottom' height='500px' cellpadding=0 cellspacing=0>\n";
-	foreach($state['traffic'][$ifname]['hist']['rx'] as $counter) {
-		$height = 100;
-		if(isset($state['traffic'][$ifname]['toprx']))
-			$height = round(($counter / $state['traffic'][$ifname]['toprx']),2) * 150; //percentage
-		$rest = abs(100 - $height); 
+	if(isset($state['traffic'][$ifname]['hist']['rx'])) {
+		foreach($state['traffic'][$ifname]['hist']['rx'] as $counter) {
+			$height = 100;
+			if(isset($state['traffic'][$ifname]['toprx']))
+				$height = round(($counter / $state['traffic'][$ifname]['toprx']),2) * 150; //percentage
+			$rest = abs(100 - $height); 
 	
-		echo "<tr>";
-		//echo "<td width='{$rest}%'>&nbsp;</td>";
-		echo "<td align=left ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
-		echo "</tr>\n";
-	
+			echo "<tr>";
+			//	echo "<td width='{$rest}%'>&nbsp;</td>";
+			echo "<td align=left ><img height='2px' width='{$height}' border=0 src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkPfenHgAE/wJQ/BZMvAAAAABJRU5ErkJggg=='></td>";
+			echo "</tr>\n";
+		}
 	}
 	echo "<tr><td valign='top' >". thousandsCurrencyFormat(($state['traffic'][$ifname]['toprx'] * 8)) ."bit</td></tr>\n";
 	echo "</table>\n";	
@@ -1182,6 +1185,12 @@ function html_wi_link_bar($iface, $width = 300, $stack = true) {
 
 	}
 
+
+	if(!isset($iface['wi']['quality']))
+		$iface['wi']['quality'] = 0;
+	if(!isset($iface['wi']['level']))
+		$iface['wi']['level'] = 0;
+	
 	$qcolor = scale_to_colorname($iface['wi']['quality']);
 	$lcolor = scale_to_colorname($iface['wi']['level']);
 
@@ -1445,7 +1454,7 @@ function html_status_uplink($state, $defif, $icon = true){
 				echo "<tr><td>";
 				echo html_wi_link_bar($state['if'][$defif], 140);
 				echo "</br>";
-				echo "<img height='125px' src='{$img}' alt='WAN: wireless {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+				echo "<img height='125px' src='{$img}' alt='WAN: wireless '></td></tr>\n";
 			}
 			
 			if($icon === false) {
@@ -1467,7 +1476,7 @@ function html_status_uplink($state, $defif, $icon = true){
 			$color = "okc"; // place holder for now without indicators
 			$img = "images/ether{$color}.png";
 			if($icon === true)
-				echo "<tr><td><img height='125px' src='{$img}' alt='WAN ethernet {$state['if'][$defif]['wi']['quality']}'></td></tr>\n";
+				echo "<tr><td><img height='125px' src='{$img}' alt='WAN Ethernet'></td></tr>\n";
 
 			if($icon === false) {
 				echo "<table class='status-item'>";
@@ -1549,8 +1558,11 @@ function html_list_dns($state) {
 	
 	foreach ($state['dns'] as $family => $entries) {
 		foreach ($entries as $entry) {
+			if(!isset($state['internet']['latency']['dnsping'][$entry]))
+				$state['internet']['latency']['dnsping'][$entry] = 0;
 			$color = latency_to_color($state['internet']['latency']['dnsping'][$entry]);
 			echo "<tr><td>". strtoupper($family) ." {$entry} &nbsp;</td><td class='{$color}'>&nbsp; {$state['internet']['latency']['dnsping'][$entry]} ms &nbsp;</td></tr>\n";
+			
 		}
 	}
 	echo "</table></td>";
