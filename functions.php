@@ -1175,19 +1175,21 @@ function parse_portal_page($url = ""){
 			echo print_r($inputs_a, true);
 			// print_r($onclicks_a);
 
-			$request = build_form_request($forms_a, $inputs_a, $onclicks_a);
+			$request = build_form_request($forms_a, $inputs_a, $onclicks_a, $url);
+			
+			$url = $request['form']['action'];
 			
 			echo "Attempt request " . print_r($request, true) . "\n";
 
 			// Remember that url we found?, yeah, we need that here, we should strip to base and include form here. Then again, the post can be absolute. meh.
-			$result = simple_web_request($request['form']['action'], $request['form']['method'], $request['vars']);
+			$result = simple_web_request($url, $request['form']['method'], $request['vars']);
 			
 			echo "Did it work?\n";
-			sleep(1);
-			if(check_msft_connect() == "OK") {
-				echo "Yes, yes it did\n";
-				return $result;
-			}
+			sleep(15);
+			//if(check_msft_connect() == "OK") {
+				//echo "Yes, yes it did\n";
+				//return $result;
+			//}
 			// continue using last request $result
 		}
 		$t--;
@@ -1239,7 +1241,7 @@ function simple_web_request($url, $method = "get", $vars = array(), $credentials
 	return $result;
 }
 
-function build_form_request($forms_a, $inputs_a, $onclicks_a) {
+function build_form_request($forms_a, $inputs_a, $onclicks_a, $url) {
 	// Spaghetti code alert
 	// No forms, no go.
 	if(empty($forms_a))
@@ -1262,7 +1264,10 @@ function build_form_request($forms_a, $inputs_a, $onclicks_a) {
 				break;
 		}
 	}
-	print_r($request);
+	// if there is no action, assume previous url
+	if(!isset($request['form']['action']))
+		$request['form']['action'] = $url;
+	// print_r($request);
 	// No form? No go.
 	if(!isset($request['form']))
 		return false;
