@@ -7,11 +7,9 @@ autoconnect=true
 
 [wifi]
 mode=infrastructure
-ssid=databeestje-guest
+ssid=any
 
 [wifi-security]
-key-mgmt=wpa-psk
-psk=broodrooster
 
 [ipv4]
 method=auto
