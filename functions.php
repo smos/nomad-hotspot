@@ -172,7 +172,11 @@ function read_config ($cfgfile){
 function find_wan_interface($state) {
 	//which has the default route?
 	$defgw = fetch_default_route_gw();
-	$iface = $defgw[4][0]['dev'];
+	if(isset($defgw[4][0]['dev']))
+		$iface = $defgw[4][0]['dev'];
+	else
+		return false;
+
 	if($iface == "")
 		$iface = "wlan1";
 
@@ -192,9 +196,9 @@ function iw_info($ifstate, $ifname) {
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
-		
+
 	$iwstate = iwconfig_info($ifstate, $ifname);
-		
+
 	foreach($out as $line) {
 		$line = trim($line);
 		$els = preg_split("/[ ]+/", $line);
