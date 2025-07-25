@@ -15,17 +15,20 @@ $state['cfgfile'] = $cfgfile;
 
 $state = read_tmpfs($tmpfsurl);
 
+// print_r(fetch_wlan_interfaces());
 
 //$defif = find_wan_interface($state);
 //echo print_r(if_prefix($state['if'], $defif), true);
 
 
+//$nmcli = list_nmcli_networks($state, "wlan1");
+//echo print_r(clean_nmcli_list($nmcli), true);
 
 //$defgw = fetch_default_route_gw();
 //echo print_r($defgw, true);
 
 //echo print_r(iw_info($state['if'], $defif), true);
-//echo print_r(iw_info($state['if'], "wlan1"), true);
+echo print_r(iw_info($state['if'], "wlan1"), true);
 
 //echo html_wi_link_bar($state['if']['wlan1']);
 
@@ -54,9 +57,7 @@ $state = read_tmpfs($tmpfsurl);
 // echo key(fetch_last_captive_test($state));
 // echo current(fetch_last_captive_test($state));
 
-// echo print_r(iw_info($state['if'], "wlan1"));
+// echo print_r(lookup_oui("7c:69:f6:2b:8d:3f"));
+// $ip = "82.151.32.166";
 
-echo print_r(lookup_oui("7c:69:f6:2b:8d:3f"));
-$ip = "82.151.32.166";
-
-echo print_r(fetch_as_info($state, $ip) );
+// echo print_r(fetch_as_info($state, $ip) );

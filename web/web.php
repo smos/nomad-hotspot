@@ -357,7 +357,7 @@ function config_supplicant($state) {
 	// Process POST request
 	// fetch channel list for bbsid per ssid
 	$ifname = fetch_wi_client_if($state);
-	$wi_list = list_iw_networks($state, $ifname);
+	$nmcli_list = list_nmcli_networks($state, $ifname);
 	// echo "<pre>". print_r($wi_list, true) ."</pre>";
 	
 	
@@ -522,22 +522,22 @@ function html_wi_network_list($state) {
 
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
-		if($ifname == fetch_ap_if($state))
+		if($ifname == fetch_ap_if($state)) {
+			// echo "not processing AP interface $ifname\n";
 			continue;
+		}
 
-		if(empty($state['if'][$ifname]['wi']))
+		if(empty($state['if'][$ifname]['wi'])) {
+			// echo "no wi statistics\n";
 			continue;
-
+		}
 		echo "<strong>Wireless network list {$ifname}</strong><br>";
 		//echo "<table border=1><tr><td>ssid</td><td>encryption</td><td>Quality</td></tr>\n";
 		//print_r($iface['wi']);
-		if(is_array($iface['wi']))
-			$wi_list = list_iw_networks($state, $ifname);
+		$nmcli_list = list_nmcli_networks($state, $ifname);
+		$clean_nmcli_list = clean_nmcli_list($nmcli_list);
+		// echo "<pre>". print_r($nmcli_list, true) ."</pre>";
 
-		//echo "<pre>". print_r($wi_list, true) ."</pre>";
-
-		$clean_wi_list = clean_wi_list($wi_list);
-		//echo "<pre>". print_r($clean_wi_list, true) ."</pre>";
 
 		$index = count($settings['network']) +1;
 		$ssidvar = "{$index}ssid";
@@ -569,15 +569,17 @@ function html_wi_network_list($state) {
 		echo "    } \n";
 		echo "</script>\n";
 
+		echo "<pre>". print_r($clean_nmcli_list, true) ."</pre>";
+		
 		echo "<table class='status-item' >\n";
-		if(is_array($clean_wi_list)) {
-			foreach($clean_wi_list as $entry => $fields) {
+		if(is_array($clean_nmcli_list)) {
+			foreach($clean_nmcli_list as $entry => $fields) {
 
 				echo "<tr>";
 				$entry = str_replace("\"", "", $entry);
 				if($entry == "")
 					continue;
-				// echo "<td>'{$entry}'</a></td>";
+				echo "<td>'{$entry}'</a></td>";
 				//echo print_r($fields, true);
 				$bgcolor =  value_to_colorname($fields['snr']);
 				echo "<td class='{$bgcolor}'><input class='wibutton' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";

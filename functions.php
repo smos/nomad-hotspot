@@ -184,19 +184,24 @@ function find_wan_interface($state) {
 }
 
 function iw_info($ifstate, $ifname) {
-	if(!isset($ifstate[$ifname]))
+	if(!isset($ifstate[$ifname])) {
+		echo "No ifstate for $ifname\n";
 		return false;
+	}
 	// Don't scan on our eth0 interface ;)
-	if(preg_match("/(^eth|^tun||^en[a-z0-9]+)/", $ifname))
+	if(preg_match("/(^eth|^tun|^en[a-z0-9]+)/", $ifname)) {
+		// echo "Not a wireless interface $ifname\n";
 		return null;
-
+	}
+	
 	// List wireless interface statistics
 	// iw wlan0 info
-	$cmd = "iw {$ifname} info";
+	$cmd = "sudo iw {$ifname} info";
 	exec($cmd, $out, $ret);
-	if($ret > 0)
-		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
+		if($ret > 0)
+		msglog("agent.php", "Failed to fetch wireless info '{$cmd}'");
 
+	//echo print_r($out, true);
 	$iwstate = iwconfig_info($ifstate, $ifname);
 
 	foreach($out as $line) {
@@ -232,10 +237,10 @@ function iwconfig_info($ifstate, $ifname) {
 
 	// List wireless interface statistics
 	// iw wlan0 info
-	$cmd = "iw {$ifname}";
+	$cmd = "sudo iwconfig {$ifname}";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
-		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
+		msglog("agent.php", "Failed to fetch wireless config info {$cmd}");
 
 	$iw_state = array();
 	$i = 0;
@@ -314,6 +319,94 @@ function iwconfig_info($ifstate, $ifname) {
 	return $iw_state;
 }
 
+
+function list_nmcli_networks($state, $ifname) {
+	if(!isset($state['if'][$ifname])) {
+		echo "interface $ifname does not exist\n";
+		
+		print_r($state);
+		return false;
+	}
+	// Don't scan on our AP interface ;)
+	if($ifname == fetch_ap_if($state))
+		return true;
+	// Show which network we are connected to
+	// sudo iw wlan1 scan
+	$cmd = "sudo nmcli -f bssid,ssid,chan,freq,signal,security,device -t dev wifi";
+	exec($cmd, $out, $ret);
+	if($ret > 0)
+		msglog("agent.php", "Failed to list wireless networks using {$ifname}");
+
+/*
+3C\:58\:5D\:99\:B1\:EA:KPN99B1E6:100:5500 MHz:52:WPA2 WPA3:wlan0
+8A\:D7\:AA\:A6\:10\:2F:KPN99B1E6:6:2437 MHz:47:WPA2 WPA3:wlan0
+
+*/
+
+	$nmcli_networks = array();
+	$i = 0;
+	foreach($out as $line) {
+		// replace \: with ; for mac address
+		$fields = explode(":", str_replace("\:", ";", $line));
+		$mac = str_replace(';', ':', $fields[0]); // unescape MAC address
+		if(empty($mac))
+			continue;
+		$nmcli_networks[$mac] = [
+			'ssid' => $fields[1],
+			'channel' => $fields[2],
+			'frequency' => $fields[3],
+			'signal' => $fields[4],
+			'security' => $fields[5],
+			'extra' => $fields[6],
+			'interface' => $fields[7] ?? null
+		];
+	}
+
+	return $nmcli_networks;
+
+}
+
+function clean_nmcli_list($nmcli_networks) {
+	// normalise array by ssid
+	
+	//echo "<br/>";
+	$nmcli_list = array();
+	foreach($nmcli_networks as $num => $net) {
+		
+		//echo "<pre>". print_r($net, true) ."</pre>";
+		//echo "'{$net['ESSID']}' <br/>";
+		
+		if(!isset($nmcli_list[$net['ssid']])) {
+			$nmcli_list[$net['ssid']] = array();
+		}
+		$nmcli_list[$net['ssid']]['encryption'] = $net['security'];
+		$nmcli_list[$net['ssid']]['bssid'][] = $num;
+		
+		// Parse quality number
+		/*
+		if(isset($net['Quality'])) {
+			preg_match("/Quality\=([0-9]+)\/([0-9]+)/i", $net['Quality'], $matches);
+			$snr = round(($matches[1] / $matches[2]) * 100);
+		} else {
+			$snr = $matches[1];
+		}
+		*/
+		// print_r($snr);
+		
+		// Only save highest quality
+		if(!isset($nmcli_list[$net['ssid']]['snr'])) {
+			$nmcli_list[$net['ssid']]['snr'] = $net['signal'];
+		} else {
+			if(floatval($net['signal']) > floatval($nmcli_list[$net['ssid']]['signal']))
+				$nmcli_list[$net['ssid']]['snr'] = $net['signal'];
+		}
+		
+	}
+
+	//echo "<pre> test". print_r($nmcli_list, true) ."</pre>";
+	return $nmcli_list;
+}
+
 function list_iw_networks($state, $ifname) {
 	if(!isset($state['if'][$ifname]))
 		return false;
@@ -326,8 +419,18 @@ function list_iw_networks($state, $ifname) {
 	$cmd = "sudo iwlist {$ifname} scan";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
-		msglog("agent.php", "Failed to list wireless networks");
+		msglog("agent.php", "Failed to list wireless networks using {$ifname}");
 
+/*
+     Cell 01 - Address: 88:03:55:E8:3A:D0
+                Quality=23/70  Signal level=-87 dBm  
+                Encryption key:on
+                ESSID:"VGV7519E83ADB"
+                IE: WPA Version 1
+                    Authentication Suites (1) : PSK
+                IE: IEEE 802.11i/WPA2 Version 1
+                    Authentication Suites (1) : PSK
+*/
 
 	$iw_networks = array();
 	$i = 0;
@@ -366,6 +469,7 @@ function list_iw_networks($state, $ifname) {
 	
 	return $iw_networks;
 }
+
 
 function clean_wi_list($iw_networks) {
 	// normalise array by ssid
@@ -1885,7 +1989,7 @@ function process_cfg_changes($chglist) {
 
 function parse_dhcp_nameservers($state) {
 	$ifname = find_wan_interface($state);
-	$file = "/var/run/resolvconf/interfaces/{$ifname}.dhcp";
+	$file = "/run/NetworkManager/no-stub-resolv.conf";
 	$dns = array();
 	$dns['dns4'] = array();
 	$dns['dns6'] = array();
@@ -1893,16 +1997,17 @@ function parse_dhcp_nameservers($state) {
 	if(is_readable($file)) {
 		$dfile = file($file);
 		foreach($dfile as $line)
-			if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches4))
-				$dns['dns4'][] = $matches4[1];
+			if(preg_match("/^nameserver[ ]+([0-9.]+\.[0-9]+\.[0-9]+\.[0-9]+)/", $line, $matches4))
+					$dns['dns4'][] = $matches4[1];
 	}
 	// and ipv6 nameservers
-	$file = "/var/run/resolvconf/interfaces/{$ifname}.ra";
+	$file = "/run/NetworkManager/no-stub-resolv.conf";
 	if(is_readable($file)) {
 		$rfile = file($file);
 		foreach($rfile as $line)
-			if(preg_match("/^nameserver[ ]+([0-9a-f.:]+)/", $line, $matches6))
-				$dns['dns6'][] = $matches6[1];
+			if(preg_match("/^nameserver[ ]+([0-9a-f:]+)/", $line, $matches6))
+				filter_var($matches6[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+					$dns['dns6'][] = $matches6[1];
 	}
 	return $dns;
 }
@@ -2188,7 +2293,7 @@ function fetch_wi_client_if($state) {
 function fetch_wlan_interfaces(){
 	// Should maybe just return AP interfaces only
 	$interfaces = array();
-	$cmd = "ip link | egrep -eo \"(^wlan[0-9]+|^wl[a-z0-9]+)\" 2> /dev/null";
+	$cmd = "ip link | egrep -oe \"(wlan[0-9]+|wl[a-z0-9]+)\" 2> /dev/null";
 	if($cmd != ""){
 		exec($cmd, $out, $ret);
 		if($ret > 0) {
@@ -2197,8 +2302,8 @@ function fetch_wlan_interfaces(){
 		}
 	}
 	foreach($out as $line) {
-		if(preg_match("/([a-z0-9]+)[ ]+(IEEE)[ ]+(802.11)/i", $line, $matches))
-			$interfaces[$matches[1]] = $matches[1];
+			$iface = trim($line);
+			$interfaces[$iface] = $iface;
 
 	}
 	return $interfaces;
