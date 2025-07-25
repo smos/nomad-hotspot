@@ -12,8 +12,8 @@ fi
 # Install sudo if not available
 if ! command -v sudo >/dev/null 2>&1; then
     echo "Installing sudo..."
-    $SUDO apt-get -q update
-    $SUDO apt-get -q install -y sudo
+    $SUDO apt-get -qq update
+    $SUDO apt-get -qq install -y sudo
     SUDO="sudo"
 fi
 
@@ -27,7 +27,7 @@ $SUDO chmod 440 /etc/sudoers.d/$CURRENT_USER
 
 # Install Ansible
 if ! command -v ansible >/dev/null 2>&1; then
-	$SUDO apt-get -q install -y ansible
+	$SUDO apt-get -qq update && $SUDO apt-get -qq install -y ansible
 fi
 
 # Create Ansible playbook
@@ -57,7 +57,6 @@ cat <<EOF > bootstrap.yaml
       apt:
         name:
           - git
-          - hostapd
           - dnsmasq
           - arping
           - php-cli
@@ -69,7 +68,6 @@ cat <<EOF > bootstrap.yaml
           - lldpd
           - whois
           - dnsdiag
-          - dhcpcd
           - dnsmasq
         state: present
         update_cache: yes
@@ -325,23 +323,23 @@ cat <<EOF > bootstrap.yaml
       ansible.builtin.systemd:
         name: netfilter-persistent
         state: restarted
-		
+
 EOF
 
 # Run Ansible playbook
-ansible-playbook bootstrap.yaml
+ansible-playbook -v bootstrap.yaml
 
 echo "Enable PCIe tune, thnx Jeff Geerling"
 sudo sed -i 's/fsck.repair=yes rootwait/fsck.repair=yes pci=pcie_bus_perf rootwait/g' /boot/cmdline.txt
 
 echo "Load some basic IPtables rules for forwarding"
-sudo iptables-restore conf/iptables.v4
-sudo ip6tables-restore conf/iptables.v6
-sudo service netfilter-persistent save
+#sudo iptables-restore conf/iptables.v4
+#sudo ip6tables-restore conf/iptables.v6
+#sudo service netfilter-persistent save
 
 echo "Disable Openvpn per default"
-sudo systemctl stop openvpn.service
-sudo systemctl disable openvpn.service
+#sudo systemctl stop openvpn.service
+#sudo systemctl disable openvpn.service
 
 echo "System Services enabled, the agent should take care of the rest"
 #echo "Rebooting now, should come up with wireless network "Nomad-Hotspot""
