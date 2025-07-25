@@ -1,0 +1,14 @@
+[connection]
+id=etherclient
+uuid=4a54daf8-0dd0-40c7-a858-361be5957bf1
+type=ethernet
+interface-name=eth0
+
+[ipv4]
+method=auto
+
+[ipv6]
+addr-gen-mode=default
+method=auto
+
+[proxy]

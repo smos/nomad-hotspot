@@ -15,25 +15,31 @@ $cfgdir = "conf";
 // Config files we know about
 $cfgmap = array(
 			"dnsmasq.conf" => "/etc/dnsmasq.conf",
-			"dhcpcd.conf" => "/etc/dhcpcd.conf",
-			"hostapd.conf" => "/etc/hostapd/hostapd.conf",
+			//"dhcpcd.conf" => "/etc/dhcpcd.conf",
+			//"hostapd.conf" => "/etc/hostapd/hostapd.conf",
 			"client.ovpn" => "/etc/openvpn/client.conf",
 			"client.ovpn.login" => "/etc/openvpn/client.ovpn.login",
-			"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
+			//"wpa_supplicant.conf" => "/etc/wpa_supplicant/wpa_supplicant.conf",
 			"sysctl-routed-ap.conf" => "/etc/sysctl.d/sysctl-routed-ap.conf",
 			"iptables.v4" => "/etc/iptables/rules.v4",
 			"iptables.v6" => "/etc/iptables/rules.v6",
 			"config.json" => "config.json",
+			"hotspot.nmconnection" => "/etc/NetworkManager/system-connections/hotspot.nmconnection",
+			"wificlient.nmconnection" => "/etc/NetworkManager/system-connections/wificlient.nmconnection",
+			"etherclient.nmconnection" => "/etc/NetworkManager/system-connections/wificlient.nmconnection",
 			"README.md" => "README.md",
 			);
 // Processes we know about
 $procmap = array(
 			"dnsmasq.conf" => "dnsmasq",
-			"dhcpcd.conf" => "dhcpcd",
-			"hostapd.conf" => "hostapd",
+			//"dhcpcd.conf" => "dhcpcd",
+			//"hostapd.conf" => "hostapd",
 			"client.ovpn" => "openvpn",
-			"wpa_supplicant.conf" => "wpa_supplicant",
+			// "wpa_supplicant.conf" => "wpa_supplicant",
 			"webserver" => "php",
+			"hotspot.nmconnection" => "hotspot",
+			"wificlient.nmconnection" => "wificlient",
+			"etherclient.nmconnection" => "etherclient",
 			);
 
 // Start PHP builtin webserver for the local interface on port 8000
@@ -42,7 +48,8 @@ function start_webserver($address, $port, $dir){
 	create_stunnel4_config($address, $port);
 	start_stunnel4();
 
-
+	if($address == "")
+		$address = "127.0.0.1";
 
 	// Start in a detached screen session
 	msglog("agent.php", "Starting webserver on adress {$address} and port {$port} in dir {$dir}");
@@ -176,7 +183,7 @@ function iw_info($ifstate, $ifname) {
 	if(!isset($ifstate[$ifname]))
 		return false;
 	// Don't scan on our eth0 interface ;)
-	if(preg_match("/(^eth|^tun)/", $ifname))
+	if(preg_match("/(^eth|^tun||^en[a-z0-9]+)/", $ifname))
 		return null;
 
 	// List wireless interface statistics
@@ -216,12 +223,12 @@ function iwconfig_info($ifstate, $ifname) {
 	if(!isset($ifstate[$ifname]))
 		return false;
 	// Don't scan on our eth0 interface ;)
-	if(preg_match("/(^eth|^tun)/", $ifname))
+	if(preg_match("/(^eth|^tun|^en[a-z0-9]+)/", $ifname))
 		return null;
 
 	// List wireless interface statistics
 	// iw wlan0 info
-	$cmd = "iwconfig {$ifname}";
+	$cmd = "iw {$ifname}";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		msglog("agent.php", "Failed to fetch wireless info {$cmd}");
@@ -854,7 +861,7 @@ function config_write_hostapd($settings) {
 				$conf_a[] = "country_code={$_POST['country_code']}";
 		}
 		if(isset($_POST['interface'])) {
-			if(preg_match("/^wlan[0-9]/", $_POST['interface']))
+			if(preg_match("/(^wlan[0-9]|^wl[a-z0-9]+)/", $_POST['interface']))
 				$conf_a[] = "interface={$_POST['interface']}";
 		}
 		if(isset($_POST['ssid'])) {
@@ -1647,12 +1654,15 @@ function check_procs($procmap) {
 	$proccount = array();
 	foreach ($procmap as $file => $procname) {
 		switch($file) {
-			case "wpa_supplicant.conf":
+			//case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
-			case "hostapd.conf":
+			//case "hostapd.conf":
 			case "webserver":
 			case "client.ovpn":
-			case "dhcpcd.conf":
+			//case "dhcpcd.conf":
+			case "hotspot.nmconnection":
+			case "wificlient.nmconnection":
+			case "etherclient.nmconnection":
 				$proccount[$procname] = check_proc($file);
 				if($proccount[$procname] == 0)
 					msglog("agent.php", "We are missing a process called {$procname}");
@@ -1836,10 +1846,11 @@ function process_cfg_changes($chglist) {
 			case "sysctl-routed-ap.conf":
 				copy_config($file);
 				break;
-			case "wpa_supplicant.conf":
+			// case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
-			case "hostapd.conf":
-			case "dhcpcd.conf":
+			case "hotspot.nmconnection":
+			case "wificlient.nmconnection":
+			case "etherclient.nmconnection":
 				copy_config($file);
 				restart_service($file);
 				break;
@@ -1921,14 +1932,19 @@ function restart_service($file) {
 			case "dnsmasq.conf":
 				$cmd = "sudo service dnsmasq restart";
 				break;
-			case "hostapd.conf":
-				$cmd = "sudo service hostapd reload";
-				break;
-			case "dhcpcd.conf":
-				$cmd = "sudo service dhcpcd restart";
-				break;
-			case "wpa_supplicant.conf":
-				$cmd = "sudo wpa_cli -i wlan1 reconfigure";
+			//case "hostapd.conf":
+			//	$cmd = "sudo service hostapd reload";
+			//	break;
+			//case "dhcpcd.conf":
+			//	$cmd = "sudo service dhcpcd restart";
+			//	break;
+			//case "wpa_supplicant.conf":
+			//	$cmd = "sudo wpa_cli -i wlan1 reconfigure";
+			//	break;
+			case "hotspot.nmconnection":
+			case "wificlient.nmconnection":
+			case "etherclient.nmconnection":
+				$cmd = "sudo service NetworkManager restart";
 				break;
 			case "iptables.v4":
 				$cmd = "sudo iptables-restore conf/iptables.v4 && sudo service netfilter-persistent save";
@@ -2053,7 +2069,7 @@ function move_config($file) {
 }
 
 function fetch_lldp_neighbors() {
-	$cmd = "lldpcli show neighbors -f json";
+	$cmd = "sudo lldpcli show neighbors -f json";
 	exec($cmd, $out, $ret);
 	if($ret > 0)
 		return false;
@@ -2101,7 +2117,7 @@ function eth_info($state, $iface) {
 	if(empty($iface))
 		return false;
 		
-	if(preg_match("/^wlan/", $iface))
+	if(preg_match("/(^wlan|^wl[a-z0-9]+)/", $iface))
 		return false;
 
 	$cmd = "sudo ethtool $iface";
@@ -2154,7 +2170,7 @@ function fetch_wi_client_if($state) {
 function fetch_wlan_interfaces(){
 	// Should maybe just return AP interfaces only
 	$interfaces = array();
-	$cmd = "iwconfig 2> /dev/null";
+	$cmd = "ip link | egrep -eo \"(^wlan[0-9]+|^wl[a-z0-9]+)\" 2> /dev/null";
 	if($cmd != ""){
 		exec($cmd, $out, $ret);
 		if($ret > 0) {

@@ -1,7 +1,7 @@
 <?php
 
 include("functions.php");
-error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT);
+error_reporting(E_ALL & ~E_NOTICE);
 ini_set('log_errors', 1);
 ini_set('error_log', 'syslog');
 
@@ -65,7 +65,7 @@ while (!isset($localif[0])) {
 	$w++;
 }
 $address = $localif[0];
-msglog("agent.php", "Found $localif address {$address} after $w tries");
+msglog("agent.php", "Found ". fetch_ap_if($state) ." address {$address} after $w tries");
 start_webserver($address, $state['config']['port'], $webdir);
 
 $i = 0;
@@ -76,8 +76,8 @@ msglog("agent.php", "Loading firewall rules");
 restart_service("iptables.v4");
 restart_service("iptables.v6");
 
-exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/gc_stale_time");
-exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/base_reachable_time");
+// exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/gc_stale_time");
+// exec("echo 600 | sudo tee /proc/sys/net/ipv4/neigh/wlan1/base_reachable_time");
 
 while (true) {
 	foreach ($iflist as $ifname => $iface) {
