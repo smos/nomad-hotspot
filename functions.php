@@ -26,7 +26,7 @@ $cfgmap = array(
 			"config.json" => "config.json",
 			"hotspot.nmconnection" => "/etc/NetworkManager/system-connections/hotspot.nmconnection",
 			"wificlient.nmconnection" => "/etc/NetworkManager/system-connections/wificlient.nmconnection",
-			"etherclient.nmconnection" => "/etc/NetworkManager/system-connections/wificlient.nmconnection",
+			"etherclient.nmconnection" => "/etc/NetworkManager/system-connections/etherclient.nmconnection",
 			"README.md" => "README.md",
 			);
 // Processes we know about
@@ -1855,7 +1855,7 @@ function process_cfg_changes($chglist) {
 			case "hotspot.nmconnection":
 			case "wificlient.nmconnection":
 			case "etherclient.nmconnection":
-				copy_config($file);
+				copy_config($file, "root:root", "0600");
 				restart_service($file);
 				break;
 			case "client.ovpn":
@@ -1948,7 +1948,7 @@ function restart_service($file) {
 			case "hotspot.nmconnection":
 			case "wificlient.nmconnection":
 			case "etherclient.nmconnection":
-				$cmd = "sudo service NetworkManager restart";
+				$cmd = "sudo nmcli connection reload";
 				break;
 			case "iptables.v4":
 				$cmd = "sudo iptables-restore conf/iptables.v4 && sudo service netfilter-persistent save";
@@ -2051,7 +2051,7 @@ function start_service($file) {
 	}
 }
 
-function copy_config($file) {
+function copy_config($file, $owner = "", $mode = "") {
 	global $cfgmap;
 	global $cfgdir;
 
@@ -2059,6 +2059,20 @@ function copy_config($file) {
 	$cmd = "sudo cp -a {$cfgdir}/{$file} {$cfgmap[$file]}";
 	if(exec_log($cmd) === false)
 		msglog("agent.php", "Failed to copy config {$file} to {$cfgmap[$file]}");
+
+	msglog("agent.php", "Set owner on '{$cfgmap[$file]}' to {$owner}");
+	if(!empty($owner)) {
+		$cmd = "sudo chown {$owner} {$cfgmap[$file]}";
+		if(exec_log($cmd) === false)
+			msglog("agent.php", "Failed to set owner on {$cfgmap[$file]}");
+	}
+	msglog("agent.php", "Set permissons on '{$cfgmap[$file]}' to {$mode}");
+	if(!empty($owner)) {
+		$cmd = "sudo chmod {$mode} {$cfgmap[$file]}";
+		if(exec_log($cmd) === false)
+			msglog("agent.php", "Failed to set permissions on {$cfgmap[$file]}");
+	}
+
 }
 
 

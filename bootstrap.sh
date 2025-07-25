@@ -72,12 +72,18 @@ cat <<EOF > bootstrap.yaml
         state: present
         update_cache: yes
 
+    - name: Check if nomad-hotspot directory exists
+      stat:
+        path: "{{ ansible_env.HOME }}/nomad-hotspot"
+      register: nomad_hotspot_dir
+
     - name: Clone nomad-hotspot repository
       git:
         repo: https://github.com/smos/nomad-hotspot.git
         dest: "{{ ansible_env.HOME }}/nomad-hotspot"
       environment:
         - GIT_SSL_NO_VERIFY: "true"
+      when: not nomad_hotspot_dir.stat.exists
     
     - name: Ensure backup directory exists
       ansible.builtin.file:
@@ -137,43 +143,35 @@ cat <<EOF > bootstrap.yaml
         should_adjust_channel: "{{ highest_channel_output.stdout is defined and highest_channel_output.stdout | length > 0 and highest_channel_output.stdout | int < 32 }}"
       when: highest_channel_output is defined and highest_channel_output.stdout is defined # Ensure highest_channel_output was registered and has stdout
 
-    - name: Conditionally update hostapd.conf channel to 11 if highest channel is < 32
-      ansible.builtin.replace:
-        path: "{{ config_destination_dir }}/hostapd.conf"
-        regexp: '^(channel=)36$' # Matches 'channel=36' at the start of the line
-        replace: '\111' # Replaces with 'channel=11'
-      when: should_adjust_channel | default(false) # Only run if channel adjustment is needed
-      notify: hostapd.conf updated
+    #- name: Conditionally update hostapd.conf channel to 11 if highest channel is < 32
+    #  ansible.builtin.replace:
+    #    path: "{{ config_destination_dir }}/hostapd.conf"
+    #    regexp: '^(channel=)36$' # Matches 'channel=36' at the start of the line
+    #    replace: '\111' # Replaces with 'channel=11'
+    #  when: should_adjust_channel | default(false) # Only run if channel adjustment is needed
+    #  notify: hostapd.conf updated
 
-    - name: Conditionally update hostapd.conf hw_mode to 'g' if highest channel is < 32
-      ansible.builtin.replace:
-        path: "{{ config_destination_dir }}/hostapd.conf"
-        regexp: '^(hw_mode=)a$' # Matches 'hw_mode=a' at the start of the line
-        replace: '\1g' # Replaces with 'hw_mode=g'
-      when: should_adjust_channel | default(false) # Only run if channel adjustment is needed
-      notify: hostapd.conf updated
+    #- name: Conditionally update hostapd.conf hw_mode to 'g' if highest channel is < 32
+    #  ansible.builtin.replace:
+    #    path: "{{ config_destination_dir }}/hostapd.conf"
+    #    regexp: '^(hw_mode=)a$' # Matches 'hw_mode=a' at the start of the line
+    #    replace: '\1g' # Replaces with 'hw_mode=g'
+    #  when: should_adjust_channel | default(false) # Only run if channel adjustment is needed
+    #  notify: hostapd.conf updated
 
     # --- Tasks to unmask and enable common network services ---
-    - name: Unmask and enable hostapd service
-      become: yes
-      ansible.builtin.systemd:
-        name: hostapd
-        enabled: yes
-        masked: no
-      notify: Services managed
+    #- name: Unmask and enable hostapd service
+    #  become: yes
+    #  ansible.builtin.systemd:
+    #    name: hostapd
+    #    enabled: yes
+    #    masked: no
+    #  notify: Services managed
 
     - name: Unmask and enable dnsmasq service
       become: yes
       ansible.builtin.systemd:
         name: dnsmasq
-        enabled: yes
-        masked: no
-      notify: Services managed
-
-    - name: Unmask and enable dhcpcd service
-      become: yes
-      ansible.builtin.systemd:
-        name: dhcpcd
         enabled: yes
         masked: no
       notify: Services managed
@@ -207,15 +205,6 @@ cat <<EOF > bootstrap.yaml
         masked: no
         state: started # Ensures the service is started after enabling
       notify: Services managed
-
-    # --- New tasks for dhcpcd.conf and IP forwarding ---
-    - name: Replace 'pi' user with current Ansible user in dhcpcd.conf
-      ansible.builtin.replace:
-        path: "{{ config_destination_dir }}/dhcpcd.conf"
-        regexp: '(^option user_id )\bpi\b' # Matches 'option user_id pi' ensuring 'pi' is a whole word
-        replace: '\1{{ ansible_user_id }}'
-        # This regex attempts to be more robust by looking for 'pi' as a word
-        # after 'option user_id '. Adjust if your dhcpcd.conf line is different.
 
     - name: Enable IP forwarding in sysctl.conf
       become: yes    
@@ -297,11 +286,12 @@ cat <<EOF > bootstrap.yaml
       ansible.builtin.debug:
         msg: "Template files copied to {{ config_destination_dir }} without overwriting existing files."
 
-    - name: hostapd.conf updated
-      ansible.builtin.debug:
-        msg: "hostapd.conf updated to channel 11 and hw_mode g due to low available 5GHz channels."
+    #- name: hostapd.conf updated
+    #  ansible.builtin.debug:
+    #    msg: "hostapd.conf updated to channel 11 and hw_mode g due to low available 5GHz channels."
 
     - name: Reload systemd daemon
+      become: yes
       ansible.builtin.systemd:
         daemon_reload: yes # Crucial after adding/modifying service files
       listen: "Reload systemd daemon"

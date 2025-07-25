@@ -1,8 +1,9 @@
 [connection]
 id=etherclient
-uuid=4a54daf8-0dd0-40c7-a858-361be5957bf1
+uuid=27f8b8e0-6931-11f0-a2dc-5fe7d653a163
 type=ethernet
 interface-name=eth0
+autoconnect=true
 
 [ipv4]
 method=auto
