@@ -4,7 +4,13 @@
 $user = get_current_user();
 $uid = trim(shell_exec("id -u {$user}"));
 $tmpfsurl = "/dev/shm/state.serialize";
+// Where the configs live
 $cfgdir = "conf";
+if(strstr($_SERVER['DOCUMENT_ROOT'], "web")) {
+        $basedir = str_replace("/web", "", dirname($_SERVER['DOCUMENT_ROOT']));
+} else {
+        $basedir = "/home/{$_SERVER['LOGNAME']}/nomad-hotspot";
+}
 
 // Shared memory for exchanging between proc and webserver
 // $shm_size = 128 * 1024;
@@ -25,10 +31,11 @@ $cfgmap = array(
 			"iptables.v6" => "/etc/iptables/rules.v6",
 			"config.json" => "config.json",
 			"hotspot.nmconnection" => "/etc/NetworkManager/system-connections/hotspot.nmconnection",
-			"wificlient.nmconnection" => "/etc/NetworkManager/system-connections/wificlient.nmconnection",
+			"anyopen-wifi.nmconnection" => "/etc/NetworkManager/system-connections/anyopen-wifi.nmconnection",
 			"etherclient.nmconnection" => "/etc/NetworkManager/system-connections/etherclient.nmconnection",
 			"README.md" => "README.md",
-			);
+		);
+
 // Processes we know about
 $procmap = array(
 			"dnsmasq.conf" => "dnsmasq",
@@ -38,9 +45,73 @@ $procmap = array(
 			// "wpa_supplicant.conf" => "wpa_supplicant",
 			"webserver" => "php",
 			"hotspot.nmconnection" => "hotspot",
-			"wificlient.nmconnection" => "wificlient",
+			"anyopen-wifi.nmconnection" => "anyopen-wifi",
 			"etherclient.nmconnection" => "etherclient",
 			);
+
+function update_cfgmap($cfgmap = array()) {
+	// strip out all wifi client entries
+	foreach($cfgmap as $entry => $value) {
+		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $entry, $matches)) {
+			unset($cfgmap[$matches[1]]);
+			// print_r($matches);
+		}
+	}
+	global $cfgdir;
+	global $basedir;
+	$dir = "{$basedir}/{$cfgdir}";
+	$cons = scandir($dir);
+	foreach($cons as $entry => $value) {
+		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $value, $matches)) {
+			$cfgmap[$matches[1]] = "/etc/NetworkManager/system-connections/{$matches[1]}";
+			// print_r($matches);
+		}
+	}
+	
+	return $cfgmap;
+}
+
+function update_procmap($procmap = array()) {
+	// strip out all wifi client entries
+	foreach($procmap as $entry => $value) {
+		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $entry, $matches)) {
+			unset($procmap[$matches[1]]);			
+			// print_r($matches);
+		}
+	}
+	
+	global $cfgdir;
+	global $basedir;
+	$dir = "{$basedir}/{$cfgdir}";
+	$cons = scandir($dir);
+	foreach($cons as $entry => $value) {
+		if(preg_match("/([a-z0-9-_]+-wifi).nmconnection/i", $value, $matches)) {
+			$procmap[$matches[0]] = "{$matches[1]}";
+			// print_r($matches);
+		}
+	}
+	
+	return $procmap;
+}
+
+function list_wifi_cons() {
+	$cfg = array();
+	global $cfgdir;
+	global $basedir;
+	$dir = "{$basedir}/{$cfgdir}";
+	$cons = scandir($dir);
+	// echo "<pre>{$basedir}/$cfgdir ". print_r($cons, true) ."<pre>";
+	
+	foreach($cons as $entry => $value) {
+		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $value, $matches)) {
+			$cfg[$matches[0]] = "{$matches[1]}";
+			// print_r($matches);
+		}
+	}
+	
+	return $cfg;
+}
+
 
 // Start PHP builtin webserver for the local interface on port 8000
 function start_webserver($address, $port, $dir){
@@ -323,13 +394,9 @@ function iwconfig_info($ifstate, $ifname) {
 function list_nmcli_networks($state, $ifname) {
 	if(!isset($state['if'][$ifname])) {
 		echo "interface $ifname does not exist\n";
-		
-		print_r($state);
+		// print_r($state);
 		return false;
 	}
-	// Don't scan on our AP interface ;)
-	if($ifname == fetch_ap_if($state))
-		return true;
 	// Show which network we are connected to
 	// sudo iw wlan1 scan
 	$cmd = "sudo nmcli -f bssid,ssid,chan,freq,signal,security,device -t dev wifi";
@@ -351,6 +418,8 @@ function list_nmcli_networks($state, $ifname) {
 		$mac = str_replace(';', ':', $fields[0]); // unescape MAC address
 		if(empty($mac))
 			continue;
+		if($fields[1] == $skip)
+			continue;
 		$nmcli_networks[$mac] = [
 			'ssid' => $fields[1],
 			'channel' => $fields[2],
@@ -368,11 +437,28 @@ function list_nmcli_networks($state, $ifname) {
 
 function clean_nmcli_list($nmcli_networks) {
 	// normalise array by ssid
+	// Don't scan on our AP interface ;)
+	global $basedir;
+	global $cfgdir;
+	$file = "{$basedir}/{$cfgdir}/hotspot.nmconnection";
+	
+	if(file_exists($file)) {
+		$string = file_get_contents($file);
+		// echo "file exists $string";
+		if(stristr($string, "mode=ap")) {
+			// echo "file has string ap";
+			if (preg_match("/ssid\=(.*)/i", $string, $matches)) {
+				$skip = $matches[1];
+			}
+		}
+	}
 	
 	//echo "<br/>";
 	$nmcli_list = array();
 	foreach($nmcli_networks as $num => $net) {
 		
+		if($net['ssid'] == "$skip")
+			continue;
 		//echo "<pre>". print_r($net, true) ."</pre>";
 		//echo "'{$net['ESSID']}' <br/>";
 		
@@ -1533,6 +1619,7 @@ function ping($address = ""){
 	if($ipmatch[1] == "")
 		return false;
 
+	$dev = "";
 	// catch link locals if has no device
 	if((preg_match("/^fe80/i", $ipmatch[1])) && (!strstr($ipmatch[1], "%"))) {
 		// print_r($ipmatch);
@@ -1760,6 +1847,8 @@ function transform_form_to_array($string) {
 
 function check_procs($procmap) {
 	$proccount = array();
+	$procmap = update_procmap($procmap);
+
 	foreach ($procmap as $file => $procname) {
 		switch($file) {
 			//case "wpa_supplicant.conf":
@@ -1768,14 +1857,18 @@ function check_procs($procmap) {
 			case "webserver":
 			case "client.ovpn":
 			//case "dhcpcd.conf":
-			case "hotspot.nmconnection":
-			case "wificlient.nmconnection":
-			case "etherclient.nmconnection":
 				$proccount[$procname] = check_proc($file);
 				if($proccount[$procname] == 0)
 					msglog("agent.php", "We are missing a process called {$procname}");
 				break;
+			case "hotspot.nmconnection":
+			case "etherclient.nmconnection":
+				// do nothing
+				break;
 			default:
+				// Check for dynamically generated files
+				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches))
+					break;
 				msglog("agent.php", "What is this mythical process for file '{$file}' of which you speak?");
 				break;
 		}
@@ -1786,6 +1879,7 @@ function check_procs($procmap) {
 // Check process name
 function check_proc($file) {
 	global $procmap;
+	$procmap = update_procmap($procmap);
 	if (!isset($procmap[$file]))
 		return false;
 	$cmd = "ps auxww| awk '/{$procmap[$file]}/ {print $1}'";
@@ -1928,6 +2022,7 @@ function compare_cfg_files ($dir) {
 		$cfglist = cfg_list($dir);
 		$chglist = array();
 		global $cfgmap;
+		$cfgmap = update_cfgmap($cfgmap);
 		// If the local file is newer then the installed file we need to proces on it.
 		foreach ($cfglist as $file => $mtime) {
 			if(preg_match("/^[.]/", $file))
@@ -1957,7 +2052,6 @@ function process_cfg_changes($chglist) {
 			// case "wpa_supplicant.conf":
 			case "dnsmasq.conf":
 			case "hotspot.nmconnection":
-			case "wificlient.nmconnection":
 			case "etherclient.nmconnection":
 				copy_config($file, "root:root", "0600");
 				restart_service($file);
@@ -1981,6 +2075,11 @@ function process_cfg_changes($chglist) {
 				// do nothing
 				break;
 			default:
+				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches)) {
+					copy_config($file, "root:root", "0600");
+					restart_service($file);
+					break;
+				}
 				msglog("agent.php", "What is this mythical config file '{$file}' of which you speak?");
 				break;
 		}
@@ -2051,7 +2150,8 @@ function restart_service($file) {
 			//	$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 			//	break;
 			case "hotspot.nmconnection":
-			case "wificlient.nmconnection":
+				$cmd = "sudo nmcli connection hotspot up";
+				break;
 			case "etherclient.nmconnection":
 				$cmd = "sudo nmcli connection reload";
 				break;
@@ -2062,6 +2162,10 @@ function restart_service($file) {
 				$cmd = "sudo ip6tables-restore conf/iptables.v6 && sudo service netfilter-persistent save";
 				break;
 			default:
+				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches)) {
+					$cmd = "sudo nmcli connection reload";
+					break;
+				}
 				msglog("agent.php", "What is this mythical service file '{$file}' of which you speak?");
 				return false;
 				break;
@@ -2159,6 +2263,7 @@ function start_service($file) {
 function copy_config($file, $owner = "", $mode = "") {
 	global $cfgmap;
 	global $cfgdir;
+	$cfgmap = update_cfgmap($cfgmap);
 
 	msglog("agent.php", "Copy config file '{$file}' to '{$cfgmap[$file]}'");
 	$cmd = "sudo cp -a {$cfgdir}/{$file} {$cfgmap[$file]}";
@@ -2184,6 +2289,7 @@ function copy_config($file, $owner = "", $mode = "") {
 function move_config($file) {
 	global $cfgmap;
 	global $cfgdir;
+	$cfgmap = update_cfgmap($cfgmap);
 
 	msglog("agent.php", "Move config file '{$file}' to '{$cfgmap[$file]}'");
 	$cmd = "sudo mv -f {$cfgdir}/{$file} {$cfgmap[$file]}";

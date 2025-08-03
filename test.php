@@ -15,6 +15,10 @@ $state['cfgfile'] = $cfgfile;
 
 $state = read_tmpfs($tmpfsurl);
 
+echo print_r(update_cfgmap($cfgmap), true);
+
+echo print_r(update_procmap($procmap), true);
+
 // print_r(fetch_wlan_interfaces());
 
 //$defif = find_wan_interface($state);
@@ -28,7 +32,7 @@ $state = read_tmpfs($tmpfsurl);
 //echo print_r($defgw, true);
 
 //echo print_r(iw_info($state['if'], $defif), true);
-echo print_r(iw_info($state['if'], "wlan1"), true);
+// echo print_r(iw_info($state['if'], "wlan1"), true);
 
 //echo html_wi_link_bar($state['if']['wlan1']);
 

@@ -41,34 +41,39 @@ function html_form_open() {
 }
 
 function html_form_close() {
-	echo "</form>";	
+	echo "</form>";
 }
 
 function html_config($state, $uri){
 	global $cfgmap;
-	html_form_open();
-	html_button();
+	// html_form_open();
+	// html_button();
 	switch($uri) {
 		case "/cfgif":
 			//config_dhcpcd($state);
-			config_nmconnection($state, "etherclient");
+			config_nmconnection($state, "etherclient.nmconnection");
 			echo html_jquery_reload_cfgif();
 			echo html_interfaces($state);
 			break;
 		case "/cfgwiap":
-			config_nmconnection($state, "hotspot");
+			config_nmconnection($state, "hotspot.nmconnection");
 			echo html_interfaces($state, fetch_ap_if($state));
 			echo html_jquery_reload_cfgap();
 			// config_hostapd($state);
 			break;
 		case "/cfgwiclient":
-			config_nmconnection($state, "wificlient");
+			foreach(list_wifi_cons() as $con) {
+				// echo "config $con";
+				config_nmconnection($state, $con);
+			}
 			echo html_interfaces($state, fetch_wi_client_if($state));
 			echo html_jquery_reload_cfgwi();
 			// config_supplicant($state);
 			echo html_jquery_reload_wilist();
 			break;
 		case "/cfgovpn":
+			html_form_open();
+			html_button();
 			echo html_interfaces($state, "tun0");
 			echo html_jquery_reload_cfgvpn();
 			config_openvpn($state);
@@ -171,10 +176,17 @@ function config_openvpn($state) {
 function parse_nm_config($filepath) {
     $config = [];
     $current_section = null;
-	if(!file_exists($filepath))
-		echo "file not found\n";
+	global $basedir;
+	global $cfgdir;
+	// $file = "{$basedir}/{$cfgdir}/hotspot.nmconnection";
 
-    foreach (file($filepath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+	$file = "{$basedir}/{$cfgdir}/$filepath";
+	if(!file_exists($file)) {
+		// echo "file $file not found\n";
+		return false;
+	}
+
+    foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $line = trim($line);
 
         // Skip comments
@@ -198,11 +210,18 @@ function parse_nm_config($filepath) {
 }
 
 
-function build_nm_config($data, $old = array()) {
+function build_nm_config($con, $post, $old = array()) {
     $config = [];
 	// Use previous connection settings for uuid, etc
 	if(!empty($old))
 		$config = $old;
+
+	// process variables and strip their con_ prefix.
+	foreach($post as $field => $value) {
+		$field = preg_replace("/^{$con}_/", "", $field);
+		$data[$field] = $value;
+	}
+	// echo "<pre>". print_r($data, true) ."</pre>\n";
 
 	// WiFi section
 	if (!empty($data['wifi_ssid'])) {
@@ -220,7 +239,9 @@ function build_nm_config($data, $old = array()) {
 	} else {
 		// No psk, no settings
 		$config['wifi-security'] = [
-		];		
+			'key-mgmt' => 'none',
+			'psk' => ''
+		];
 	}
 
     // IPv4 section
@@ -228,7 +249,7 @@ function build_nm_config($data, $old = array()) {
         'method' => $data['ipv4_method']
     ];
 
-	if ($data['ipv4_method'] === 'static') {
+	if ($data['ipv4_method'] == 'manual') {
 		if (!empty($data['ipv4_address'])) {
 			$config['ipv4']['address1'] = $data['ipv4_address'];
 		}
@@ -243,13 +264,15 @@ function build_nm_config($data, $old = array()) {
         'method' => $data['ipv6_method']
     ];
 
-	if ($data['ipv6_method'] === 'static') {
+	if ($data['ipv6_method'] == 'manual') {
 		if (!empty($data['ipv6_address'])) {
 			$config['ipv6']['address1'] = $data['ipv6_address'];
 		}
 		if (!empty($data['ipv6_gateway'])) {
 			$config['ipv6']['gateway'] = $data['ipv6_gateway'];
 		}
+	} else {
+		$data['ipv6_method'] == 'ignore';
 	}
 
     return $config;
@@ -270,127 +293,154 @@ function write_nm_file($config, $filename) {
 
 function config_nmconnection($state, $con = "") {
 	global $cfgdir;
-	chdir('..');
-	
+	global $basedir;
+
+	// validate we have a valid config file
 	$config = array();
 	switch($con) {
-		case "hotspot":
+		case "hotspot.nmconnection":
+		case "etherclient.nmconnection":
 			// do something
-			$file = "conf/hotspot.nmconnection";
-			break;
-		case "wificlient":
-			// do something
-			$file = "conf/wificlient.nmconnection";
-			break;
-		case "etherclient":
-			// do something
-			$file = "conf/etherclient.nmconnection";
+			$file = $con;
+			if(is_readable("{$basedir}/{$cfgdir}/{$con}")) {
+				preg_match("/(.*?).nmconnection/i", $file, $matches);
+				$con = $matches[1];
+			} else {
+				echo "file $file is not readable";
+			}
 			break;
 		default:
+			// test for other config files
+			if(is_readable("{$basedir}/{$cfgdir}/{$con}")) {
+				$file = $con;
+				preg_match("/(.*?)-wifi.nmconnection/i", $file, $matches);
+				$con = $matches[1];
+			} else {
+				echo "file $file is not readable";
+			}
 			// no idea what to do here
 			break;
+			break;
 	}
-	$config = parse_nm_config($file);
-	//echo getcwd();
-	//echo print_r($_SERVER, true);
-	if(!empty($_POST)) {
-		$config = build_nm_config($_POST, $config);
-		write_nm_file($config, $file);
+		//echo "$file";
+		
+		$config = parse_nm_config($file);
 
-		echo "<h2>Configuration Saved</h2>";
-		// echo "<p>File written for $con </code></p>";
-		//echo "<pre>" . htmlspecialchars(file_get_contents($file)) . "</pre>";
+		//echo getcwd();
+		// echo print_r($_SERVER, true);
+		if(!empty($_POST)) {
+			if($_POST['con'] == $con) {
+				$config = parse_nm_config($file);
+				$config = build_nm_config($con, $_POST, $config);
+				write_nm_file($config, "{$basedir}/{$cfgdir}/{$file}");
+
+				//echo "<pre>". print_r($_POST, true) ."</pre>\n";
+				echo "<h2>Configuration Saved </h2>";
+				// echo "<p>File '{$file}' written for $con </code>";
+				// echo "<pre>". print_r($config, true) ."</pre></p>\n";
+			}
+		}
+		// $config = parse_nm_config($file);
+		//echo "<pre>". print_r($config, true) ."</pre>\n";
+		
+
+	?>
+	  <script>
+		function toggleFields(version) {
+		  const method = document.querySelector(`input[name="${version}_method"]:checked`).value;
+		  const block = document.getElementById(`${version}_static_fields`);
+		  block.style.display = method === 'manual' ? 'block' : 'none';
+		}
+	  </script>
+	<?php
+
+		echo "<table class='status-item'><tr><td>";
+		// echo "<pre>" . htmlspecialchars(file_get_contents("{$basedir}/$cfgdir/$file")) . "</pre>";
+
+		// echo html_form_open();
+		
+	?>
+	
+	
+	  <h3>Edit Network Configuration <?= $con ?></h3>
+	  <form method="post" action="<?= $_SERVER['REQUEST_URI'] ?? '' ?>">
+	  <input type='hidden' name='con' value='<?= $con ?>'>
+		<fieldset>
+		  <legend>IPv4 Settings</legend>
+		  <label><input type="radio" name="<?= "{$con}_ipv4_method" ?>" value="auto" <?= $config['ipv4']['method'] === 'auto' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv4" ?>')"> Automatic (DHCP)</label><br>
+		  <label><input type="radio" name="<?= "{$con}_ipv4_method" ?>" value="manual" <?= $config['ipv4']['method'] === 'manual' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv4" ?>')"> Manual</label>
+
+			<div id="<?= "{$con}_ipv4_static_fields" ?>" style="display: <?= $config['ipv4']['method'] === 'manual' ? 'block' : 'none' ?>;">
+			  <label>IPv4 Address:
+				<input type="text" name="<?= "{$con}_ipv4_address" ?>" value="<?= $config['ipv4']['address1'] ?? '' ?>">
+			  </label><br>
+			  <label>IPv4 Gateway:
+				<input type="text" name="<?= "{$con}_ipv4_gateway" ?>" value="<?= $config['ipv4']['gateway'] ?? '' ?>">
+			  </label>
+			</div>
+
+		</fieldset>
+
+		<fieldset>
+		  <legend>IPv6 Settings</legend>
+		  <label><input type="radio" name="<?= "{$con}_ipv6_method" ?>" value="auto" <?= $config['ipv6']['method'] === 'auto' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv6" ?>')"> Automatic</label><br>
+		  <label><input type="radio" name="<?= "{$con}_ipv6_method" ?>" value="ignore" <?= $config['ipv6']['method'] === 'ignore' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv6" ?>')"> Ignore</label><br>
+		  <label><input type="radio" name="<?= "{$con}_ipv6_method" ?>" value="manual" <?= $config['ipv6']['method'] === 'manual' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv6" ?>')"> Manual</label>
+
+
+			<div id="<?= "{$con}_ipv6_static_fields" ?>" style="display: <?= $config['ipv6']['method'] === 'manual' ? 'block' : 'none' ?>;">
+			  <label>IPv6 Address:
+				<input type="text" name="<?= "{$con}_ipv6_address" ?>" value="<?= $config['ipv6']['address1'] ?? '' ?>">
+			  </label><br>
+			  <label>IPv6 Gateway:
+				<input type="text" name="<?= "{$con}_ipv6_gateway" ?>" value="<?= $config['ipv6']['gateway'] ?? '' ?>">
+			  </label>
+			</div>
+
+		</fieldset>
+
+
+	<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "ap")) { ?>
+		
+		<fieldset>
+		  <legend>Wireless Network Settings</legend>
+
+		  <label>SSID:
+			<input type="text" name="<?= "{$con}_wifi_ssid" ?>" value="<?= $config['wifi']['ssid'] ?? '' ?>">
+		  </label><br>
+
+		  <label>Password (PSK):
+			<input type="text" name="<?= "{$con}_wifi_psk" ?>" value="<?= $config['wifi-security']['psk'] ?? '' ?>">
+		  </label><br>
+
+		</fieldset>
+
+	<?php } ?>
+
+
+	<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "infrastructure")) { ?>
+		
+		<fieldset>
+		  <legend>Wireless Network Settings</legend>
+
+		  <label>SSID:
+			<input type="text" name="<?= "{$con}_wifi_ssid" ?>" value="<?= $config['wifi']['ssid'] ?? '' ?>">
+		  </label><br>
+
+		  <label>Password (PSK):
+			<input type="text" name="<?= "{$con}_wifi_psk" ?>" value="<?= $config['wifi-security']['psk'] ?? '' ?>">
+		  </label><br>
+
+		</fieldset>
+
+
+	<?php
+
 	}
-	// $config = parse_nm_config($file);
-	// echo "<pre>". print_r($config, true) ."</pre>\n";
+	?>
+	<input type='submit' value='Save' class='button'>
+	</form>
 
-	chdir('web');
-?>
-  <script>
-    function toggleFields(version) {
-      const method = document.querySelector(`input[name="${version}_method"]:checked`).value;
-      const block = document.getElementById(`${version}_static_fields`);
-      block.style.display = method === 'static' ? 'block' : 'none';
-    }
-  </script>
-<?php
-
-	echo "<table class='status-item'><tr><td>";
-
-?>
-  <h2>Edit Network Configuration</h2>
-  <form method="post" action="<?= $_SERVER['REQUEST_URI'] ?? '' ?>">
-    <fieldset>
-      <legend>IPv4 Settings</legend>
-      <label><input type="radio" name="ipv4_method" value="auto" <?= $config['ipv4']['method'] === 'auto' ? 'checked' : '' ?> onclick="toggleFields('ipv4')"> Automatic (DHCP)</label><br>
-      <label><input type="radio" name="ipv4_method" value="static" <?= $config['ipv4']['method'] === 'manual' ? 'checked' : '' ?> onclick="toggleFields('ipv4')"> Static</label>
-
-		<div id="ipv4_static_fields" style="display: <?= $config['ipv4']['method'] === 'manual' ? 'block' : 'none' ?>;">
-		  <label>IPv4 Address:
-			<input type="text" name="ipv4_address" value="<?= $config['ipv4']['address1'] ?? '' ?>">
-		  </label><br>
-		  <label>IPv4 Gateway:
-			<input type="text" name="ipv4_gateway" value="<?= $config['ipv4']['gateway'] ?? '' ?>">
-		  </label>
-		</div>
-
-    </fieldset>
-
-    <fieldset>
-      <legend>IPv6 Settings</legend>
-      <label><input type="radio" name="ipv6_method" value="auto" <?= $config['ipv6']['method'] === 'auto' ? 'checked' : '' ?> onclick="toggleFields('ipv6')"> Automatic</label><br>
-      <label><input type="radio" name="ipv6_method" value="static" <?= $config['ipv6']['method'] === 'manual' ? 'checked' : '' ?> onclick="toggleFields('ipv6')"> Static</label>
-
-
-		<div id="ipv6_static_fields" style="display: <?= $config['ipv6']['method'] === 'manual' ? 'block' : 'none' ?>;">
-		  <label>IPv6 Address:
-			<input type="text" name="ipv6_address" value="<?= $config['ipv6']['address1'] ?? '' ?>">
-		  </label><br>
-		  <label>IPv6 Gateway:
-			<input type="text" name="ipv6_gateway" value="<?= $config['ipv6']['gateway'] ?? '' ?>">
-		  </label>
-		</div>
-
-    </fieldset>
-
-
-<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "ap")) { ?>
-	
-	<fieldset>
-	  <legend>Wireless Network Settings</legend>
-
-	  <label>SSID:
-		<input type="text" name="wifi_ssid" value="<?= $config['wifi']['ssid'] ?? '' ?>">
-	  </label><br>
-
-	  <label>Password (PSK):
-		<input type="text" name="wifi_psk" value="<?= $config['wifi-security']['psk'] ?? '' ?>">
-	  </label><br>
-
-	</fieldset>
-
-<?php } ?>
-
-
-<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "infrastructure")) { ?>
-	
-	<fieldset>
-	  <legend>Wireless Network Settings</legend>
-
-	  <label>SSID:
-		<input type="text" name="wifi_ssid" value="<?= $config['wifi']['ssid'] ?? '' ?>">
-	  </label><br>
-
-	  <label>Password (PSK):
-		<input type="text" name="wifi_psk" value="<?= $config['wifi-security']['psk'] ?? '' ?>">
-	  </label><br>
-
-	</fieldset>
-
-<?php } ?>
-
-    <!-- <button type="submit">Save Configuration</button> -->
-  </form>
 <?php
 	echo "</td></tr></table>\n";
 	// echo print_r($config, true);
@@ -751,7 +801,7 @@ function config_supplicant($state) {
 function html_wi_network_list($state) {
 	echo " <div id='wilist'>";
 	echo "<table width=100% ><tr><td>";
-	$settings = config_read_supplicant($state);
+	// $settings = config_read_supplicant($state);
 
 	foreach ($state['if'] as $ifname => $iface) {
 		// Skip AP interface
@@ -772,7 +822,8 @@ function html_wi_network_list($state) {
 		// echo "<pre>". print_r($nmcli_list, true) ."</pre>";
 
 
-		$index = count($settings['network']) +1;
+		//$index = count($settings['network']) +1;
+		$index = 0;
 		$ssidvar = "{$index}ssid";
 		$encvar = "{$index}key_mgmt";
 		$pskvar = "{$index}psk";
@@ -802,7 +853,7 @@ function html_wi_network_list($state) {
 		echo "    } \n";
 		echo "</script>\n";
 
-		echo "<pre>". print_r($clean_nmcli_list, true) ."</pre>";
+		// echo "<pre>". print_r($clean_nmcli_list, true) ."</pre>";
 		
 		echo "<table class='status-item' >\n";
 		if(is_array($clean_nmcli_list)) {
@@ -1019,6 +1070,17 @@ function ifrefresh() {
 }
 
 function html_jquery_reload_wilist(){
+	echo " <div id='wilist'>";
+	echo "<table border=1><tr><td>Loading Wireless network list ...\n";
+	echo "<script type='text/javascript'>\n";
+	echo "
+		\$(document).ready(function() {
+			\$('#wilist').load(\"/wilist\");
+		});
+";
+	echo "</script>\n";
+	echo "</td></tr></table>\n";
+	echo "</div>\n";
 	echo "<script type='text/javascript'>\n";
 	echo "
 

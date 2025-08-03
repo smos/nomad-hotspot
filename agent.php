@@ -18,13 +18,6 @@ $state['self']['time'] = time();
 // Touch wood
 shell_exec("touch {$tmpfsurl}");
 
-// Where the configs live
-$cfgdir = "conf";
-if(strstr($_SERVER['DOCUMENT_ROOT'], "web")) {
-        $basedir = str_replace("/web", "", dirname($_SERVER['DOCUMENT_ROOT']));
-} else {
-        $basedir = "/home/{$_SERVER['LOGNAME']}/nomad-hotspot";
-}
 $cfgfile = "{$basedir}/{$cfgdir}/config.json";
 $state['config'] = read_config($cfgfile);
 $state['cfgfile'] = $cfgfile;
