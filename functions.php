@@ -33,6 +33,7 @@ $cfgmap = array(
 			"hotspot.nmconnection" => "/etc/NetworkManager/system-connections/hotspot.nmconnection",
 			"anyopen-wifi.nmconnection" => "/etc/NetworkManager/system-connections/anyopen-wifi.nmconnection",
 			"etherclient.nmconnection" => "/etc/NetworkManager/system-connections/etherclient.nmconnection",
+			"NetworkManager" => "networkmanager",
 			"README.md" => "README.md",
 		);
 
@@ -603,6 +604,8 @@ function process_if_changes($ifstate, $iflist, $ifname) {
 	if(!isset($ifstate[$ifname])) {
 		// New interface!
 		msglog("agent.php", "Found interface {$ifname}, status '". if_state($iflist, $ifname) ."', addresses ". implode(',', if_prefix($iflist, $ifname)) ."");
+		// restart network manager when a new interface is found
+		restart_service("networkmanager");
 
 		// Add device information
 		$state['devices'][$ifname] = fetch_device_info($ifname);
@@ -2103,10 +2106,13 @@ function parse_dhcp_nameservers($state) {
 	$file = "/run/NetworkManager/no-stub-resolv.conf";
 	if(is_readable($file)) {
 		$rfile = file($file);
-		foreach($rfile as $line)
-			if(preg_match("/^nameserver[ ]+([0-9a-f:]+)/", $line, $matches6))
-				filter_var($matches6[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+		foreach($rfile as $line) {
+			if(stristr(":", $line)) {
+				if(preg_match("/^nameserver[ ]+([0-9a-f:]+)/", $line, $matches6))
+					filter_var($matches6[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
 					$dns['dns6'][] = $matches6[1];
+			}
+		}
 	}
 	return $dns;
 }
@@ -2153,6 +2159,9 @@ function restart_service($file) {
 				$cmd = "sudo nmcli connection hotspot up";
 				break;
 			case "etherclient.nmconnection":
+				$cmd = "sudo nmcli connection etherclient up";
+				break;
+			case "networkmanager":
 				$cmd = "sudo nmcli connection reload";
 				break;
 			case "iptables.v4":

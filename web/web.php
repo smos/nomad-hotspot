@@ -221,12 +221,35 @@ function build_nm_config($con, $post, $old = array()) {
 		$field = preg_replace("/^{$con}_/", "", $field);
 		$data[$field] = $value;
 	}
-	// echo "<pre>". print_r($data, true) ."</pre>\n";
-
+	echo "<pre>". print_r($data, true) ."</pre>\n";
+	
+	// connection
+	if (!empty	($data['autoconnect'])) {
+		$config['connection']['autoconnect'] = $data['autoconnect'] ?? "true";
+	}
+	
 	// WiFi section
 	if (!empty($data['wifi_ssid'])) {
 		$config['wifi']['ssid'] = $data['wifi_ssid'] ?? "";
 	}
+	// WiFi channel section
+	if (!empty($data['wifi_channel'])) {
+		if($data['wifi_channel'] == "auto") {
+			$config['wifi']['channel'] = "auto";
+			$band = "auto";
+		} else {
+			$chan = round(floatval($data['wifi_channel']));
+			if(($chan > 0) && ($chan < 15)) {
+				$config['wifi']['channel'] = $chan ?? "1";
+				$config['wifi']['band'] = $band ?? "n";
+			}
+			if(($chan > 35) && ($chan < 140)) {
+				$config['wifi']['channel'] = $chan ?? "36";
+				$config['wifi']['band'] = $band ?? "a";
+			}
+		}
+	}
+
 	// WiFi-security section
 	if (!empty($data['wifi_psk'])) {
 		$config['wifi-security'] = [
@@ -341,7 +364,7 @@ function config_nmconnection($state, $con = "") {
 			}
 		}
 		// $config = parse_nm_config($file);
-		//echo "<pre>". print_r($config, true) ."</pre>\n";
+		echo "<pre>". print_r($config, true) ."</pre>\n";
 		
 
 	?>
@@ -365,6 +388,12 @@ function config_nmconnection($state, $con = "") {
 	  <h3>Edit Network Configuration <?= $con ?></h3>
 	  <form method="post" action="<?= $_SERVER['REQUEST_URI'] ?? '' ?>">
 	  <input type='hidden' name='con' value='<?= $con ?>'>
+	
+	   <fieldset>
+		  <legend>General</legend>
+		  <label><input type="checkbox" name="<?= "{$con}_autoconnect" ?>" value="true" <?= $config['connection']['autoconnect'] === 'true' ? 'checked' : 'false' ?> ">Automatically connect</label><br>
+		</fieldset>
+
 		<fieldset>
 		  <legend>IPv4 Settings</legend>
 		  <label><input type="radio" name="<?= "{$con}_ipv4_method" ?>" value="auto" <?= $config['ipv4']['method'] === 'auto' ? 'checked' : '' ?> onclick="toggleFields('<?= "{$con}_ipv4" ?>')"> Automatic (DHCP)</label><br>

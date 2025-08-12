@@ -49,7 +49,7 @@ echo print_r(update_procmap($procmap), true);
 //echo print_r(fetch_wlan_interfaces(), true);
 //echo print_r(fetch_ap_if($state), true);
 
-//print_r(parse_dhcp_nameservers($state));
+print_r(parse_dhcp_nameservers($state));
 //echo print_r(dnsping($state, "8.8.8.8"));
 
 // echo print_r(ping("8.8.8.8"));
