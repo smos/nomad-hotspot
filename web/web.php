@@ -66,6 +66,8 @@ function html_config($state, $uri){
 				// echo "config $con";
 				config_nmconnection($state, $con);
 			}
+			if($_POST['con'] == 'new-connection')
+					config_nmconnection($state, 'new-connection');
 			echo html_interfaces($state, fetch_wi_client_if($state));
 			echo html_jquery_reload_cfgwi();
 			// config_supplicant($state);
@@ -183,6 +185,8 @@ function parse_nm_config($filepath) {
 	$file = "{$basedir}/{$cfgdir}/$filepath";
 	if(!file_exists($file)) {
 		// echo "file $file not found\n";
+		// empty array
+
 		return false;
 	}
 
@@ -213,15 +217,30 @@ function parse_nm_config($filepath) {
 function build_nm_config($con, $post, $old = array()) {
     $config = [];
 	// Use previous connection settings for uuid, etc
-	if(!empty($old))
+	if(!empty($old)) {
 		$config = $old;
+	} else {
+		foreach($post as $field => $value) {
+			$field = preg_replace("/^new-connection_/", "", $field);
+			$data[$field] = $value;
+		}
+		$config['connection']['id'] = "$con";
+		$config['connection']['uuid'] = guidv4();
+		$config['connection']['autoconnect'] = "true";
+		$config['connection']['type'] = "wifi";
+		$config['connection']['interface-name'] = "wlan1";
+		$config['ipv4']['method'] = 'auto';
+		$config['ipv6']['method'] = 'auto';
+		$data['ipv4_method'] = 'auto';
+		$data['ipv6_method'] = 'auto';
+	}
 
 	// process variables and strip their con_ prefix.
 	foreach($post as $field => $value) {
 		$field = preg_replace("/^{$con}_/", "", $field);
 		$data[$field] = $value;
 	}
-	echo "<pre>". print_r($data, true) ."</pre>\n";
+	//echo "<pre>". print_r($data, true) ."</pre>\n";
 	
 	// connection
 	if (!empty	($data['autoconnect'])) {
@@ -240,7 +259,7 @@ function build_nm_config($con, $post, $old = array()) {
 	if (!empty($data['wifi_channel'])) {
 		if($data['wifi_channel'] == "auto") {
 			$config['wifi']['channel'] = "auto";
-			$band = "auto";
+			$band = "";
 		} else {
 			$chan = round(floatval($data['wifi_channel']));
 			if(($chan > 0) && ($chan < 15)) {
@@ -265,16 +284,15 @@ function build_nm_config($con, $post, $old = array()) {
 		];
 	} else {
 		// No psk, no settings
-		$config['wifi-security'] = [
-			'key-mgmt' => 'none',
-			'psk' => ''
-		];
+		// $config['wifi-security'] = [
+		//	'key-mgmt' => 'none',
+		//	'auth-alg' => 'open'
+		//];
+		unset($config['wifi-security']);
 	}
 
     // IPv4 section
-    $config['ipv4'] = [
-        'method' => $data['ipv4_method']
-    ];
+    $config['ipv4'] = ['method' => $data['ipv4_method'] ?? 'auto'];
 
 	if ($data['ipv4_method'] == 'manual') {
 		if (!empty($data['ipv4_address'])) {
@@ -288,7 +306,7 @@ function build_nm_config($con, $post, $old = array()) {
     // IPv6 section
     $config['ipv6'] = [
         'addr-gen-mode' => 'default',
-        'method' => $data['ipv6_method']
+        'method' => $data['ipv6_method'] ?? 'auto'
     ];
 
 	if ($data['ipv6_method'] == 'manual') {
@@ -299,7 +317,7 @@ function build_nm_config($con, $post, $old = array()) {
 			$config['ipv6']['gateway'] = $data['ipv6_gateway'];
 		}
 	} else {
-		$data['ipv6_method'] == 'ignore';
+		$config['ipv6']['method'] == 'ignore';
 	}
 
     return $config;
@@ -342,6 +360,18 @@ function config_nmconnection($state, $con = "") {
 				$file = $con;
 				preg_match("/(.*?)-wifi.nmconnection/i", $file, $matches);
 				$con = $matches[1];
+			} elseif($con == 'new-connection') {
+				$search = array("\/", "\*", "\'", "\&", "\<", "\>", "\"");
+				$replace = array();
+				$cssid = str_ireplace($search, "", $_POST['new-connection_wifi_ssid']);
+				$file = "{$cssid}-wifi.nmconnection";
+				$con = $cssid;
+				//echo "<pre>". print_r($_POST, true) ."</pre>\n";
+				//echo "<pre>". print_r($file, true) ."</pre>\n";
+				$config = build_nm_config($con, $_POST);
+				if($cssid != "") {
+					write_nm_file($config, "{$basedir}/{$cfgdir}/{$file}");
+				}
 			} else {
 				echo "file $file is not readable";
 			}
@@ -368,28 +398,27 @@ function config_nmconnection($state, $con = "") {
 			}
 		}
 		// $config = parse_nm_config($file);
-		echo "<pre>". print_r($config, true) ."</pre>\n";
+		// echo "<pre>". print_r($config, true) ."</pre>\n";
 		
 
 	?>
-	  <script>
-		function toggleFields(version) {
-		  const method = document.querySelector(`input[name="${version}_method"]:checked`).value;
-		  const block = document.getElementById(`${version}_static_fields`);
-		  block.style.display = method === 'manual' ? 'block' : 'none';
-		}
-	  </script>
+
 	<?php
 
-		echo "<table class='status-item'><tr><td>";
+		//echo "<table class='status-item'><tr><td>";
 		// echo "<pre>" . htmlspecialchars(file_get_contents("{$basedir}/$cfgdir/$file")) . "</pre>";
 
 		// echo html_form_open();
 		
 	?>
+	    <div class="collapsible-container">
+        <h3 class="collapsible-header">Edit Network: <?= $con ?></h3>
+        <div class="collapsible-content">
+          <table class="status-item">
+            <tbody>
+              <tr>
+                <td>
 	
-	
-	  <h3>Edit Network Configuration <?= $con ?></h3>
 	  <form method="post" action="<?= $_SERVER['REQUEST_URI'] ?? '' ?>">
 	  <input type='hidden' name='con' value='<?= $con ?>'>
 	<?php 
@@ -409,7 +438,7 @@ function config_nmconnection($state, $con = "") {
 		  <legend>Band</legend>
 		  <label>
 		<?php 
-		echo html_select("{$con}_wifi_band", array("auto" => "Automatic", "a" => "A (5Ghz)", "bg"=>"B/G (2.4GHz)", "e" => "E (6GHz)"), $config['wifi']['band']);
+		echo html_select("{$con}_wifi_band", array("" => "Automatic", "a" => "A (5Ghz)", "bg"=>"B/G (2.4GHz)", "e" => "E (6GHz)"), $config['wifi']['band']);
 		?>
 		  </label><br>
 		</fieldset>
@@ -492,9 +521,15 @@ function config_nmconnection($state, $con = "") {
 	?>
 	<input type='submit' value='Save' class='button'>
 	</form>
+              </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
 <?php
-	echo "</td></tr></table>\n";
+	// echo "</td></tr></table>\n";
 	// echo print_r($config, true);
 }
 
@@ -852,95 +887,113 @@ function config_supplicant($state) {
 
 function html_wi_network_list($state) {
 	echo " <div id='wilist'>";
+	
+	?>
+	    <form id="wifi-connect-form" method="post" action="/cfgwiclient">
+      <input type="hidden" name="con" value="new-connection" />
+      <input type="hidden" name="new-connection_wifi_ssid" id="ssid-input" />
+      <input type="hidden" name="new-connection_wifi_psk" id="psk-input" />
+    </form>
+	<?php
+	$ifname = fetch_wi_client_if($state);
 	echo "<table width=100% ><tr><td>";
-	// $settings = config_read_supplicant($state);
-
-	foreach ($state['if'] as $ifname => $iface) {
-		// Skip AP interface
-		if($ifname == fetch_ap_if($state)) {
-			// echo "not processing AP interface $ifname\n";
-			continue;
-		}
-
-		if(empty($state['if'][$ifname]['wi'])) {
-			// echo "no wi statistics\n";
-			continue;
-		}
-		echo "<strong>Wireless network list {$ifname}</strong><br>";
-		//echo "<table border=1><tr><td>ssid</td><td>encryption</td><td>Quality</td></tr>\n";
-		//print_r($iface['wi']);
-		$nmcli_list = list_nmcli_networks($state, $ifname);
-		$clean_nmcli_list = clean_nmcli_list($nmcli_list);
-		// echo "<pre>". print_r($nmcli_list, true) ."</pre>";
+	echo "<strong>Wireless network list {$ifname}</strong><br>";
 
 
-		//$index = count($settings['network']) +1;
-		$index = 0;
-		$ssidvar = "{$index}ssid";
-		$encvar = "{$index}key_mgmt";
-		$pskvar = "{$index}psk";
-
-		echo "<script>\n";
-		echo "	function setssid(ssid) { \n";
-//		echo "    var txt=document.getElementById(\"{$ssidvar}\").value; \n";
-//		echo "    txt= ssid; \n";
-		echo "    document.getElementById(\"{$ssidvar}\").value=ssid; \n";
-		echo "    } \n";
-		echo "	function setenc(enc) { \n";
-//		echo "	  console.log(enc);\n";
-		echo "	    if(enc == 'on') { \n";
-		echo " 	    newpsk='EnterPasswordHere'; \n";
-		echo " 	    newkey_mgmt='WPA-PSK'; \n";
-		echo "		document.getElementById(\"{$pskvar}\").focus(); \n";
-		echo " 		   } else { \n";
-		echo " 	    newpsk=''; \n";
-		echo " 	    newkey_mgmt='NONE'; \n";
-		echo " 	   } \n";
-//		echo "	  console.log(newkey_mgmt);\n";
-//		echo "	  console.log(newpsk);\n";
-//		echo "  	  document.getElementById(\"{$pskvar}\").value=newpsk; \n";
-		echo "  	  document.getElementById(\"{$encvar}\").value=newkey_mgmt; \n";
-//		echo "	    var txt=document.getElementById(\"{$pskvar}\").value; \n";
-//		echo "  	  txt= newpsk; \n";
-		echo "    } \n";
-		echo "</script>\n";
-
-		// echo "<pre>". print_r($clean_nmcli_list, true) ."</pre>";
+	$nmcli_list = list_nmcli_networks($state, $ifname);
+	$clean_nmcli_list = clean_nmcli_list($nmcli_list);
+	// echo "<pre>". print_r($nmcli_list, true) ."</pre>";
+	// echo "<pre>". print_r($clean_nmcli_list, true) ."</pre>";
 		
-		echo "<table class='status-item' >\n";
-		if(is_array($clean_nmcli_list)) {
-			foreach($clean_nmcli_list as $entry => $fields) {
+	echo "<table class='status-item' >\n";
+	if(is_array($clean_nmcli_list)) {
+		foreach($clean_nmcli_list as $entry => $fields) {
+			$entry = trim(str_replace("\"", "", $entry));
+			if($entry == "")
+				continue;
+			// echo print_r($fields, true);
+			$enc = "false";
+			if($fields['encryption'] != "")
+				$enc = "true";
+			echo "<tr data-ssid='{$entry}' data-encrypted='{$enc}'>";
+			echo "<td>'{$entry}'</td>";
 
-				echo "<tr>";
-				$entry = str_replace("\"", "", $entry);
-				if($entry == "")
-					continue;
-				echo "<td>'{$entry}'</a></td>";
-				//echo print_r($fields, true);
-				$bgcolor =  value_to_colorname($fields['snr']);
-				echo "<td class='{$bgcolor}'><input class='wibutton' type=\"button\" value=\"{$entry}\" name=\"no\" onclick=\"setssid(this.value)\"></td>";
-				foreach($fields as $fname =>$field) {
-					switch($fname) {
-						case "snr":
-							continue 2;
-						case "bssid":
-							continue 2;
-						case "encryption":
-							continue 2;
-							echo "<td><input type=\"button\" value=\"{$field}\" name=\"no\" onclick=\"setenc(this.value)\"></td>";
-							break;
-						default:
-							echo "<td>{$field}</td>";
-							break;
-					}
-				}
-				echo "</tr>\n";
-			}
+			echo "<td class=". value_to_colorname($fields['snr']) .">";
+			echo "<button class='wibutton connect-button'>Connect</button>";
+			echo "</td>";
+			echo "</tr>\n";
 		}
 		echo "</table>";
 	}
+	
 	echo "</td></tr></table>\n";
 	echo "</div>\n";
+	
+	?>
+	<div id="password-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Enter Password</h2>
+        <p>SSID: <span id="modal-ssid"></span></p>
+        <input type="password" id="modal-password" placeholder="Password" />
+        <button id="modal-connect-button">Connect</button>
+      </div>
+    </div>
+
+   <script>
+      $(document).ready(function () {
+        let currentSSID = '';
+
+        // Handle button clicks to connect to a network
+        $('.connect-button').on('click', function () {
+          // Get the SSID and encryption status from the parent table row
+          const $row = $(this).closest('tr');
+          currentSSID = $row.data('ssid');
+          const isEncrypted = $row.data('encrypted');
+
+          if (isEncrypted) {
+            // Show the password modal for encrypted networks
+            $('#modal-ssid').text(currentSSID);
+            $('#password-modal').show();
+            $('#modal-password').val('').focus();
+          } else {
+            // Directly submit for unencrypted networks
+            submitForm(currentSSID, '');
+          }
+        });
+
+        // Handle connection from the modal
+        $('#modal-connect-button').on('click', function () {
+          const password = $('#modal-password').val();
+          $('#password-modal').hide();
+          submitForm(currentSSID, password);
+        });
+
+        // Close modal when close button is clicked
+        $('.close-button').on('click', function () {
+          $('#password-modal').hide();
+        });
+
+        // Close modal when clicking outside of it
+        $(window).on('click', function (event) {
+          if ($(event.target).is('#password-modal')) {
+            $('#password-modal').hide();
+          }
+        });
+
+        // Function to submit the form
+        function submitForm(ssid, psk) {
+          // Set the form fields
+          $('#ssid-input').val(ssid);
+          $('#psk-input').val(psk);
+          // Submit the form
+          $('#wifi-connect-form').submit();
+        }
+      });
+    </script>
+
+<?php
+
 }
 
 function html_hidden($varname, $value){
@@ -1056,6 +1109,26 @@ function refresh() {
 
 
 function html_jquery_reload_cfgif(){
+?>
+   <script>
+      // New JavaScript for the collapsible sections
+      $(document).ready(function () {
+        $('.collapsible-header').click(function () {
+          $(this).toggleClass('active');
+          $(this).next('.collapsible-content').slideToggle();
+        });
+      });
+
+      // Your existing toggleFields function
+      function toggleFields(version) {
+        const method = document.querySelector(
+          `input[name="${version}_method"]:checked`,
+        ).value;
+        const block = document.getElementById(`${version}_static_fields`);
+        block.style.display = method === 'manual' ? 'block' : 'none';
+      }
+    </script>
+<?php
 	echo "<script type='text/javascript'>\n";
 	echo "
 
@@ -1078,6 +1151,26 @@ function ifrefresh() {
 }
 
 function html_jquery_reload_cfgwi(){
+?>
+   <script>
+      // New JavaScript for the collapsible sections
+      $(document).ready(function () {
+        $('.collapsible-header').click(function () {
+          $(this).toggleClass('active');
+          $(this).next('.collapsible-content').slideToggle();
+        });
+      });
+
+      // Your existing toggleFields function
+      function toggleFields(version) {
+        const method = document.querySelector(
+          `input[name="${version}_method"]:checked`,
+        ).value;
+        const block = document.getElementById(`${version}_static_fields`);
+        block.style.display = method === 'manual' ? 'block' : 'none';
+      }
+    </script>
+<?php
 	echo "<script type='text/javascript'>\n";
 	echo "
 
@@ -1100,6 +1193,26 @@ function ifrefresh() {
 }
 
 function html_jquery_reload_cfgap(){
+?>
+   <script>
+      // New JavaScript for the collapsible sections
+      $(document).ready(function () {
+        $('.collapsible-header').click(function () {
+          $(this).toggleClass('active');
+          $(this).next('.collapsible-content').slideToggle();
+        });
+      });
+
+      // Your existing toggleFields function
+      function toggleFields(version) {
+        const method = document.querySelector(
+          `input[name="${version}_method"]:checked`,
+        ).value;
+        const block = document.getElementById(`${version}_static_fields`);
+        block.style.display = method === 'manual' ? 'block' : 'none';
+      }
+    </script>
+<?php
 	echo "<script type='text/javascript'>\n";
 	echo "
 
@@ -1898,7 +2011,10 @@ function html_list_wi_link($state, $defif) {
 					echo ucwords($field) ." '". $value ."' ". lookup_oui($value) ."<br/>";
 					break;
 				case "channel":
+					if(isset($state['if'][$defif]['wi']['frequency']))
 					echo ucwords($field) ." ". $value ." ({$state['if'][$defif]['wi']['frequency']}Ghz) Width {$state['if'][$defif]['wi']['width']}Mhz<br/>";
+					else
+					 echo ucwords($field) ." ". $value ." Width {$state['if'][$defif]['wi']['width']}Mhz<br/>";
 					break;
 				default:
 					echo ucwords($field) ." '". $value ."'<br/>";
