@@ -232,6 +232,10 @@ function build_nm_config($con, $post, $old = array()) {
 	if (!empty($data['wifi_ssid'])) {
 		$config['wifi']['ssid'] = $data['wifi_ssid'] ?? "";
 	}
+	// WiFi band
+	if (!empty($data['wifi_band'])) {
+		$config['wifi']['band'] = $data['wifi_band'] ?? "";
+	}
 	// WiFi channel section
 	if (!empty($data['wifi_channel'])) {
 		if($data['wifi_channel'] == "auto") {
@@ -388,11 +392,30 @@ function config_nmconnection($state, $con = "") {
 	  <h3>Edit Network Configuration <?= $con ?></h3>
 	  <form method="post" action="<?= $_SERVER['REQUEST_URI'] ?? '' ?>">
 	  <input type='hidden' name='con' value='<?= $con ?>'>
-	
+	<?php 
+	if ($config['wifi']['mode'] != "ap") {
+	?>
 	   <fieldset>
 		  <legend>General</legend>
 		  <label><input type="checkbox" name="<?= "{$con}_autoconnect" ?>" value="true" <?= $config['connection']['autoconnect'] === 'true' ? 'checked' : 'false' ?> ">Automatically connect</label><br>
 		</fieldset>
+		<?php 
+		}
+		?>
+	<?php 
+	if (!empty($config['wifi'])) {
+	?>
+	   <fieldset>
+		  <legend>Band</legend>
+		  <label>
+		<?php 
+		echo html_select("{$con}_wifi_band", array("auto" => "Automatic", "a" => "A (5Ghz)", "bg"=>"B/G (2.4GHz)", "e" => "E (6GHz)"), $config['wifi']['band']);
+		?>
+		  </label><br>
+		</fieldset>
+		<?php 
+		}
+		?>
 
 		<fieldset>
 		  <legend>IPv4 Settings</legend>
