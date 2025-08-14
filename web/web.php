@@ -44,6 +44,243 @@ function html_form_close() {
 	echo "</form>";
 }
 
+function html_wi_channel_use() {
+?>
+    <style>
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .channel-group-header {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: white;
+            cursor: pointer;
+            text-align: left;
+        }
+        .channel-group-content {
+            display: none;
+        }
+        .channel-group-content.expanded {
+            display: block;
+        }
+        .channel-item {
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            #background: #fff;
+        }
+        .channel-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .channel-header:hover {
+            background-color: #f0f0f0;
+        }
+        .bar-container {
+            flex-grow: 1;
+            height: 25px;
+            margin-left: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+
+            overflow: hidden;
+            display: flex;
+        }
+        .color-bar {
+            height: 100%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+        .channel-count {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .ssid-list {
+            list-style-type: none;
+            padding: 0 10px 10px 10px;
+            margin: 0;
+            display: none;
+        }
+        .ssid-list.expanded {
+            display: block;
+        }
+        .ssid-list li {
+            background: #e9ecef;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+    </style>
+
+    <div class="container">
+        <h2>Channel Occupancy</h2>
+        <div id="channel-list-container"></div>
+        <p id="loading-message">Loading data...</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const channelListContainer = document.getElementById('channel-list-container');
+            const loadingMessage = document.getElementById('loading-message');
+
+            fetch('/wilistjson')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingMessage.style.display = 'none';
+
+                    const allChannels = {
+                        '2.4 GHz': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14'],
+                        '5 GHz': ['36', '40', '44', '48', '52', '56', '60', '64', '100', '104', '108', '112', '116', '120', '124', '128', '132', '136', '140', '144', '149', '153', '157', '161', '165'],
+                        '6 GHz': ['1', '5', '9', '13', '17', '21', '25', '29', '33', '37', '41', '45', '49', '53', '57', '61', '65', '69', '73', '77', '81', '85', '89', '93', '97', '101', '105', '109', '113', '117', '121', '125', '129', '133', '137', '141', '145', '149', '153', '157', '161', '165', '169', '173', '177', '181', '185', '189', '193', '197', '201', '205', '209', '213', '217', '221', '225', '229', '233']
+                    };
+
+                    const channelData = {};
+
+                    for (const band in allChannels) {
+                        channelData[band] = {};
+                        allChannels[band].forEach(channel => {
+                            channelData[band][channel] = {
+                                count: 0,
+                                ssids: []
+                            };
+                        });
+                    }
+
+                    for (const macAddress in data) {
+                        const network = data[macAddress];
+                        const channel = network.channel;
+                        const ssid = network.ssid;
+                        // Use a more accurate check for frequency
+                        const frequency = parseInt(network.frequency.split(' ')[0]);
+
+                        let band = '';
+                        if (frequency >= 2400 && frequency < 2500) {
+                            band = '2.4 GHz';
+                        } else if (frequency >= 5000 && frequency < 5900) {
+                            band = '5 GHz';
+                        } else if (frequency >= 5900 && frequency < 7200) {
+                            band = '6 GHz';
+                        }
+                        
+                        if (band && channelData[band][channel]) {
+                            channelData[band][channel].count++;
+                            channelData[band][channel].ssids.push(ssid);
+                        }
+                    }
+
+                    for (const band in channelData) {
+                        // Create collapsible header
+                        const groupHeader = document.createElement('h2');
+                        groupHeader.className = 'channel-group-header';
+                        groupHeader.textContent = band;
+                        channelListContainer.appendChild(groupHeader);
+
+                        // Create collapsible content container
+                        const groupContent = document.createElement('div');
+                        groupContent.className = 'channel-group-content';
+                        channelListContainer.appendChild(groupContent);
+                        
+                        const ul = document.createElement('ul');
+                        
+                        const sortedChannels = Object.keys(channelData[band]).sort((a, b) => a - b);
+                        
+                        sortedChannels.forEach(channel => {
+                            const { count, ssids } = channelData[band][channel];
+
+                            const channelItem = document.createElement('li');
+                            channelItem.className = 'channel-item';
+
+                            const clampedCount = Math.min(count, 10);
+                            const percentage = (clampedCount / 10) * 100;
+                            
+                            let barColor;
+                            if (clampedCount === 0) {
+                                barColor = '#adb5bd';
+                            } else if (clampedCount <= 3) {
+                                barColor = '#28a745';
+                            } else if (clampedCount <= 7) {
+                                barColor = '#ffc107';
+                            } else {
+                                barColor = '#dc3545';
+                            }
+
+                            const headerHtml = `
+                                <div class="channel-header">
+                                    <div class="channel-count">${count}</div>
+                                    <span>Channel ${channel}</span>
+                                    <div class="bar-container">
+                                        <div class="color-bar" style="width: ${percentage}%; background-color: ${barColor};"></div>
+                                    </div>
+                                </div>
+                            `;
+
+                            const ssidList = document.createElement('ul');
+                            ssidList.className = 'ssid-list';
+                            if (ssids.length > 0) {
+                                ssids.forEach(ssid => {
+                                    const ssidItem = document.createElement('li');
+                                    ssidItem.textContent = ssid;
+                                    ssidList.appendChild(ssidItem);
+                                });
+                            } else {
+                                const emptyItem = document.createElement('li');
+                                emptyItem.textContent = 'No networks found';
+                                ssidList.appendChild(emptyItem);
+                            }
+
+                            channelItem.innerHTML = headerHtml;
+                            channelItem.appendChild(ssidList);
+                            ul.appendChild(channelItem);
+                            
+                            channelItem.querySelector('.channel-header').addEventListener('click', () => {
+                                ssidList.classList.toggle('expanded');
+                            });
+                        });
+                        
+                        groupContent.appendChild(ul);
+
+                        // Add click event listener to the band header
+                        groupHeader.addEventListener('click', () => {
+                            groupContent.classList.toggle('expanded');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    loadingMessage.textContent = 'Failed to load data. Please try again later.';
+                    loadingMessage.style.color = 'red';
+                });
+        });
+    </script>
+<?php
+
+}
+
 function html_config($state, $uri){
 	global $cfgmap;
 	// html_form_open();
@@ -72,6 +309,7 @@ function html_config($state, $uri){
 			echo html_jquery_reload_cfgwi();
 			// config_supplicant($state);
 			echo html_jquery_reload_wilist();
+			echo html_wi_channel_use();
 			break;
 		case "/cfgovpn":
 			html_form_open();
@@ -258,13 +496,13 @@ function build_nm_config($con, $post, $old = array()) {
 	// WiFi channel section
 	if (!empty($data['wifi_channel'])) {
 		if($data['wifi_channel'] == "auto") {
-			$config['wifi']['channel'] = "auto";
-			$band = "";
+			unset($config['wifi']['channel']);
+			unset($config['wifi']['band']);
 		} else {
 			$chan = round(floatval($data['wifi_channel']));
 			if(($chan > 0) && ($chan < 15)) {
 				$config['wifi']['channel'] = $chan ?? "1";
-				$config['wifi']['band'] = $band ?? "n";
+				$config['wifi']['band'] = $band ?? "bg"; // these numbers are also valid for 6ghz, and fall under "a" fixme
 			}
 			if(($chan > 35) && ($chan < 140)) {
 				$config['wifi']['channel'] = $chan ?? "36";
@@ -394,21 +632,10 @@ function config_nmconnection($state, $con = "") {
 				//echo "<pre>". print_r($_POST, true) ."</pre>\n";
 				echo "<h2>Configuration Saved </h2>";
 				// echo "<p>File '{$file}' written for $con </code>";
-				// echo "<pre>". print_r($config, true) ."</pre></p>\n";
+				//echo "<p><pre>". print_r($config, true) ."</pre></p>\n";
 			}
 		}
-		// $config = parse_nm_config($file);
-		// echo "<pre>". print_r($config, true) ."</pre>\n";
-		
 
-	?>
-
-	<?php
-
-		//echo "<table class='status-item'><tr><td>";
-		// echo "<pre>" . htmlspecialchars(file_get_contents("{$basedir}/$cfgdir/$file")) . "</pre>";
-
-		// echo html_form_open();
 		
 	?>
 	    <div class="collapsible-container">
@@ -439,6 +666,14 @@ function config_nmconnection($state, $con = "") {
 		  <label>
 		<?php 
 		echo html_select("{$con}_wifi_band", array("" => "Automatic", "a" => "A (5Ghz)", "bg"=>"B/G (2.4GHz)", "e" => "E (6GHz)"), $config['wifi']['band']);
+		?>
+		  </label><br>
+		</fieldset>
+	   <fieldset>
+		  <legend>Channel</legend>
+		  <label>
+		<?php 
+		echo html_select("{$con}_wifi_channel", array("auto" => "Automatic", 1 => 1, 6 => 6, 11 => 11, 36 => 36, 40 => 40, 44 => 44, 48 => 48), $config['wifi']['channel']);
 		?>
 		  </label><br>
 		</fieldset>
@@ -883,6 +1118,17 @@ function config_supplicant($state) {
 	echo "</script>\n";
 	echo "</td></tr></table>\n";
 	echo "</div>\n";
+}
+
+function html_wi_network_json($state) {
+
+	
+
+	$ifname = fetch_wi_client_if($state);
+
+	$nmcli_list = list_nmcli_networks($state, $ifname);
+	
+	return json_encode($nmcli_list, JSON_PRETTY_PRINT);
 }
 
 function html_wi_network_list($state) {

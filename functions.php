@@ -2155,7 +2155,7 @@ function restart_service($file) {
 			//	$cmd = "sudo wpa_cli -i wlan1 reconfigure";
 			//	break;
 			case "hotspot.nmconnection":
-				$cmd = "sudo nmcli connection hotspot up";
+				$cmd = "sudo nmcli connection hotspot up;sudo service NetworkManager restart";
 				break;
 			case "etherclient.nmconnection":
 				$cmd = "sudo nmcli connection etherclient up";

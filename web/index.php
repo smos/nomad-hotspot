@@ -45,6 +45,10 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			// clients status div 
 			echo html_wi_network_list($state);
 			break;
+		case "/wilistjson":
+			// clients status div 
+			echo html_wi_network_json($state);
+			break;
 		case "/clients":
 			// clients status div 
 			echo html_clients($state);
