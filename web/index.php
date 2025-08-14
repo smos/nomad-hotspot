@@ -79,6 +79,12 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/json?":
 			echo send_json($state);	
 			break;
+		case "/wopr":
+			echo html_wopr();
+			break;
+		case "/woprjson":
+			echo wopr_json($state);
+			break;
 		case "/screensaver":
 			echo html_header();
 			echo html_head();

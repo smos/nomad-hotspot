@@ -44,6 +44,181 @@ function html_form_close() {
 	echo "</form>";
 }
 
+function wopr_json($state) {
+	// we have 960 bits to fill for thw wopr display
+	// lets just concatenate numbers together and format this to 
+	$number = $state['itteration'];
+	$number .= $state['time'];
+	foreach($state['captive'] as $time => $status)
+		$number .= $time . ord($status);
+	
+	foreach($state['internet']['latency']['ping'] as $addr => $time)
+		$number .= ip2long($addr) . $time;
+		
+	$number .= ip2long($state['internet']['wanip']);
+	
+	foreach($state['clients'] as $client)
+			$number .= $client['time'];
+					
+	foreach($state['if'] as $ifname => $if)
+		foreach($if['traffic'] as $key => $value)
+			$number .= $value;
+	
+	
+
+	return json_encode(array("value" => $number));
+}
+
+function html_wopr() {
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WOPR Dynamic Display</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .wopr-container {
+            width: 800px;
+            height: 480px;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            display: grid;
+            /* 800px / 20px = 40 columns */
+            grid-template-columns: repeat(20, 40px);
+            /* 480px / 12px = 40 rows */
+            grid-template-rows: repeat(12, 40px);
+            background-color: #111;
+        }
+
+        .grid-square {
+            width: 36px;
+            height: 36px;
+            background-color: grey;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s ease;
+        }
+
+        .grid-square.lit {
+            background-color: lightyellow;
+            box-shadow: 0 0 5px lightyellow;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="wopr-display" class="wopr-container">
+        <!-- Grid squares will be generated here by JavaScript -->
+    </div>
+
+    <script>
+        const displayContainer = document.getElementById('wopr-display');
+        const squares = [];
+        const numCols = 20;
+        const numRows = 12;
+        const totalBits = numCols * numRows; // This is 1600
+
+        // Function to create the initial grid of squares
+        function createGrid() {
+            for (let i = 0; i < totalBits; i++) {
+                const square = document.createElement('div');
+                square.className = 'grid-square';
+                displayContainer.appendChild(square);
+                squares.push(square);
+            }
+        }
+
+        // Function to clear all squares
+        function clearDisplay() {
+            squares.forEach(square => {
+                square.classList.remove('lit');
+            });
+        }
+        
+        // Helper function to convert a very large number string to binary string
+        function toBinary(largeNumberString) {
+            let binary = '';
+            let number = BigInt(largeNumberString);
+            
+            // Handle the case of zero
+            if (number === BigInt(0)) {
+                return '0';
+            }
+
+            // Convert to binary using bitwise operations
+            while (number > 0) {
+                binary = (number % BigInt(2)) + binary;
+                number = number / BigInt(2);
+            }
+            return binary;
+        }
+
+        // Function to update the display with the binary number
+        async function updateDisplay() {
+            clearDisplay();
+            let binaryString = '';
+
+            try {
+                // Attempt to fetch data from the external URL
+                const response = await fetch('/woprjson');
+                const data = await response.json();
+                
+                if (data && data.value) {
+                    console.log('Successfully fetched and processed data:', data.value);
+                    binaryString = toBinary(data.value);
+                } else {
+                    throw new Error('Invalid data structure');
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch from /woprjson. Using fallback data.', error);
+                
+                // Fallback to a random 1600-bit number if fetching fails
+                const randomBinary = new Array(totalBits).fill(0).map(() => Math.floor(Math.random() * 2)).join('');
+                binaryString = randomBinary;
+            }
+
+            // Pad the binary string to exactly 1600 bits
+            const paddedBinaryString = binaryString.padStart(totalBits, '0');
+
+            // Draw each bit
+            for (let i = 0; i < totalBits; i++) {
+                if (paddedBinaryString[i] === '1') {
+                    if (squares[i]) {
+                        squares[i].classList.add('lit');
+                    }
+                }
+            }
+        }
+
+        // Create the grid and start the update loop
+        createGrid();
+        updateDisplay();
+        setInterval(updateDisplay, 5000);
+    </script>
+
+</body>
+</html>
+
+
+
+<?php
+
+}
+
 function html_wi_channel_use() {
 ?>
     <style>
@@ -471,6 +646,7 @@ function build_nm_config($con, $post, $old = array()) {
 		$config['ipv6']['method'] = 'auto';
 		$data['ipv4_method'] = 'auto';
 		$data['ipv6_method'] = 'auto';
+		$config['wifi']['mode'] = 'infrastructure';
 	}
 
 	// process variables and strip their con_ prefix.
@@ -716,7 +892,7 @@ function config_nmconnection($state, $con = "") {
 		</fieldset>
 
 
-	<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "ap")) { ?>
+	<?php if((!empty($config['wifi'])) ) { ?>
 		
 		<fieldset>
 		  <legend>Wireless Network Settings</legend>
@@ -733,27 +909,6 @@ function config_nmconnection($state, $con = "") {
 
 	<?php } ?>
 
-
-	<?php if((!empty($config['wifi'])) && ($config['wifi']['mode'] == "infrastructure")) { ?>
-		
-		<fieldset>
-		  <legend>Wireless Network Settings</legend>
-
-		  <label>SSID:
-			<input type="text" name="<?= "{$con}_wifi_ssid" ?>" value="<?= $config['wifi']['ssid'] ?? '' ?>">
-		  </label><br>
-
-		  <label>Password (PSK):
-			<input type="text" name="<?= "{$con}_wifi_psk" ?>" value="<?= $config['wifi-security']['psk'] ?? '' ?>">
-		  </label><br>
-
-		</fieldset>
-
-
-	<?php
-
-	}
-	?>
 	<input type='submit' value='Save' class='button'>
 	</form>
               </td>
