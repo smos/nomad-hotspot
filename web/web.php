@@ -45,28 +45,50 @@ function html_form_close() {
 }
 
 function wopr_json($state) {
-	// we have 960 bits to fill for thw wopr display
-	// lets just concatenate numbers together and format this to 
-	$number = $state['itteration'];
-	$number .= $state['time'];
-	foreach($state['captive'] as $time => $status)
-		$number .= $time . ord($status);
+	header("content-type: application/json");
+	// we have 25 rows of 16 bits to display on the screen
+	$rows = array();
+// echo print_r($state, true);
+	$rows[] = substr(sprintf("0%016b", decbin($state['self']['itteration'])), -16);
+	$rows[] = substr(decbin($state['self']['time']), -16);
+	
+	foreach($state['captive'] as $time => $status) {
+		$msb = "0";
+		if($status != "OK")
+			$msb = "1";
+		
+		$bits = substr(decbin($time), -15);
+		$rows[] = $msb . $bits;
+		//echo print_r($bits, true);
+	}
 	
 	foreach($state['internet']['latency']['ping'] as $addr => $time)
-		$number .= ip2long($addr) . $time;
+			$rows[] = sprintf("%016b", decbin($time));
 		
-	$number .= ip2long($state['internet']['wanip']);
+	$rows[] = substr(decbin(ip2long($state['internet']['wanip'])), 16, 16);
 	
 	foreach($state['clients'] as $client)
-			$number .= $client['time'];
-					
-	foreach($state['if'] as $ifname => $if)
-		foreach($if['traffic'] as $key => $value)
-			$number .= $value;
+			$rows[] = substr(decbin($client['time']), -16);
 	
+	// toprx and toptx are the max values, grab 1st item from hist, rx and hist, tx arrays
+	// calculate percentage, create string of 0 and 1 s
+	
+	foreach($state['traffic'] as $if) {
+			//echo print_r($if, true);
+		for($i =0; $i < 4; $i++) {
+			$crx = str_repeat("1", (round($if['hist']['rx'][$i] / $if['toprx']) * 16));
+			$rows[] = str_pad($crx, 16, "0", STR_PAD_LEFT);
+			$ctx = str_repeat("1", (round($if['hist']['tx'][$i] / $if['toptx']) * 16));
+			$rows[] = str_pad($ctx, 16, "0", STR_PAD_RIGHT);
+			//echo "{$if['hist']['tx'][$i]} / {$if['toptx']}\n";
+		}
+	}
 	
 
-	return json_encode(array("value" => $number));
+	while(count($rows) < 25)
+		$rows[] = sprintf("%016b", 0);
+
+	return json_encode($rows, JSON_PRETTY_PRINT);
 }
 
 function html_wopr() {
@@ -77,13 +99,14 @@ function html_wopr() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WOPR Dynamic Display</title>
+    <title>WOPR Binary Display</title>
     <style>
         body {
             background-color: #000;
             color: #fff;
-            font-family: monospace;
+            font-family: 'Inter', monospace;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -91,22 +114,28 @@ function html_wopr() {
             overflow: hidden;
         }
 
+        .wopr-label {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: lightgreen;
+            text-shadow: 0 0 10px lightgreen;
+        }
+
         .wopr-container {
-            width: 800px;
-            height: 480px;
+            width: 480px; /* 16 columns * 30px */
+            height: 750px; /* 25 rows * 30px */
             border: 2px solid #333;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
             display: grid;
-            /* 800px / 20px = 40 columns */
-            grid-template-columns: repeat(20, 40px);
-            /* 480px / 12px = 40 rows */
-            grid-template-rows: repeat(12, 40px);
+            grid-template-columns: repeat(16, 30px);
+            grid-template-rows: repeat(25, 30px);
             background-color: #111;
         }
 
         .grid-square {
-            width: 36px;
-            height: 36px;
+            width: 30px;
+            height: 30px;
             background-color: grey;
             border: 1px solid rgba(0, 0, 0, 0.1);
             transition: background-color 0.2s ease;
@@ -120,6 +149,7 @@ function html_wopr() {
 </head>
 <body>
 
+    <div class="wopr-label">WOPR</div>
     <div id="wopr-display" class="wopr-container">
         <!-- Grid squares will be generated here by JavaScript -->
     </div>
@@ -127,9 +157,9 @@ function html_wopr() {
     <script>
         const displayContainer = document.getElementById('wopr-display');
         const squares = [];
-        const numCols = 20;
-        const numRows = 12;
-        const totalBits = numCols * numRows; // This is 1600
+        const numCols = 16;
+        const numRows = 25;
+        const totalBits = numCols * numRows;
 
         // Function to create the initial grid of squares
         function createGrid() {
@@ -147,58 +177,46 @@ function html_wopr() {
                 square.classList.remove('lit');
             });
         }
-        
-        // Helper function to convert a very large number string to binary string
-        function toBinary(largeNumberString) {
-            let binary = '';
-            let number = BigInt(largeNumberString);
-            
-            // Handle the case of zero
-            if (number === BigInt(0)) {
-                return '0';
-            }
 
-            // Convert to binary using bitwise operations
-            while (number > 0) {
-                binary = (number % BigInt(2)) + binary;
-                number = number / BigInt(2);
-            }
-            return binary;
-        }
-
-        // Function to update the display with the binary number
+        // Function to update the display
         async function updateDisplay() {
             clearDisplay();
-            let binaryString = '';
+            let binaryRows = [];
 
             try {
                 // Attempt to fetch data from the external URL
                 const response = await fetch('/woprjson');
                 const data = await response.json();
                 
-                if (data && data.value) {
-                    console.log('Successfully fetched and processed data:', data.value);
-                    binaryString = toBinary(data.value);
+                if (data && Array.isArray(data.rows) && data.rows.length === numRows) {
+                    binaryRows = data.rows;
+                    console.log('Successfully fetched and processed data.');
                 } else {
-                    throw new Error('Invalid data structure');
+                    throw new Error('Invalid data structure from JSON endpoint.');
                 }
 
             } catch (error) {
                 console.error('Failed to fetch from /woprjson. Using fallback data.', error);
                 
-                // Fallback to a random 1600-bit number if fetching fails
-                const randomBinary = new Array(totalBits).fill(0).map(() => Math.floor(Math.random() * 2)).join('');
-                binaryString = randomBinary;
+                // Fallback to a random pattern if fetching fails
+                for (let i = 0; i < numRows; i++) {
+                    let randomRow = '';
+                    for (let j = 0; j < numCols; j++) {
+                        randomRow += Math.random() > 0.5 ? '1' : '0';
+                    }
+                    binaryRows.push(randomRow);
+                }
             }
-
-            // Pad the binary string to exactly 1600 bits
-            const paddedBinaryString = binaryString.padStart(totalBits, '0');
-
-            // Draw each bit
-            for (let i = 0; i < totalBits; i++) {
-                if (paddedBinaryString[i] === '1') {
-                    if (squares[i]) {
-                        squares[i].classList.add('lit');
+            
+            // Draw the pattern based on the binary rows
+            for (let row = 0; row < numRows; row++) {
+                const binaryString = binaryRows[row];
+                for (let col = 0; col < numCols; col++) {
+                    const index = row * numCols + col;
+                    if (binaryString[col] === '1') {
+                        if (squares[index]) {
+                            squares[index].classList.add('lit');
+                        }
                     }
                 }
             }
@@ -207,11 +225,12 @@ function html_wopr() {
         // Create the grid and start the update loop
         createGrid();
         updateDisplay();
-        setInterval(updateDisplay, 5000);
+        setInterval(updateDisplay, 2000);
     </script>
 
 </body>
 </html>
+
 
 
 
