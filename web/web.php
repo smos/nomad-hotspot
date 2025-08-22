@@ -64,23 +64,52 @@ function wopr_json($state) {
 	
 	foreach($state['internet']['latency']['ping'] as $addr => $time)
 			$rows[] = sprintf("%016b", decbin($time));
-		
-	$rows[] = substr(decbin(ip2long($state['internet']['wanip'])), 16, 16);
 	
-	foreach($state['clients'] as $client)
-			$rows[] = substr(decbin($client['time']), -16);
+	foreach($state['internet']['latency']['dnsping'] as $addr => $time)
+			$rows[] = sprintf("%016b", decbin($time));
+			
+	$rows[] = substr(sprintf("%032b",inet_pton($state['internet']['wanip'])), 16, 16);
+	$rows[] = substr(sprintf("%032b",inet_pton($state['internet']['wanip'])), -16);
+	
+	//foreach($state['clients'] as $client)
+	//		$rows[] = substr(decbin($client['time']), -16);
 	
 	// toprx and toptx are the max values, grab 1st item from hist, rx and hist, tx arrays
 	// calculate percentage, create string of 0 and 1 s
 	
-	foreach($state['traffic'] as $if) {
-			//echo print_r($if, true);
-		for($i =0; $i < 4; $i++) {
-			$crx = str_repeat("1", (round($if['hist']['rx'][$i] / $if['toprx']) * 16));
-			$rows[] = str_pad($crx, 16, "0", STR_PAD_LEFT);
-			$ctx = str_repeat("1", (round($if['hist']['tx'][$i] / $if['toptx']) * 16));
-			$rows[] = str_pad($ctx, 16, "0", STR_PAD_RIGHT);
-			//echo "{$if['hist']['tx'][$i]} / {$if['toptx']}\n";
+	foreach($state['traffic'] as $ifname => $if) {
+		$defif = find_wan_interface($state);
+		if($ifname != $defif)
+			continue;
+		//echo print_r($if, true);
+		for($i =0; $i < 10; $i++) {
+		
+			$ra = array();
+			// init empty array
+			for($r = 0; $r < 16; $r++)
+				$ra[$r] = "0";
+
+			//$crx = str_repeat("1", (round($if['hist']['rx'][$i] / ($if['toprx']/ 1)) * 16));
+			// inflate numbers somewhat
+			$crx = round(($if['hist']['rx'][$i] / ($if['toprx']/1)) * 16);
+			$ctx = round(($if['hist']['tx'][10 - $i] / ($if['toptx']/1)) * 16);
+			
+			for($r = 0;$r < $crx; $r++) {
+				$ra[$r] = "1";
+				}
+			
+			for($r = 0;$r < $ctx; $r++) {
+				$ra[15 - $r] = "1";
+				}
+			
+			//$crx = str_repeat("1", (ceil($crx)));
+			//$ctx = str_repeat("1", (ceil($ctx)));
+			//$rows[] = substr(str_pad($crx, 16, "0", STR_PAD_LEFT), -16);
+			//$rows[] = substr(str_pad($ctx, 16, "0", STR_PAD_RIGHT), 0, 16);
+					//echo print_r($ra, true);
+			$rows[] = implode("", $ra);
+			//echo "{$if['hist']['rx'][$i]} / {$if['toprx']} $crx\n";
+			//echo "{$if['hist']['tx'][$i]} / {$if['toptx']} $ctx\n";
 		}
 	}
 	
@@ -88,7 +117,7 @@ function wopr_json($state) {
 	while(count($rows) < 25)
 		$rows[] = sprintf("%016b", 0);
 
-	return json_encode($rows, JSON_PRETTY_PRINT);
+	return json_encode(array("rows" => $rows), JSON_PRETTY_PRINT);
 }
 
 function html_wopr() {
