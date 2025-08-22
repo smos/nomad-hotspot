@@ -49,6 +49,7 @@ sudo apt -y install python3 python3-gi gir1.2-webkit2-4.0 gir1.2-gtk-3.0
 
 echo "Copy webscreensaver to /usr/lib/xscreensaver"
 sudo cp -a install/kiosk/webscreensaver /usr/local/bin/webscreensaver
+sudo chmod +x /usr/local/bin/webscreensaver
 
 sudo apt -y autoremove
 
