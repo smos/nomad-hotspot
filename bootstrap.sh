@@ -69,6 +69,7 @@ cat <<EOF > bootstrap.yaml
           - whois
           - dnsdiag
           - dnsmasq
+          - host
         state: present
         update_cache: yes
 
