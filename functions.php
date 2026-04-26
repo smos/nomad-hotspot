@@ -2339,10 +2339,10 @@ function fetch_as_info($state, $ip) {
 			$asinfo['route6'] = $rt6match[1];
 		if(preg_match("/^origin:[ ]+([0-9A-Z.:\/]+)/i", $line, $asmatch))
 			$asinfo['asnum'] = $asmatch[1];
-		if(preg_match("/^descr:[ ]+([0-9A-Z.:\/ ]+)/i", $line, $descrmatch))
-			$asinfo['descr'] = $descrmatch[1];
-		if(preg_match("/^org-name:[ ]+([0-9A-Z.:\/ ]+)/i", $line, $orgmatch))
-			$asinfo['org-name'] = $orgmatch[1];
+		if(preg_match("/^descr:[ ]+(.*)$/i", $line, $descrmatch))
+			$asinfo['descr'] = trim($descrmatch[1]);
+		if(preg_match("/^org-name:[ ]+(.*)$/i", $line, $orgmatch))
+			$asinfo['org-name'] = trim($orgmatch[1]);
 		
 		
 	}

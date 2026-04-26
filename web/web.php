@@ -1789,42 +1789,70 @@ function filter_log ($proc, $logfile = "/var/log/syslog", $limit = 20) {
 	switch($proc) {
 		case "agent.php":
 		case "web.php":
-		case "hostapd":
+		case "wpa_supplicant":
 		case "ovpn-client":
 		case "dnsmasq\[":
 		case "NetworkManager":
+		case "PHP":
+		case "PHP Warning":
 			break;
 		default:
-			return false;		
+			return array();
 	}
 	$limit = intval($limit);
-	$cmd = "awk '/{$proc}/ {print $0}' '{$logfile}'| tail -n{$limit}";
+
+	if (file_exists($logfile)) {
+		$cmd = "awk '/{$proc}/ {print $0}' '{$logfile}'| tail -n{$limit}";
+	} else {
+		// Fallback to journalctl if syslog file doesn't exist
+		if ($proc == "ovpn-client") {
+			$cmd = "journalctl -u openvpn@client -n {$limit} --no-pager 2>/dev/null";
+		} elseif ($proc == "agent.php" || $proc == "web.php") {
+			$cmd = "journalctl -u nomad-hotspot -n {$limit} --no-pager 2>/dev/null | grep '{$proc}' | tail -n {$limit}";
+		} elseif ($proc == "wpa_supplicant" || $proc == "NetworkManager" || $proc == "dnsmasq") {
+			$cmd = "journalctl -u {$proc} -n {$limit} --no-pager 2>/dev/null";
+		} elseif ($proc == "dnsmasq\[") {
+			$cmd = "journalctl -u dnsmasq -n {$limit} --no-pager 2>/dev/null";
+		} else {
+			$cmd = "journalctl --grep='{$proc}' -n {$limit} --no-pager 2>/dev/null";
+		}
+		
+		exec($cmd, $out, $ret);
+		return is_array($out) ? $out : array();
+	}
+
 	if($cmd != ""){
 		exec($cmd, $out, $ret);
-		if($ret > 0) {
+		if($ret > 0 && file_exists($logfile)) {
 			msglog("web.php", "Failed to fetch log results for {$proc}");
-			return false;
+			return array();
 		}
 	}
-	return $out;
+	return is_array($out) ? $out : array();
 }
 
 function html_log ($state) {
 	echo "<div id='logs'>";
-	$cats = array("Agent" => "agent.php", "Web" => "web.php", "Accesspoint" => "hostapd", "OpenVPN" => "ovpn-client", "Dnsmasq" => "dnsmasq\[", "NetworkManager" => "NetworkManager");
+	$cats = array("Agent" => "agent.php", "Web" => "web.php", "PHP Errors" => "PHP Warning", "Accesspoint" => "wpa_supplicant", "OpenVPN" => "ovpn-client", "Dnsmasq" => "dnsmasq\[", "NetworkManager" => "NetworkManager");
 	foreach($cats as $name => $proc) {
-		echo "<table class='status-item'>";
-		echo "<tr><td>{$name}</td></tr>\n";
-
-		foreach(filter_log($proc) as $line) {
-			$line = preg_replace("/nomad-hotspot/", "", $line);
-			echo "<tr><td>{$line}</td></tr>\n";
+		$log_lines = filter_log($proc);
+		$count = count($log_lines);
+		echo "<div class='collapsible-header' onclick='$(this).next().slideToggle(); $(this).toggleClass(\"active\");'>{$name} ({$count} lines)</div>";
+		echo "<div class='collapsible-content'>";
+		echo "<table class='status-item' style='font-size: 0.8em; width: 100%;'>";
+		if ($count > 0) {
+			foreach($log_lines as $line) {
+				$line = htmlspecialchars(preg_replace("/nomad-hotspot/", "", $line));
+				echo "<tr><td>{$line}</td></tr>\n";
+			}
+		} else {
+			echo "<tr><td>No logs found for {$name}</td></tr>\n";
 		}
 		echo "</table>\n";
+		echo "</div>\n";
 	}
 	echo "</div>";
 }
-
 function html_redirect_home() {
 	echo "<script type=\"text/javascript\">
 	window.location.replace(\"/\");
@@ -2321,7 +2349,8 @@ function html_status_internet($state, $defif, $icon = true) {
 			}
 			if(!empty($state['internet']['isp'])) {
 				echo "Wan IP {$state['internet']['wanip']}<br/>\n";
-				echo "AS '{$state['internet']['isp']['descr']}' ({$state['internet']['isp']['asnum']})<br/>\n";
+				$isp_name = !empty($state['internet']['isp']['descr']) ? $state['internet']['isp']['descr'] : ($state['internet']['isp']['org-name'] ?? '');
+				echo "AS '{$isp_name}' ({$state['internet']['isp']['asnum']})<br/>\n";
 
 			}
 		}
