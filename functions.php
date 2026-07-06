@@ -53,7 +53,7 @@ $procmap = array(
 function update_cfgmap($cfgmap = array()) {
 	// strip out all wifi client entries
 	foreach($cfgmap as $entry => $value) {
-		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $entry, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $entry, $matches)) {
 			unset($cfgmap[$matches[1]]);
 			// print_r($matches);
 		}
@@ -63,7 +63,7 @@ function update_cfgmap($cfgmap = array()) {
 	$dir = "{$basedir}/{$cfgdir}";
 	$cons = scandir($dir);
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $value, $matches)) {
 			$cfgmap[$matches[1]] = "/etc/NetworkManager/system-connections/{$matches[1]}";
 			// print_r($matches);
 		}
@@ -75,7 +75,7 @@ function update_cfgmap($cfgmap = array()) {
 function update_procmap($procmap = array()) {
 	// strip out all wifi client entries
 	foreach($procmap as $entry => $value) {
-		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $entry, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $entry, $matches)) {
 			unset($procmap[$matches[1]]);			
 			// print_r($matches);
 		}
@@ -86,7 +86,7 @@ function update_procmap($procmap = array()) {
 	$dir = "{$basedir}/{$cfgdir}";
 	$cons = scandir($dir);
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_]+-wifi).nmconnection/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi).nmconnection/i", $value, $matches)) {
 			$procmap[$matches[0]] = "{$matches[1]}";
 			// print_r($matches);
 		}
@@ -104,7 +104,7 @@ function list_wifi_cons() {
 	// echo "<pre>{$basedir}/$cfgdir ". print_r($cons, true) ."<pre>";
 	
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $value, $matches)) {
 			$cfg[$matches[0]] = "{$matches[1]}";
 			// print_r($matches);
 		}
@@ -2077,7 +2077,7 @@ function process_cfg_changes($chglist) {
 				// do nothing
 				break;
 			default:
-				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches)) {
+				if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $file, $matches)) {
 					copy_config($file, "root:root", "0600");
 					restart_service($file);
 					break;
@@ -2274,21 +2274,21 @@ function copy_config($file, $owner = "", $mode = "") {
 	$cfgmap = update_cfgmap($cfgmap);
 
 	msglog("agent.php", "Copy config file '{$file}' to '{$cfgmap[$file]}'");
-	$cmd = "sudo cp -a {$cfgdir}/{$file} {$cfgmap[$file]}";
+	$cmd = "sudo cp -a '{$cfgdir}/{$file}' '{$cfgmap[$file]}'";
 	if(exec_log($cmd) === false)
-		msglog("agent.php", "Failed to copy config {$file} to {$cfgmap[$file]}");
+		msglog("agent.php", "Failed to copy config '{$file}' to '{$cfgmap[$file]}'");
 
 	msglog("agent.php", "Set owner on '{$cfgmap[$file]}' to {$owner}");
 	if(!empty($owner)) {
-		$cmd = "sudo chown {$owner} {$cfgmap[$file]}";
+		$cmd = "sudo chown '{$owner}' '{$cfgmap[$file]}'";
 		if(exec_log($cmd) === false)
-			msglog("agent.php", "Failed to set owner on {$cfgmap[$file]}");
+			msglog("agent.php", "Failed to set owner on '{$cfgmap[$file]}'");
 	}
-	msglog("agent.php", "Set permissons on '{$cfgmap[$file]}' to {$mode}");
+	msglog("agent.php", "Set permissons on '{$cfgmap[$file]}' to '{$mode}'");
 	if(!empty($owner)) {
-		$cmd = "sudo chmod {$mode} {$cfgmap[$file]}";
+		$cmd = "sudo chmod '{$mode}' '{$cfgmap[$file]}'";
 		if(exec_log($cmd) === false)
-			msglog("agent.php", "Failed to set permissions on {$cfgmap[$file]}");
+			msglog("agent.php", "Failed to set permissions on '{$cfgmap[$file]}'");
 	}
 
 }
@@ -2300,9 +2300,9 @@ function move_config($file) {
 	$cfgmap = update_cfgmap($cfgmap);
 
 	msglog("agent.php", "Move config file '{$file}' to '{$cfgmap[$file]}'");
-	$cmd = "sudo mv -f {$cfgdir}/{$file} {$cfgmap[$file]}";
+	$cmd = "sudo mv -f '{$cfgdir}/{$file}' '{$cfgmap[$file]}'";
 	if(exec_log($cmd) === false)
-		msglog("agent.php", "Failed to move config {$file} to {$cfgmap[$file]}");
+		msglog("agent.php", "Failed to move config '{$file}' to '{$cfgmap[$file]}'");
 }
 
 function fetch_lldp_neighbors() {
@@ -2324,7 +2324,7 @@ function fetch_as_info($state, $ip) {
 	if(! preg_match("/([0-9:\.a-f]+)/", $ip, $ipmatch))
 		return false;
 
-	msglog("fetch_as_info", "Looking up AS information with whois for {$ip}");
+	msglog("fetch_as_info", "Looking up AS information with whois for '{$ip}'");
 	
 	$cmd = "whois -c {$ip}";
 	exec($cmd, $out, $ret);
