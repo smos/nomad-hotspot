@@ -50,10 +50,68 @@ $procmap = array(
 			"etherclient.nmconnection" => "etherclient",
 			);
 
+function safe_ssid($ssid) {
+	// Transliterate to ASCII if possible, ignore characters that cannot be transliterated
+	$safe = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $ssid);
+	if ($safe === false) {
+		$safe = $ssid;
+	}
+	// Replace spaces with underscores
+	$safe = str_replace(' ', '_', $safe);
+	// Strip anything that is not alphanumeric, underscore, or dash
+	$safe = preg_replace('/[^a-zA-Z0-9_-]/', '', $safe);
+	// Fallback to a default string based on MD5 if it becomes empty
+	if (empty($safe)) {
+		$safe = 'wifi_' . substr(md5($ssid), 0, 8);
+	}
+	return $safe;
+}
+
+function delete_wifi_con($con) {
+	global $cfgdir;
+	global $basedir;
+
+	// Determine connection name and file name
+	if (preg_match("/(.*?)-wifi\.nmconnection/i", $con, $matches)) {
+		$file = $con;
+		$con_id = $matches[1];
+	} else {
+		$con_id = $con;
+		$file = "{$con_id}-wifi.nmconnection";
+	}
+
+	msglog("web", "Request to delete WiFi connection '{$con_id}'");
+
+	// 1. Delete connection from NetworkManager
+	$cmd = "sudo nmcli connection delete '" . escapeshellarg($con_id) . "'";
+	exec_log($cmd);
+
+	// 2. Delete local config file
+	$local_file = "{$basedir}/{$cfgdir}/{$file}";
+	if (file_exists($local_file)) {
+		msglog("web", "Deleting local config file: {$local_file}");
+		unlink($local_file);
+	}
+
+	// 3. Delete system config file
+	$system_file = "/etc/NetworkManager/system-connections/{$file}";
+	if (file_exists($system_file)) {
+		msglog("web", "Deleting system config file: {$system_file}");
+		$cmd = "sudo rm -f " . escapeshellarg($system_file);
+		exec_log($cmd);
+	}
+
+	// 4. Reload NetworkManager connections
+	$cmd = "sudo nmcli connection reload";
+	exec_log($cmd);
+
+	return true;
+}
+
 function update_cfgmap($cfgmap = array()) {
 	// strip out all wifi client entries
 	foreach($cfgmap as $entry => $value) {
-		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $entry, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $entry, $matches)) {
 			unset($cfgmap[$matches[1]]);
 			// print_r($matches);
 		}
@@ -63,7 +121,7 @@ function update_cfgmap($cfgmap = array()) {
 	$dir = "{$basedir}/{$cfgdir}";
 	$cons = scandir($dir);
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $value, $matches)) {
 			$cfgmap[$matches[1]] = "/etc/NetworkManager/system-connections/{$matches[1]}";
 			// print_r($matches);
 		}
@@ -75,7 +133,7 @@ function update_cfgmap($cfgmap = array()) {
 function update_procmap($procmap = array()) {
 	// strip out all wifi client entries
 	foreach($procmap as $entry => $value) {
-		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $entry, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $entry, $matches)) {
 			unset($procmap[$matches[1]]);			
 			// print_r($matches);
 		}
@@ -86,7 +144,7 @@ function update_procmap($procmap = array()) {
 	$dir = "{$basedir}/{$cfgdir}";
 	$cons = scandir($dir);
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_ ]+-wifi).nmconnection/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi)\.nmconnection/i", $value, $matches)) {
 			$procmap[$matches[0]] = "{$matches[1]}";
 			// print_r($matches);
 		}
@@ -104,7 +162,7 @@ function list_wifi_cons() {
 	// echo "<pre>{$basedir}/$cfgdir ". print_r($cons, true) ."<pre>";
 	
 	foreach($cons as $entry => $value) {
-		if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $value, $matches)) {
+		if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $value, $matches)) {
 			$cfg[$matches[0]] = "{$matches[1]}";
 			// print_r($matches);
 		}
@@ -1869,7 +1927,7 @@ function check_procs($procmap) {
 				break;
 			default:
 				// Check for dynamically generated files
-				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches))
+				if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $file, $matches))
 					break;
 				msglog("agent.php", "What is this mythical process for file '{$file}' of which you speak?");
 				break;
@@ -2077,7 +2135,7 @@ function process_cfg_changes($chglist) {
 				// do nothing
 				break;
 			default:
-				if(preg_match("/([a-z0-9-_ ]+-wifi.nmconnection)/i", $file, $matches)) {
+				if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $file, $matches)) {
 					copy_config($file, "root:root", "0600");
 					restart_service($file);
 					break;
@@ -2170,7 +2228,7 @@ function restart_service($file) {
 				$cmd = "sudo ip6tables-restore conf/iptables.v6 && sudo service netfilter-persistent save";
 				break;
 			default:
-				if(preg_match("/([a-z0-9-_]+-wifi.nmconnection)/i", $file, $matches)) {
+				if(preg_match("/([a-z0-9-_ ]+-wifi\.nmconnection)/i", $file, $matches)) {
 					$cmd = "sudo nmcli connection reload";
 					break;
 				}

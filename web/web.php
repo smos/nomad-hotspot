@@ -820,12 +820,10 @@ function config_nmconnection($state, $con = "") {
 			// test for other config files
 			if(is_readable("{$basedir}/{$cfgdir}/{$con}")) {
 				$file = $con;
-				preg_match("/(.*?)-wifi.nmconnection/i", $file, $matches);
+				preg_match("/(.*?)-wifi\.nmconnection/i", $file, $matches);
 				$con = $matches[1];
 			} elseif($con == 'new-connection') {
-				$search = array("\/", "\*", "\'", "\&", "\<", "\>", "\"");
-				$replace = array();
-				$cssid = str_ireplace($search, "", $_POST['new-connection_wifi_ssid']);
+				$cssid = safe_ssid($_POST['new-connection_wifi_ssid']);
 				$file = "{$cssid}-wifi.nmconnection";
 				$con = $cssid;
 				//echo "<pre>". print_r($_POST, true) ."</pre>\n";
@@ -849,6 +847,12 @@ function config_nmconnection($state, $con = "") {
 		// echo print_r($_SERVER, true);
 		if(!empty($_POST)) {
 			if($_POST['con'] == $con) {
+				if(isset($_POST['delete_con'])) {
+					delete_wifi_con($file);
+					echo "<h2>Connection Deleted</h2>";
+					echo "<script>window.location.href = '" . ($_SERVER['REQUEST_URI'] ?? '/cfgwiclient') . "';</script>";
+					return;
+				}
 				$config = parse_nm_config($file);
 				$config = build_nm_config($con, $_POST, $config);
 				write_nm_file($config, "{$basedir}/{$cfgdir}/{$file}");
@@ -958,6 +962,9 @@ function config_nmconnection($state, $con = "") {
 	<?php } ?>
 
 	<input type='submit' value='Save' class='button'>
+	<?php if (preg_match("/-wifi\.nmconnection$/i", $file)) { ?>
+	<input type='submit' name='delete_con' value='Delete Connection' class='button' style='background-color: #d9534f; border-color: #d43f3a; margin-left: 10px;' onclick="return confirm('Are you sure you want to delete this connection?');">
+	<?php } ?>
 	</form>
               </td>
               </tr>
