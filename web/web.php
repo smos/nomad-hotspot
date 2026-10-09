@@ -120,7 +120,7 @@ function wopr_json($state) {
 	return json_encode(array("rows" => $rows), JSON_PRETTY_PRINT);
 }
 
-function html_wopr() {
+function html_wopr($show_menu = false) {
 ?>
 
 <!DOCTYPE html>
@@ -129,6 +129,9 @@ function html_wopr() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WOPR Binary Display</title>
+    <?php if ($show_menu) { ?>
+    <link rel='stylesheet' href='web.css'>
+    <?php } ?>
     <style>
         body {
             background-color: #000;
@@ -136,7 +139,7 @@ function html_wopr() {
             font-family: 'Inter', monospace;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: <?php echo $show_menu ? 'flex-start' : 'center'; ?>;
             align-items: center;
             height: 100vh;
             margin: 0;
@@ -146,6 +149,7 @@ function html_wopr() {
         .wopr-label {
             font-size: 32px;
             text-align: center;
+            margin-top: <?php echo $show_menu ? '20px' : '0px'; ?>;
             margin-bottom: 20px;
             color: lightgreen;
             text-shadow: 0 0 10px lightgreen;
@@ -177,6 +181,14 @@ function html_wopr() {
     </style>
 </head>
 <body>
+
+    <?php 
+    if ($show_menu) { 
+        echo "<div style='width: 100%; padding-top: 10px; margin-bottom: 20px;'>";
+        html_menu();
+        echo "</div>";
+    } 
+    ?>
 
     <div class="wopr-label">WOPR</div>
     <div id="wopr-display" class="wopr-container">
@@ -265,6 +277,175 @@ function html_wopr() {
 
 <?php
 
+}
+
+function html_time_screensaver($state, $show_menu = false) {
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Screensaver</title>
+    <script src="jquery-3.5.1.min.js"></script>
+    <?php if ($show_menu) { ?>
+    <link rel='stylesheet' href='web.css'>
+    <?php } ?>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Inter', monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: <?php echo $show_menu ? 'flex-start' : 'center'; ?>;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .menu-container {
+            width: 100%;
+            padding-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .screensaver-container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            max-width: 480px;
+            height: <?php echo $show_menu ? 'calc(100% - 100px)' : '100%'; ?>;
+            align-items: center;
+            justify-content: space-around;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            width: 55%;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 45%;
+        }
+
+        .clock-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .clock-digit {
+            font-size: 110px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        #clock-hours {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        #clock-minutes {
+            color: #00ffcc;
+            text-shadow: 0 0 15px rgba(0,255,204,0.4);
+            margin-top: 10px;
+        }
+
+        .client-count {
+            margin-top: 20px;
+            align-self: center;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .client-count-num {
+            font-size: 110px;
+            font-weight: bold;
+            color: #00ffcc;
+            text-shadow: 0 0 15px rgba(0,255,204,0.4);
+            line-height: 1;
+        }
+
+        /* Adjust connectivity screensaver table padding */
+        #connectivityscreensaver table {
+            border-spacing: 0px 8px;
+            width: 100%;
+        }
+
+        #connectivityscreensaver td {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <?php 
+    if ($show_menu) { 
+        echo "<div class='menu-container'>";
+        html_menu();
+        echo "</div>";
+    } 
+    ?>
+
+    <div class="screensaver-container">
+        <div class="left-column" id="time-left-column">
+            <?php html_connectivity_screensaver($state); ?>
+            <div class="client-count">
+                <span class="client-count-num"><?php echo is_array($state['clients']) ? count($state['clients']) : 0; ?></span>
+            </div>
+        </div>
+        <div class="right-column">
+            <div class="clock-container">
+                <div id="clock-hours" class="clock-digit">--</div>
+                <div id="clock-minutes" class="clock-digit">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock-hours').textContent = hours;
+            document.getElementById('clock-minutes').textContent = minutes;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+
+    <?php
+    echo html_jquery_reload_time_screensaver();
+    ?>
+</body>
+</html>
+<?php
+}
+
+function html_jquery_reload_time_screensaver(){
+?>
+    <script type="text/javascript">
+        $(document).ready(function() {
+             var timer = setInterval(function() {
+                 $('#time-left-column').load("/timesaverleft");
+             }, 3000);
+        });
+    </script>
+<?php
 }
 
 function html_wi_channel_use() {
@@ -1889,6 +2070,11 @@ function reload(){
 function html_logs($state){
 	//echo html_redirect_home();
 	if(!empty($_POST)) {
+		if (isset($_POST['screensaver_type'])) {
+			$state['config'] = read_config($state['cfgfile']);
+			$state['config']['screensaver'] = $_POST['screensaver_type'];
+			save_config($state['cfgfile'], $state['config']);
+		}
 		// print_r($_POST);
 		$i = 0;
 		foreach($_POST as $varname => $setting) {
@@ -1917,6 +2103,20 @@ function html_logs($state){
 	}
 
 	echo "<table border=0>";
+	echo "<tr><td>";
+	echo html_form_open();
+	echo "Screensaver: ";
+	$screensaver_options = array(
+		"status" => "Default Status",
+		"wopr" => "WOPR Binary",
+		"time" => "Time & Status"
+	);
+	$current_screensaver = isset($state['config']['screensaver']) ? $state['config']['screensaver'] : 'status';
+	html_select("screensaver_type", $screensaver_options, $current_screensaver);
+	echo " ";
+	echo html_button("Save Screensaver");
+	echo html_form_close();
+	echo "</td></tr>\n";
 	echo "<tr><td>";
 	echo html_form_open();
 	echo html_hidden("action", "screensaver");

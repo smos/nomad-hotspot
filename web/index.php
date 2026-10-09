@@ -80,27 +80,47 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo send_json($state);	
 			break;
 		case "/wopr":
-			echo html_wopr();
+			echo html_wopr(false);
 			break;
 		case "/woprjson":
 			echo wopr_json($state);
 			break;
 		case "/screensaver":
-			echo html_header();
-			echo html_head();
-			echo html_jquery();
-			echo html_status_screensaver($state);
-			echo html_jquery_reload_screensaver();
-			echo html_foot();	
+			$screensaver_type = isset($state['config']['screensaver']) ? $state['config']['screensaver'] : 'status';
+			if ($screensaver_type === 'wopr') {
+				echo html_wopr(false);
+			} else if ($screensaver_type === 'time') {
+				echo html_time_screensaver($state, false);
+			} else {
+				echo html_header();
+				echo html_head();
+				echo html_jquery();
+				echo html_status_screensaver($state);
+				echo html_jquery_reload_screensaver();
+				echo html_foot();
+			}
 			break;
 		case "/screensavermenu":
-			echo html_header();
-			echo html_head();
-			echo html_jquery();
-			echo html_menu();
-			echo html_status_screensaver($state);
-			echo html_jquery_reload_screensaver();
-			echo html_foot();	
+			$screensaver_type = isset($state['config']['screensaver']) ? $state['config']['screensaver'] : 'status';
+			if ($screensaver_type === 'wopr') {
+				echo html_wopr(true);
+			} else if ($screensaver_type === 'time') {
+				echo html_time_screensaver($state, true);
+			} else {
+				echo html_header();
+				echo html_head();
+				echo html_jquery();
+				echo html_menu();
+				echo html_status_screensaver($state);
+				echo html_jquery_reload_screensaver();
+				echo html_foot();
+			}
+			break;
+		case "/timesaverleft":
+			echo html_connectivity_screensaver($state);
+			echo "<div class='client-count'>";
+			echo "<span class='client-count-num'>" . (is_array($state['clients']) ? count($state['clients']) : 0) . "</span>";
+			echo "</div>";
 			break;
 		case "/connectivityscreensaver":
 			// status div screensaver
