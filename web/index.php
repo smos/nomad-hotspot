@@ -38,8 +38,13 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 			echo html_interfaces($state, fetch_wi_client_if($state));
 			break;
 		case "/interfacetun0":
-			// interface status div
+			// interface status div (legacy - OpenVPN)
 			echo html_interfaces($state, "tun0");
+			break;
+		case "/interfacevpn":
+			// interface status div - resolves dynamically based on active VPN type
+			$vpn_if = (get_vpn_type($state) === 'tailscale') ? 'tailscale0' : 'tun0';
+			echo html_interfaces($state, $vpn_if);
 			break;
 		case "/wilist":
 			// clients status div 

@@ -1980,7 +1980,7 @@ function html_jquery_reload_cfgvpn(){
 	echo "
 
 \$(document).ready(function() {
-var pageifRefresh = 1000; //1 s
+var pageifRefresh = 2000; //2 s
     setInterval(function() {
         ifrefresh();
     }, pageifRefresh);
@@ -1989,7 +1989,7 @@ var pageifRefresh = 1000; //1 s
 	// Functions
 
 function ifrefresh() {
-    \$('#interfaces').load(\"/interfacetun0\");
+    \$('#interfaces').load(\"/interfacevpn\");
 }
 
 ";
@@ -2338,7 +2338,7 @@ function html_interfaces($state, $interface = ""){
 		
 		//echo "<tr><td>{$ifname}</td><td>". if_state($state['if'], $ifname)."</td><td>". implode('<br />', if_prefix($state['if'], $ifname)) ."</td><td>". round(html_traffic_speed($state['if'], $ifname)) ."</td><td>". round(html_traffic_total($state['if'], $ifname)) ."</td><td>{$wireless}</td></tr>\n";
 		echo "<tr><td>Interface: {$ifname}, State: ". if_state($state['if'], $ifname)."</td></tr>\n";
-		if((is_array($iface['wi'])) && ($iface['wi']['mode'] != "Master")){
+		if(!empty($iface['wi']) && is_array($iface['wi']) && ($iface['wi']['mode'] != "Master")){
 			//$wireless = "&nbsp;&nbsp;SSID: '{$iface['wi']['essid']}', BSSID: {$iface['wi']['bssid']}";
 			//echo "<tr><td >{$wireless}</td></tr>\n";			echo "<tr><td >&nbsp;&nbsp;Frequency {$iface['wi']['frequency']}, Type {$iface['wi']['phy']}, Rate {$iface['wi']['rate']} Mbit/s</td></tr>\n";
 			echo "<tr><td >";
