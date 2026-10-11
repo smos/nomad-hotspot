@@ -68,6 +68,7 @@ if (preg_match('/\.(?:css|png|jpg|jpeg|gif)$/', $_SERVER["REQUEST_URI"])) {
 		case "/cfgwiap":
 		case "/cfgwiclient":
 		case "/cfgovpn":
+		case "/cfgvpn":
 			echo html_header();
 			echo html_head();
 			echo html_jquery();

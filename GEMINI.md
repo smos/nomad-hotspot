@@ -48,3 +48,6 @@ To minimize wear on the Raspberry Pi's SD card, the project uses a "disk-less" s
 - The UI is designed to be lightweight and fast-refreshing.
 - Follow the component-based approach in `web/web.php` for any new UI elements.
 - Ensure any new routes are added to the `switch` block in `web/index.php`.
+
+## Reference & Function Inventory
+For a full directory of the `$state` schema, categorized function listings in `functions.php`, and component routes in `web/web.php`, consult [docs/REFERENCE.md](docs/REFERENCE.md).

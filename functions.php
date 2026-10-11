@@ -886,19 +886,142 @@ function working_dns($dns) {
 	$gdns = check_gdns_rec();
 	if(($gdns === true) && ($dns != "OK")){
 		msglog("agent.php", "Looks like we have a sane DNS for dns.google");
-		//if($state['config']['openvpn'] == true)
-		//	start_service("client.ovpn");
 		return "OK";
 	}
 	if(($gdns === false) && ($dns != "NOK")) {
-		msglog("agent.php", "Looks like we can not resolve Public DNS, stop OpenVPN, reload DNSmasq");
-		$config = read_config($state['cfgfile']);
-		if($config['openvpn'] === true)
-			stop_service("client.ovpn");
+		msglog("agent.php", "Looks like we can not resolve Public DNS, stop VPN, reload DNSmasq");
+		if(is_vpn_enabled($state))
+			stop_vpn($state);
 		// restart_service("dnsmasq.conf");
 		return "NOK";
 	}
 	return $dns;
+}
+
+function is_vpn_enabled($state = null) {
+	if ($state === null) {
+		global $state;
+	}
+	$config = isset($state['config']) ? $state['config'] : array();
+	if (isset($config['vpn_enable'])) {
+		return (bool)$config['vpn_enable'];
+	}
+	return !empty($config['openvpn']);
+}
+
+function get_vpn_type($state = null) {
+	if ($state === null) {
+		global $state;
+	}
+	$config = isset($state['config']) ? $state['config'] : array();
+	if (!empty($config['vpn_type']) && in_array($config['vpn_type'], array("openvpn", "tailscale"))) {
+		return $config['vpn_type'];
+	}
+	return "openvpn";
+}
+
+function is_tailscale_installed() {
+	$path = trim(shell_exec("which tailscale 2>/dev/null") ?? "");
+	return ($path !== "" && is_executable($path));
+}
+
+function tailscale_status() {
+	if (!is_tailscale_installed()) {
+		return false;
+	}
+	$out = array();
+	$ret = 0;
+	exec("tailscale status --json 2>/dev/null", $out, $ret);
+	if ($ret !== 0 || empty($out)) {
+		return false;
+	}
+	return json_decode(implode("\n", $out), true);
+}
+
+function tailscale_login_url() {
+	$st = tailscale_status();
+	if (!$st) {
+		return "";
+	}
+	if (!empty($st['AuthURL'])) {
+		return $st['AuthURL'];
+	}
+	$bstate = $st['BackendState'] ?? '';
+	if ($bstate === 'NeedsLogin' || $bstate === 'Stopped') {
+		exec("tailscale up --qr=false --timeout=1s >/dev/null 2>&1 &");
+		usleep(300000);
+		$st2 = tailscale_status();
+		return $st2['AuthURL'] ?? "";
+	}
+	return "";
+}
+
+function tailscale_up($state = null) {
+	global $uid;
+	if (!is_tailscale_installed()) {
+		msglog("agent.php", "Tailscale is not installed, cannot start");
+		return false;
+	}
+	if ($state === null) {
+		global $state;
+	}
+	$config = $state['config'] ?? array();
+	msglog("agent.php", "Bringing up Tailscale");
+	exec("sudo systemctl start tailscaled 2>/dev/null");
+
+	$cmd = "sudo tailscale up --reset=false --timeout=3s --accept-routes --operator={$uid}";
+	$use_exit_node = !empty($config['tailscale_exit_node_enable']) && !empty($config['tailscale_exit_node']);
+	if ($use_exit_node) {
+		$exit_node = escapeshellarg($config['tailscale_exit_node']);
+		$cmd .= " --exit-node={$exit_node}";
+		$allow_lan = (!isset($config['tailscale_allow_lan']) || $config['tailscale_allow_lan']) ? "true" : "false";
+		$cmd .= " --exit-node-allow-lan-access={$allow_lan}";
+		msglog("agent.php", "Tailscale enabling exit node: {$config['tailscale_exit_node']} (allow LAN: {$allow_lan})");
+	} else {
+		$cmd .= " --exit-node=";
+	}
+
+	msglog("agent.php", "Running: {$cmd}");
+	exec_log($cmd);
+	return true;
+}
+
+function tailscale_down($state = null) {
+	if (!is_tailscale_installed()) {
+		return false;
+	}
+	msglog("agent.php", "Bringing down Tailscale");
+	$cmd = "sudo tailscale down";
+	exec_log($cmd);
+	return true;
+}
+
+function start_vpn($state = null) {
+	if ($state === null) {
+		global $state;
+	}
+	$type = get_vpn_type($state);
+	msglog("agent.php", "Starting VPN provider: {$type}");
+	if ($type === "tailscale") {
+		stop_service("client.ovpn");
+		return tailscale_up($state);
+	} else {
+		tailscale_down($state);
+		return start_service("client.ovpn");
+	}
+}
+
+function stop_vpn($state = null) {
+	if ($state === null) {
+		global $state;
+	}
+	$type = get_vpn_type($state);
+	msglog("agent.php", "Stopping VPN provider: {$type}");
+	if ($type === "tailscale") {
+		return tailscale_down($state);
+	} else {
+		return stop_service("client.ovpn");
+	}
 }
 
 function config_read_ovpn($state){
@@ -1271,9 +1394,9 @@ function working_captive($captive) {
 	//print_r($msftconnect);
 	if(($res == "OK") && ($captive != "OK")){
 		msglog("agent.php", "Captive Portal check succeeded, looks like we have working Internet");
-		// Hook in OpenVPN start here
-		if($config['openvpn'] === true)
-			start_service("client.ovpn");
+		// Hook in VPN start here
+		if(is_vpn_enabled($state))
+			start_vpn($state);
 
 		$wanip = file_get_contents("http://ipecho.net/plain");
 		$state['internet']['wanip'] = $wanip;
@@ -1281,9 +1404,9 @@ function working_captive($captive) {
 	}
 	if(($res == "DNSERR") && ($captive != "DNSERR")) {
 		msglog("agent.php", "Looks like DNS doesn't work properly yet");
-		// Hook in OpenVPN start here
-		if($config['openvpn'] === true)
-			stop_service("client.ovpn");
+		// Hook in VPN stop here
+		if(is_vpn_enabled($state))
+			stop_vpn($state);
 	}
 	if(($res == "PORTAL") && ($captive != "PORTAL")) {
 		msglog("agent.php", "Looks like we we are stuck behind a portal, someone needs to log in");
@@ -1362,9 +1485,9 @@ function parse_portal_page($url = ""){
 	if($url == "")
 		$url = "http://www.msftconnecttest.com/connecttest.txt";
 
-	// Hook in OpenVPN stop here
-	if($config['openvpn'] === true)
-		stop_service("client.ovpn");
+	// Hook in VPN stop here
+	if(is_vpn_enabled($state))
+		stop_vpn($state);
 			
 	$state['internet']['url'] = $url;
 	// attempt this 3 times
@@ -1738,14 +1861,13 @@ function dnsping($state, $server = ""){
 	$line = $out[$num-1];
 	preg_match("/avg=([0-9]+)/i", $line, $matches);
 
+	$latency = isset($matches[1]) ? round($matches[1]) : 999;
 	// catch packet loss returned as 0
-	if(round($matches[1]) == 0)
-		$res[$ipmatch[1]] = 999;
-	// echo print_r($out);
-	// echo print_r($line);
+	if($latency == 0)
+		$latency = 999;
 
 	$res = array();
-	$res[$ipmatch[1]] = round($matches[1]);
+	$res[$ipmatch[1]] = $latency;
 
 	return $res;
 

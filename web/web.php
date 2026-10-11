@@ -23,7 +23,7 @@ function html_menu(){
 	echo "<td><a href='/cfgif'><img height='50px' src='images/interfaces.png' alt='Interfaces'></a></td>";
 	echo "<td><a href='/cfgwiap'><img height='50px' src='images/apunkc.png' alt='Wifi AP'></a></td>";
 	echo "<td><a href='/cfgwiclient'><img height='50px' src='images/wifi.png' alt='Wifi Client'></a></td>";
-	echo "<td><a href='/cfgovpn'><img height='50px' src='images/vpnunkc.png' alt='OpenVPN'></a></td>";
+	echo "<td><a href='/cfgvpn'><img height='50px' src='images/vpnunkc.png' alt='VPN'></a></td>";
 	echo "<td><a href='/logs'><img height='50px' src='images/json.png' alt='Logs'></a></td>";
 	echo "<tr></table>\n";
 }
@@ -716,11 +716,13 @@ function html_config($state, $uri){
 			echo html_wi_channel_use();
 			break;
 		case "/cfgovpn":
+		case "/cfgvpn":
 			html_form_open();
 			html_button();
-			echo html_interfaces($state, "tun0");
+			$vif = (get_vpn_type($state) === 'tailscale') ? "tailscale0" : "tun0";
+			echo html_interfaces($state, $vif);
 			echo html_jquery_reload_cfgvpn();
-			config_openvpn($state);
+			config_vpn($state);
 			break;
 
 	}
@@ -728,91 +730,159 @@ function html_config($state, $uri){
 }
 
 function config_openvpn($state) {
-	echo "<br>Config OpenVPN<br>";
-	// global $shm_id;
-	// global $state;
+	return config_vpn($state);
+}
+
+function config_vpn($state) {
+	echo "<br><h3>VPN Configuration</h3>";
 	$state['config'] = read_config($state['cfgfile']);
-	//echo "<pre> blah ". print_r($state['config'], true) . "</pre>";
+	$vpn_enabled = is_vpn_enabled($state);
+	$vpn_type = get_vpn_type($state);
 
 	if(!empty($_POST)) {
-		//print_r($_POST);
-		$i = 0;
-		foreach($_POST as $varname => $setting) {
-			switch($varname) {
-				case "enable":
-					$enabled = $_POST[$varname];
-					break;
-				case "username":
-					$username = $_POST[$varname];
-					break;
-				case "password":
-					$password = $_POST[$varname];
-					break;
-				case "conf":
-					if(!empty($_POST[$varname])) {
-						echo "Found new conf data <br>";
-							config_write_ovpn($_POST);
-					}
-					break;
+		// Handle tailscale actions if submitted
+		if(!empty($_POST['ts_action'])) {
+			if($_POST['ts_action'] === 'install') {
+				echo "<div style='color: #f1c40f;'>Installing Tailscale...</div>";
+				exec("curl -fsSL https://tailscale.com/install.sh | sudo sh 2>&1", $ts_install_out);
+				exec("sudo tailscale set --operator=" . escapeshellarg($_SERVER['LOGNAME'] ?? 'seth') . " 2>&1");
+			} elseif($_POST['ts_action'] === 'login') {
+				echo "<div style='color: #f1c40f;'>Requesting Tailscale authentication link...</div>";
+				exec("tailscale up --qr=false --timeout=2s >/dev/null 2>&1 &");
+				usleep(500000);
+			} elseif($_POST['ts_action'] === 'down') {
+				tailscale_down($state);
 			}
+		}
+
+		// Handle OpenVPN config file / credentials updates
+		if(!empty($_POST['conf'])) {
+			echo "Found new OpenVPN configuration<br>";
+			config_write_ovpn($_POST);
 		}
 		if((!empty($_POST['username'])) && (!empty($_POST['password']))){
-			echo "Found new Login data <br>";
-			$credentials = array("{$username}", "{$password}");
-			if(count ($credentials) < 2) {
-				echo "Not supplied both credentials<br>";
-				$loginerror = true;
-			} else {
-				config_write_ovpn_login($credentials);
-			}
+			echo "Found new OpenVPN credentials<br>";
+			$credentials = array($_POST['username'], $_POST['password']);
+			config_write_ovpn_login($credentials);
 		}
-		if(!empty($_POST['enable'])) {
-			if(($enabled == "on") && ($state['config']['openvpn'] != true)) {
-				$state['config']['openvpn'] = true;
-				//write_shm($shm_id, $state);
-				echo "<pre>";
-				save_config($state['cfgfile'], $state['config']);
-				enable_service("client.ovpn");
-				restart_service("client.ovpn");
-				echo "</pre>";
-			}
+
+		// Read form toggles
+		$new_enabled = !empty($_POST['enable']);
+		$new_type = in_array($_POST['vpn_type'] ?? '', array('openvpn', 'tailscale')) ? $_POST['vpn_type'] : 'openvpn';
+		$new_exit_enable = !empty($_POST['tailscale_exit_node_enable']);
+		$new_exit_node = trim($_POST['tailscale_exit_node'] ?? '');
+		$new_allow_lan = !empty($_POST['tailscale_allow_lan']);
+
+		$state['config']['vpn_enable'] = $new_enabled;
+		$state['config']['vpn_type'] = $new_type;
+		$state['config']['openvpn'] = ($new_enabled && $new_type === 'openvpn');
+		$state['config']['tailscale_exit_node_enable'] = $new_exit_enable;
+		$state['config']['tailscale_exit_node'] = $new_exit_node;
+		$state['config']['tailscale_allow_lan'] = $new_allow_lan;
+
+		save_config($state['cfgfile'], $state['config']);
+
+		echo "<pre>";
+		if($new_enabled) {
+			start_vpn($state);
+		} else {
+			stop_vpn($state);
 		}
-		if(empty($_POST['enable'])) {
-			if(($enabled == "") && ($state['config']['openvpn'] != false)) {
-				$state['config']['openvpn'] = false;
-				//write_shm($shm_id, $state);
-				echo "<pre>";
-				save_config($state['cfgfile'], $state['config']);
-				stop_service("client.ovpn");
-				disable_service("client.ovpn");
-				echo "</pre>";
-			}
-		}
+		echo "</pre>";
+
+		$vpn_enabled = $new_enabled;
+		$vpn_type = $new_type;
 	}
 
 	$settings = config_read_ovpn($state);
 	$state['config'] = read_config($state['cfgfile']);
-	//echo "<pre> blah ". print_r($state['config'], true) . "</pre>";
+	$vpn_enabled = is_vpn_enabled($state);
+	$vpn_type = get_vpn_type($state);
+	$ts_installed = is_tailscale_installed();
+	$ts_status = $ts_installed ? tailscale_status() : false;
+	$ts_bstate = $ts_status['BackendState'] ?? '';
 
-	echo "OpenVPN Enabled<br>";
-	if($state['config']['openvpn'] === true) {
-		//echo "hoi;";
-		$checked = "on";
+	echo "<table style='border: 1px solid #444; border-radius: 8px; padding: 10px; width: 95%; max-width: 650px; text-align: left;'>";
+	echo "<tr><td colspan=2><h4>VPN General</h4></td></tr>";
+
+	// VPN Enable Checkbox
+	$chk_enable = $vpn_enabled ? "checked" : "";
+	echo "<tr><td style='width: 140px;'><b>Enable VPN:</b></td><td>";
+	echo "<label><input type='checkbox' name='enable' value='on' {$chk_enable} > Active</label>";
+	echo "</td></tr>";
+
+	// VPN Provider Radio Buttons
+	echo "<tr><td><b>VPN Provider:</b></td><td>";
+	$sel_ovpn = ($vpn_type === 'openvpn') ? "checked" : "";
+	$sel_ts = ($vpn_type === 'tailscale') ? "checked" : "";
+	echo "<label><input type='radio' name='vpn_type' value='openvpn' {$sel_ovpn} > OpenVPN</label>&nbsp;&nbsp;&nbsp;&nbsp;";
+	echo "<label><input type='radio' name='vpn_type' value='tailscale' {$sel_ts} > Tailscale</label>";
+	echo "</td></tr>";
+	echo "</table><br/>";
+
+	// Tailscale Section
+	echo "<div style='border: 1px solid #2980b9; border-radius: 8px; padding: 12px; width: 95%; max-width: 650px; margin-bottom: 15px; text-align: left; background-color: #1a252f;'>";
+	echo "<h4 style='margin-top: 0; color: #5dade2;'>Tailscale Settings</h4>";
+
+	if(!$ts_installed) {
+		echo "<p style='color: #e74c3c;'>⚠️ Tailscale is not installed on this system.</p>";
+		echo "<button type='submit' name='ts_action' value='install' style='padding: 6px 12px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer;'>Install Tailscale Now</button>";
+	} else {
+		echo "<p><b>Status:</b> ";
+		if($ts_bstate === 'Running') {
+			$ts_ip = !empty($ts_status['TailscaleIPs']) ? implode(', ', $ts_status['TailscaleIPs']) : ($ts_status['Self']['TailscaleIPs'][0] ?? 'Connected');
+			echo "<span style='color: #2ecc71;'>● Connected</span> ({$ts_ip})<br/>";
+			echo "<small>Node: " . htmlspecialchars($ts_status['Self']['HostName'] ?? '') . "</small>";
+		} elseif($ts_bstate === 'NeedsLogin') {
+			echo "<span style='color: #f39c12;'>● Needs Authentication</span>";
+		} else {
+			echo "<span style='color: #bdc3c7;'>● " . htmlspecialchars($ts_bstate ?: 'Stopped') . "</span>";
+		}
+		echo "</p>";
+
+		// Activation Link display
+		$auth_url = tailscale_login_url();
+		if(!empty($auth_url) && $ts_bstate !== 'Running') {
+			echo "<div style='background-color: #2c3e50; border: 2px solid #3498db; border-radius: 6px; padding: 12px; margin: 10px 0;'>";
+			echo "<b style='color: #3498db; font-size: 1.1em;'>🔗 Tailscale Activation Link:</b><br/>";
+			echo "<p style='margin: 6px 0;'>Click the button below to connect this device to your Tailscale network:</p>";
+			echo "<a href='{$auth_url}' target='_blank' style='display: inline-block; background-color: #27ae60; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none; font-weight: bold;'>Open Tailscale Login Page &rarr;</a>";
+			echo "<br/><br/><small style='word-break: break-all; color: #bdc3c7;'>Activation URL: <a href='{$auth_url}' target='_blank' style='color: #5dade2;'>{$auth_url}</a></small>";
+			echo "</div>";
+		} elseif($ts_bstate !== 'Running') {
+			echo "<button type='submit' name='ts_action' value='login' style='padding: 6px 12px; background: #2980b9; color: white; border: none; border-radius: 4px; cursor: pointer;'>Generate Login Link</button><br/>";
+		}
+
+		// Exit Node options
+		$exit_enable = !empty($state['config']['tailscale_exit_node_enable']) ? "checked" : "";
+		$exit_node_val = htmlspecialchars($state['config']['tailscale_exit_node'] ?? '');
+		$allow_lan = (!isset($state['config']['tailscale_allow_lan']) || !empty($state['config']['tailscale_allow_lan'])) ? "checked" : "";
+
+		echo "<div style='background-color: #243342; border: 1px solid #34495e; border-radius: 6px; padding: 10px; margin-top: 10px;'>";
+		echo "<b>Exit Node Routing (Route via Home Node):</b><br/><br/>";
+		echo "<label><input type='checkbox' name='tailscale_exit_node_enable' value='on' {$exit_enable} > <b>Use Exit Node</b></label><br/><br/>";
+		echo "<label>Exit Node Name or IP:</label><br/>";
+		echo "<input type='text' name='tailscale_exit_node' value='{$exit_node_val}' placeholder='e.g. home-node or 100.x.y.z' style='width: 70%; max-width: 300px; padding: 4px;'><br/>";
+		echo "<small style='color: #bdc3c7;'>Enter the name or Tailscale IP of your home exit node.</small><br/><br/>";
+		echo "<label><input type='checkbox' name='tailscale_allow_lan' value='on' {$allow_lan} > Allow local network access</label><br/>";
+		echo "<small style='color: #bdc3c7;'>Keeps local Wi-Fi hotspot and router admin interface accessible while using exit node.</small>";
+		echo "</div>";
 	}
-	html_checkbox("enable", "on", $checked);
-	echo "<br>";
-	echo "OpenVPN client username. Existing not shown.<br>";
+	echo "</div>";
+
+	// OpenVPN Section
+	echo "<div style='border: 1px solid #7f8c8d; border-radius: 8px; padding: 12px; width: 95%; max-width: 650px; text-align: left; background-color: #1c1c1c;'>";
+	echo "<h4 style='margin-top: 0; color: #bdc3c7;'>OpenVPN Settings</h4>";
+	echo "OpenVPN client username (existing not shown):<br/>";
 	html_input("username", "");
-	echo "<br>";
-	echo "OpenVPN client username. Existing not shown.<br>";
+	echo "<br/><br/>";
+	echo "OpenVPN client password (existing not shown):<br/>";
 	html_input("password", "");
-	echo "<br>";
-	echo "OpenVPN client configuration below<br>";
-	html_textarea("conf", $settings['conf'], 120, 80);
-	echo "<br>";
+	echo "<br/><br/>";
+	echo "OpenVPN client configuration (.ovpn):<br/>";
+	html_textarea("conf", $settings['conf'] ?? '', 15, 70);
+	echo "</div><br/>";
 
-
-	//echo "<pre>". print_r($settings, true);
 	return $state;
 }
 
@@ -2379,6 +2449,8 @@ function latency_to_color($num = 0) {
 	$num = floatval($num);
 	if($num == 0)
 		$bgcolor = "nac";
+	elseif($num == 999)
+		$bgcolor = "unkc";
 	elseif($num < 100)
 		$bgcolor = "okc";
 	elseif($num< 200)
@@ -2387,8 +2459,6 @@ function latency_to_color($num = 0) {
 		$bgcolor = "warnc";
 	elseif($num> 500)
 		$bgcolor = "nokc";
-	elseif($num == 999)
-		$bgcolor = "unkc";
 
 	return $bgcolor;
 }
@@ -2441,45 +2511,71 @@ function scale_to_colorname($num = 0) {
 }
 
 function html_status_vpn($state, $icon = true) {
+	$vpn_enabled = is_vpn_enabled($state);
+	$vpn_type = get_vpn_type($state);
 	$color = "nac";
 	$vpncon = "Not configured";
-	if(isset($state['if']['tun0'])) {
-		// print_r($state['if']['tun0']['addr_info'][0]['local']);
+	$ifname = ($vpn_type === 'tailscale') ? 'tailscale0' : 'tun0';
 
-		if(!empty($state['if']['tun0']['addr_info'][0]['local'])) {
+	if ($vpn_type === 'tailscale') {
+		if (isset($state['if']['tailscale0']) && !empty($state['if']['tailscale0']['addr_info'][0]['local'])) {
+			$color = "okc";
+			$local_ip = $state['if']['tailscale0']['addr_info'][0]['local'];
+			$exit_str = "";
+			if (!empty($state['config']['tailscale_exit_node_enable']) && !empty($state['config']['tailscale_exit_node'])) {
+				$exit_str = " via " . $state['config']['tailscale_exit_node'];
+			}
+			$vpncon = "Tailscale: {$local_ip}{$exit_str}";
+		} elseif ($vpn_enabled) {
+			$color = "nokc";
+			$vpncon = "Tailscale disconnected";
+		} else {
+			$color = "nac";
+			$vpncon = "Tailscale disabled";
+		}
+	} else {
+		// OpenVPN
+		if (isset($state['if']['tun0']) && !empty($state['if']['tun0']['addr_info'][0]['local'])) {
 			$color = "okc";
 			$vpncon = "Connected with address: {$state['if']['tun0']['addr_info'][0]['local']}";
+		} elseif ($vpn_enabled) {
+			$color = "nokc";
+			$vpncon = "OpenVPN not connected";
 		} else {
-			$color = "nokc";			$vpncon = "Not connected";
+			$color = "nac";
+			$vpncon = "OpenVPN not configured";
 		}
-		$img = "images/vpn{$color}.png";
-		if($icon === true)
-			echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td></tr>\n";
-		
-		if($icon === false) {
-			echo "<table class='status-item'>";
-			echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
-			echo "<td>";
-			$ifname = "tun0";
-			if(isset($state['if'][$ifname])) {
-				echo "VPN {$ifname} <br/>";
-				if(!empty(if_prefix($state['if'], $ifname))) {
-					echo "IP ". implode('<br />IP ', if_prefix($state['if'], $ifname)) ."<br/>\n";
-				}
-			}
-			echo "</td>";
-			echo "</tr>\n";
-			echo "</table>";
-			echo "<table height=2px><tr><td></td></tr></table>\n";
-		}
-	}
-	
-	
-	if(isset($state['if']['tun0'])) {
-		// print_r($state['if']['tun0']['addr_info'][0]['local']);
-		//echo "<tr><td><img height='125px' src='{$img}' alt='VPN: {$vpncon}'></td>";
 	}
 
+	$img = "images/vpn{$color}.png";
+	$hrefo = "<a href='/cfgvpn'>";
+	$hrefc = "</a>";
+
+	if ($icon === true) {
+		echo "<tr><td>{$hrefo}<img height='125px' src='{$img}' alt='VPN: {$vpncon}' title='VPN: {$vpncon}'>{$hrefc}</td></tr>\n";
+	}
+
+	if ($icon === false) {
+		echo "<table class='status-item'>";
+		echo "<tr><td class='{$color}' width='20px'><span style='writing-mode: vertical-lr; text-orientation: upright;'>VPN</span></td>";
+		echo "<td>";
+		echo "Provider: " . ucfirst($vpn_type) . " (" . ($vpn_enabled ? "Enabled" : "Disabled") . ")<br/>";
+		if (isset($state['if'][$ifname])) {
+			echo "VPN {$ifname}<br/>";
+			if (!empty(if_prefix($state['if'], $ifname))) {
+				echo "IP " . implode('<br />IP ', if_prefix($state['if'], $ifname)) . "<br/>\n";
+			}
+		} else {
+			echo "Status: {$vpncon}<br/>";
+		}
+		if ($vpn_type === 'tailscale' && !empty($state['config']['tailscale_exit_node_enable']) && !empty($state['config']['tailscale_exit_node'])) {
+			echo "Exit Node: " . htmlspecialchars($state['config']['tailscale_exit_node']) . "<br/>";
+		}
+		echo "</td>";
+		echo "</tr>\n";
+		echo "</table>";
+		echo "<table height=2px><tr><td></td></tr></table>\n";
+	}
 }
 
 function html_status_internet($state, $defif, $icon = true) {
@@ -2492,13 +2588,40 @@ function html_status_internet($state, $defif, $icon = true) {
 	if(isset($defgw[6][0]['gateway']))
 		$gw6 = $defgw[6][0]['gateway'];
 	
-	$avgicmp = 999;
-	if(isset($state['internet']['latency']['ping'][$gw4]))
-		$avgicmp = $state['internet']['latency']['ping'][$gw4];
+	$pings = array();
+	if(!empty($gw4) && isset($state['internet']['latency']['ping'][$gw4])) {
+		$p4 = $state['internet']['latency']['ping'][$gw4];
+		if(is_numeric($p4) && $p4 > 0 && $p4 < 999) {
+			$pings[] = $p4;
+		}
+	}
 
-	if(isset($state['internet']['latency']['ping'][$gw6]))
-		$avgicmp = round(($state['internet']['latency']['ping'][$gw4] + $state['internet']['latency']['ping'][$gw6])/ 2);
-		
+	if(!empty($gw6) && isset($state['internet']['latency']['ping'][$gw6])) {
+		$p6 = $state['internet']['latency']['ping'][$gw6];
+		if(is_numeric($p6) && $p6 > 0 && $p6 < 999) {
+			$pings[] = $p6;
+		}
+	}
+
+	if(!empty($pings)) {
+		$avgicmp = round(array_sum($pings) / count($pings));
+	} else {
+		// gw ping timed out (999ms) or is unavailable; fallback to dns response values if valid
+		$dnspings = array();
+		if(!empty($state['internet']['latency']['dnsping']) && is_array($state['internet']['latency']['dnsping'])) {
+			foreach($state['internet']['latency']['dnsping'] as $dns_ip => $dns_lat) {
+				if(is_numeric($dns_lat) && $dns_lat > 0 && $dns_lat < 999) {
+					$dnspings[] = $dns_lat;
+				}
+			}
+		}
+
+		if(!empty($dnspings)) {
+			$avgicmp = round(array_sum($dnspings) / count($dnspings));
+		} else {
+			$avgicmp = 999;
+		}
+	}
 
 	$color = latency_to_color($avgicmp);
 		
@@ -2547,12 +2670,16 @@ function html_status_internet($state, $defif, $icon = true) {
 			//$defgw = fetch_default_route_gw();
 			//print_r($defgw);
 			if(!empty($gw4)) {
+				$gw4_lat = isset($state['internet']['latency']['ping'][$gw4]) ? $state['internet']['latency']['ping'][$gw4] : 0;
+				$gw4_color = latency_to_color($gw4_lat);
 				echo "<table><tr><td>GW4 {$gw4} &nbsp;</td><td
-				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw4]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw4))."</td></tr></table>\n";
+				  class='{$gw4_color}'>&nbsp; {$gw4_lat} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw4))."</td></tr></table>\n";
 			}
 			if(!empty($gw6)) {
+				$gw6_lat = isset($state['internet']['latency']['ping'][$gw6]) ? $state['internet']['latency']['ping'][$gw6] : 0;
+				$gw6_color = latency_to_color($gw6_lat);
 				echo "<table><tr><td>GW6 {$gw6} &nbsp;</td><td
-				  class='{$color}'>&nbsp; {$state['internet']['latency']['ping'][$gw6]} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw6))."</td></tr></table>\n";
+				  class='{$gw6_color}'>&nbsp; {$gw6_lat} ms &nbsp; </td><td>&nbsp;". lookup_oui(lookup_mac_address($gw6))."</td></tr></table>\n";
 			}
 			if(!empty($state['internet']['isp'])) {
 				echo "Wan IP {$state['internet']['wanip']}<br/>\n";
